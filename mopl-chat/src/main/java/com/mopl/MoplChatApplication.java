@@ -1,0 +1,13 @@
+package com.mopl;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class MoplChatApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(MoplChatApplication.class, args);
+    }
+
+}

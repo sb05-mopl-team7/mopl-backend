@@ -1,0 +1,6 @@
+rootProject.name = 'mopl-backend'
+
+include 'mopl-core'
+include 'mopl-api'
+include 'mopl-batch'
+include 'mopl-chat'

@@ -1,0 +1,16 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation project(':mopl-core')
+
+    // WebClient
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    testImplementation 'io.projectreactor:reactor-test'
+
+    // AWS S3
+    implementation platform("software.amazon.awssdk:bom:2.26.21")
+    implementation "software.amazon.awssdk:s3"
+    implementation "software.amazon.awssdk:sts"
+}

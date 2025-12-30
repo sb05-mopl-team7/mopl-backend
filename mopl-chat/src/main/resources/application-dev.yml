@@ -1,0 +1,4 @@
+logging:
+  level:
+    org.springframework.messaging: DEBUG # STOMP 메시지 송수신 로그
+    org.springframework.web.socket: DEBUG # 웹소켓 연결 로그

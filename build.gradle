@@ -48,9 +48,15 @@ subprojects {
 		// lombok
 		compileOnly 'org.projectlombok:lombok'
 		annotationProcessor 'org.projectlombok:lombok'
+
 		//테스트에서 lombok 사용
 		testCompileOnly 'org.projectlombok:lombok'
 		testAnnotationProcessor 'org.projectlombok:lombok'
+
+		// 맥북 라이브러리 의존성
+		if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+			runtimeOnly "io.netty:netty-resolver-dns-native-macos::osx-aarch_64"
+		}
 	}
 
 	tasks.named('test') {

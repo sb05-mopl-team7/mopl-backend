@@ -1,0 +1,4 @@
+logging:
+  level:
+    org.springframework.messaging: INFO
+    org.springframework.web.socket: INFO

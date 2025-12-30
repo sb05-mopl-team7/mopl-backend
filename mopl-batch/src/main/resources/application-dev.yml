@@ -1,0 +1,4 @@
+logging:
+  level:
+    org.springframework.batch: DEBUG
+    org.springframework.jdbc.core: DEBUG

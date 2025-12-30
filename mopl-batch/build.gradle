@@ -5,6 +5,10 @@ plugins {
 dependencies {
     implementation project(':mopl-core')
 
+    // Batch
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+    testImplementation 'org.springframework.batch:spring-batch-test'
+
     // WebClient
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'io.projectreactor:reactor-test'

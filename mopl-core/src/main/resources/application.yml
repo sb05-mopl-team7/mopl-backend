@@ -1,0 +1,14 @@
+spring:
+  profiles:
+    active: dev
+  config:
+    import: optional:file:.env[.properties], optional:file:../.env[.properties]
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
+  data:
+    redis:
+      repositories:
+        enabled: true

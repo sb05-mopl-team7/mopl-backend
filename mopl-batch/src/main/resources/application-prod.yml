@@ -1,0 +1,4 @@
+logging:
+  level:
+    org.springframework.batch: INFO
+    org.springframework.jdbc.core: INFO

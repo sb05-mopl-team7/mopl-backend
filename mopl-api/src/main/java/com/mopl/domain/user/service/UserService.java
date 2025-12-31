@@ -1,6 +1,7 @@
 package com.mopl.domain.user.service;
 
 import com.mopl.domain.user.dto.UserCreateRequest;
+import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,7 @@ public class UserService {
     @Transactional
     public void createUser(UserCreateRequest  userCreateRequest) {
         if(userRepository.existsByEmail(userCreateRequest.email())){
-            throw new UserException(ErrorCode.INVALID_USER_PARAMETER);
+            throw new UserException(UserErrorCode.DUPLICATE_USER);
         }
     }
 

@@ -1,6 +1,6 @@
-package com.mopl.domain.contents.entity;
+package com.mopl.domain.content.entity;
 
-import com.mopl.domain.contents.enums.ContentType;
+import com.mopl.domain.content.enums.ContentType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -12,7 +12,6 @@ public class Content {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 
     @Enumerated(EnumType.STRING)

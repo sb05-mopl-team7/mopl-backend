@@ -42,4 +42,10 @@ public class User extends BaseTimeEntity {
 
     @Column(name  = "provider_id", nullable = true)
     private String providerId;
+
+    public User(String name,String email, String password) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+    }
 }

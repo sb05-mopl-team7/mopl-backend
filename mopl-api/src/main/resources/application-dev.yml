@@ -2,26 +2,3 @@ logging:
   level:
     org.springframework.web: DEBUG # HTTP 요청/응답 헤더 등 상세 정보
     org.springframework.web.servlet: DEBUG # DispatcherServlet 동작 과정
-    # SQL 로그 출력 설정 추가
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-
-spring:
-  # MySQL 연결 설정
-  datasource:
-    url: jdbc:mysql://localhost:3306/mopl-mysql-db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: root
-    password: mopl1234
-    driver-class-name: com.mysql.cj.jdbc.Driver
-
-  # JPA 설정
-  jpa:
-    properties:
-        dialect: org.hibernate.dialect.MySQLDialect
-    defer-datasource-initialization: false
-
-  # Redis 연결 설정
-  data:
-    redis:
-      host: localhost
-      port: 6379

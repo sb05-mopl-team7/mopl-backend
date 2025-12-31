@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 public class Contents {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(columnDefinition = "BIGINT UNSIGNED")
     private Long id;
 

@@ -1,6 +1,7 @@
 package com.mopl.domain.user.service;
 
 import com.mopl.domain.user.dto.UserCreateRequest;
+import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.repository.UserRepository;
@@ -14,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String email) {
@@ -22,10 +23,12 @@ public class UserService {
     }
 
     @Transactional
-    public void createUser(UserCreateRequest  userCreateRequest) {
-        if(userRepository.existsByEmail(userCreateRequest.email())){
+    public void createUser(UserCreateRequest  dto) {
+        if(userRepository.existsByEmail(dto.email())){
             throw new UserException(UserErrorCode.DUPLICATE_USER);
         }
+        User user = new User(dto.username(),dto.email(),passwordEncoder.encode(dto.password()));
+        userRepository.save(user);
     }
 
 

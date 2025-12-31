@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "contents")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Contents {
+public class Content {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,7 +28,7 @@ public class Contents {
 
     private int reviewCount;
 
-    public Contents(ContentType contentType, String title, String description, String thumbnailUrl) {
+    public Content(ContentType contentType, String title, String description, String thumbnailUrl) {
         this.contentType = contentType;
         this.title = title;
         this.description = description;

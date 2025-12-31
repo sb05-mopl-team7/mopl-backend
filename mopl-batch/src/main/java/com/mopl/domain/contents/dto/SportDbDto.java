@@ -3,15 +3,15 @@ package com.mopl.domain.contents.dto;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public record TmdbDto(
+public record SportDbDto(
         Long id,
+        @JsonAlias("strEvent")
+        @JsonProperty("title")
         String title,
-        @JsonAlias("overview") // 읽을 때
+        @JsonAlias("strFilename")
         @JsonProperty("description")
         String description,
-        @JsonAlias("poster_path") // 읽을 때
+        @JsonAlias("strThumb")
         @JsonProperty("thumbnailUrl")
-        String thumbnailUrl,
-        Double averageRating,
-        Integer reviewCount
+        String thumbnailUrl
 ) {}

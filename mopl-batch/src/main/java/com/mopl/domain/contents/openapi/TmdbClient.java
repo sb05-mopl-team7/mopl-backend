@@ -28,6 +28,9 @@ public class TmdbClient {
                         .build())
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<TmdbResponse<TmdbDto>>() {})
-                .map(TmdbResponse::results);
+                .map(response -> response.results().stream()
+                    .filter(dto -> dto.description() != null && !dto.description().isBlank())
+                    .toList()
+                );
     }
 }

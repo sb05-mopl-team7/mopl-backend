@@ -16,9 +16,6 @@ public class WebClientConfig {
     @Value("${tmdb.token}")
     private String tmdbToken;
 
-//    @Value("${sportdb.base-url}")
-//    private String sportDbBaseUrl;
-
     @Bean(name = "tmdbWebClient")
     public WebClient tmdbWebClient() {
         return WebClient.builder()
@@ -28,11 +25,11 @@ public class WebClientConfig {
                 .build();
     }
 
-//    @Bean(name = "sportDbWebClient")
-//    public WebClient sportDbWebClient() {
-//        return WebClient.builder()
-//                .baseUrl(sportDbBaseUrl)
-//                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-//                .build();
-//    }
+    @Bean(name = "sportDbWebClient")
+    public WebClient sportDbWebClient() {
+        return WebClient.builder()
+                .baseUrl("https://www.thesportsdb.com")
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
 }

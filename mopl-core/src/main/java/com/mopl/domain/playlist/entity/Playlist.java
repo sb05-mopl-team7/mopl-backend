@@ -25,8 +25,8 @@ public class Playlist extends BaseTimeEntity {
     @Column(nullable = false, length = 255)
     private String description;
 
-    @Column(name = "subscriber_count")
-    private Long subscriberCount;
+    @Column(name = "subscriber_count", nullable = false)
+    private long subscriberCount;
 
     public Playlist(Long userId, String title, String description) {
         this.userId = userId;
@@ -41,12 +41,12 @@ public class Playlist extends BaseTimeEntity {
     }
 
     public void increaseSubscriberCount() {
-        if (subscriberCount == null) subscriberCount = 0L;
-        subscriberCount++;
+        this.subscriberCount++;
     }
 
     public void decreaseSubscriberCount() {
-        if (subscriberCount == null) subscriberCount = 0L;
-        if (subscriberCount > 0) subscriberCount--;
+        if (this.subscriberCount > 0L) {
+            this.subscriberCount--;
+        }
     }
 }

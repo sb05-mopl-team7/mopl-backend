@@ -1,9 +1,11 @@
 package com.mopl.domain.user.service;
 
 import com.mopl.domain.user.dto.UserCreateRequest;
+import com.mopl.domain.user.dto.UserResponse;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
+import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,6 +18,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String email) {
@@ -23,12 +26,13 @@ public class UserService {
     }
 
     @Transactional
-    public void createUser(UserCreateRequest  dto) {
+    public UserResponse createUser(UserCreateRequest  dto) {
         if(userRepository.existsByEmail(dto.email())){
             throw new UserException(UserErrorCode.DUPLICATE_USER);
         }
         User user = new User(dto.username(),dto.email(),passwordEncoder.encode(dto.password()));
         userRepository.save(user);
+        return userMapper.toUserResponse(user);
     }
 
 

@@ -1,4 +1,4 @@
-package com.mopl.domain.review.dto.response;
+package com.mopl.domain.reivew.dto.response;
 
 public record ReviewDto(
         Long id,

@@ -1,4 +1,4 @@
-package com.mopl.domain.review.dto.request;
+package com.mopl.domain.reivew.dto.request;
 
 public record ReviewUpdateRequest(
         String text,

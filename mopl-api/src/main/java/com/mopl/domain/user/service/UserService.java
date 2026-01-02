@@ -30,9 +30,9 @@ public class UserService {
         if(userRepository.existsByEmail(dto.email())){
             throw new UserException(UserErrorCode.DUPLICATE_USER);
         }
-        User user = new User(dto.username(),dto.email(),passwordEncoder.encode(dto.password()));
-        userRepository.save(user);
-        return userMapper.toUserResponse(user);
+        User user = new User(dto.name(),dto.email(),passwordEncoder.encode(dto.password()));
+        User createdUser = userRepository.save(user);
+        return userMapper.toUserResponse(createdUser);
     }
 
 

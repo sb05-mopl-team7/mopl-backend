@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 public record UserCreateRequest (
         @NotBlank(message = "사용자 이름은 필수입니다")
         @Size(min = 3, max = 50, message = "사용자 이름은 3자 이상 50자 이하여야 합니다")
-        String username,
+        String name,
 
         @NotBlank(message = "이메일은 필수입니다")
         @Email(message = "유효한 이메일 형식이어야 합니다")

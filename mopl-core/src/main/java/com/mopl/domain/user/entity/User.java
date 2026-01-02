@@ -29,10 +29,10 @@ public class User extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 10)
-    private Role role = Role.USER;
+    private Role role;
 
     @Column (name = "locked", nullable = false)
-    private Boolean locked = false;
+    private Boolean locked;
 
     @Column(name = "profile_image_url", nullable = true)
     private String profileImageUrl;
@@ -47,5 +47,7 @@ public class User extends BaseTimeEntity {
         this.name = name;
         this.email = email;
         this.password = password;
+        this.role = Role.USER;
+        this.locked = false;
     }
 }

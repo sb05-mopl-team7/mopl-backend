@@ -1,6 +1,7 @@
 package com.mopl.domain.content.entity;
 
 import com.mopl.domain.content.enums.ContentType;
+import com.mopl.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -8,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "contents")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Content {
+public class Content extends BaseCreatedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

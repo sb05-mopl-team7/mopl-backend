@@ -5,6 +5,7 @@ import com.mopl.domain.contents.dto.TmdbDto;
 import com.mopl.domain.contents.openapi.SportDbClient;
 import com.mopl.domain.contents.openapi.TmdbClient;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+@Profile("local")
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/test")

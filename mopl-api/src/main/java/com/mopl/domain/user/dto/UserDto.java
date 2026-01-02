@@ -4,13 +4,12 @@ import com.mopl.domain.user.enums.Role;
 
 import java.time.LocalDateTime;
 
-public record UserResponse(
+public record UserDto(
         Long id,
-        String name,
+        LocalDateTime createdAt,
         String email,
+        String name,
         String profileImageUrl,
         Role role,
-        boolean locked,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        boolean locked
 ) {}

@@ -1,7 +1,7 @@
 package com.mopl.domain.user.controller;
 
 import com.mopl.domain.user.dto.UserCreateRequest;
-import com.mopl.domain.user.dto.UserResponse;
+import com.mopl.domain.user.dto.UserDto;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.service.UserService;
 import com.mopl.global.dto.PageResponse;
@@ -25,8 +25,8 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserResponse>create(@RequestBody @Valid UserCreateRequest request) {
-        UserResponse userResponse = userService.createUser(request);
+    public ResponseEntity<UserDto>create(@RequestBody @Valid UserCreateRequest request) {
+        UserDto userResponse = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
     }
 }

@@ -1,7 +1,7 @@
 package com.mopl.domain.user.service;
 
 import com.mopl.domain.user.dto.UserCreateRequest;
-import com.mopl.domain.user.dto.UserResponse;
+import com.mopl.domain.user.dto.UserDto;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
@@ -26,13 +26,13 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse createUser(UserCreateRequest  dto) {
+    public UserDto createUser(UserCreateRequest  dto) {
         if(userRepository.existsByEmail(dto.email())){
             throw new UserException(UserErrorCode.DUPLICATE_USER);
         }
         User user = new User(dto.name(),dto.email(),passwordEncoder.encode(dto.password()));
         User createdUser = userRepository.save(user);
-        return userMapper.toUserResponse(createdUser);
+        return userMapper.toUserDto(createdUser);
     }
 
 

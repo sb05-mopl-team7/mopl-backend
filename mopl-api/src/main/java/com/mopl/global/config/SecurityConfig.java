@@ -30,8 +30,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger.html"
                         ).permitAll()
-                        // .anyRequest().permitAll()
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll() // ← 전체 허용(개발용)
+                        //.anyRequest().authenticated()
                 );
 
         return http.build();

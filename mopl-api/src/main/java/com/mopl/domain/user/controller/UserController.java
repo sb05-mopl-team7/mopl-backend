@@ -1,5 +1,6 @@
 package com.mopl.domain.user.controller;
 
+import com.mopl.domain.user.dto.ChangePasswordRequest;
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
 import com.mopl.domain.user.entity.User;
@@ -28,5 +29,10 @@ public class UserController {
     public ResponseEntity<UserDto>create(@RequestBody @Valid UserCreateRequest request) {
         UserDto userResponse = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
+    }
+
+    @PatchMapping(value = "/{userId}/password")
+    public void updatedPassword(@RequestBody @Valid ChangePasswordRequest request) {
+        userService.updatedPassword(request);
     }
 }

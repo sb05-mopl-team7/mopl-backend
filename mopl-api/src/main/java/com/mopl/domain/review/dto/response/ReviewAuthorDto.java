@@ -1,4 +1,4 @@
-package com.mopl.domain.reivew.dto.response;
+package com.mopl.domain.review.dto.response;
 
 public record ReviewAuthorDto(
         Long userId,

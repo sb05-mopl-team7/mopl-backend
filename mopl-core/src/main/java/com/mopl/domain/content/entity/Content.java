@@ -4,11 +4,16 @@ import com.mopl.domain.content.enums.ContentType;
 import com.mopl.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "contents")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
 public class Content extends BaseCreatedEntity {
 
     @Id
@@ -28,6 +33,9 @@ public class Content extends BaseCreatedEntity {
 
     private int reviewCount;
 
+    @OneToMany(mappedBy = "content", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ContentTag> contentTags = new ArrayList<>();
+
     public Content(ContentType contentType, String title, String description, String thumbnailUrl) {
         this.contentType = contentType;
         this.title = title;
@@ -35,5 +43,10 @@ public class Content extends BaseCreatedEntity {
         this.thumbnailUrl = thumbnailUrl;
         this.averageRating = 0;
         this.reviewCount = 0;
+    }
+
+    public void addTag(Tag tag) {
+        ContentTag contentTag = new ContentTag(this, tag);
+        this.contentTags.add(contentTag);
     }
 }

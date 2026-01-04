@@ -50,4 +50,8 @@ public class User extends BaseTimeEntity {
         this.role = Role.USER;
         this.locked = false;
     }
+
+    public void updatePassword(String password) {
+        this.password = password;
+    }
 }

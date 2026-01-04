@@ -9,6 +9,7 @@ import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,11 @@ public class UserService {
     @Transactional
     public void updatedPassword(Long userId,ChangePasswordRequest dto) {
         String sessionEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByIdAndIsLock(userId,false);
+        User user = userRepository.findByIdAndIsLock(userId,false)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+        if(!sessionEmail.equals(user.getEmail())){
+            throw new AccessDeniedException("본인 계정만 수정 가능");
+        }
     }
 
 

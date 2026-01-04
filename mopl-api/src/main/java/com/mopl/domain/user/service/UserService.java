@@ -1,5 +1,6 @@
 package com.mopl.domain.user.service;
 
+import com.mopl.domain.user.dto.ChangePasswordRequest;
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
 import com.mopl.domain.user.entity.User;
@@ -8,6 +9,7 @@ import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,12 @@ public class UserService {
         User user = new User(dto.name(),dto.email(),passwordEncoder.encode(dto.password()));
         User createdUser = userRepository.save(user);
         return userMapper.toUserDto(createdUser);
+    }
+
+    @Transactional
+    public void updatedPassword(Long userId,ChangePasswordRequest dto) {
+        String sessionUser = SecurityContextHolder.getContext().getAuthentication().getName();
+//        User user =
     }
 
 

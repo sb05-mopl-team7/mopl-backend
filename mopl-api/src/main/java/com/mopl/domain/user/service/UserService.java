@@ -46,6 +46,8 @@ public class UserService {
         if(!sessionEmail.equals(user.getEmail())){
             throw new AccessDeniedException("본인 계정만 수정 가능");
         }
+        user.updatePassword(dto);
+        userRepository.save(user);
     }
 
 

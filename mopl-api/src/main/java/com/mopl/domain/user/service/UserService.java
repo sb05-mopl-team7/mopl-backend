@@ -39,8 +39,8 @@ public class UserService {
 
     @Transactional
     public void updatedPassword(Long userId,ChangePasswordRequest dto) {
-        String sessionUser = SecurityContextHolder.getContext().getAuthentication().getName();
-//        User user =
+        String sessionEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByIdAndIsLock(userId,false);
     }
 
 

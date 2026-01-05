@@ -34,4 +34,17 @@ public class Review extends BaseTimeEntity {
         this.text = text;
         this.rating = rating;
     }
+
+    public void update(String text, Double rating) {
+        if (text != null && !text.isBlank()) {
+            this.text = text.trim();
+        }
+        if (rating != null) {
+            this.rating = rating;
+        }
+    }
+
+    public boolean isAuthor(Long userId) {
+        return userId != null && userId.equals(this.userId);
+    }
 }

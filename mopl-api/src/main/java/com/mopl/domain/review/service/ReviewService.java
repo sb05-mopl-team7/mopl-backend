@@ -1,6 +1,7 @@
 package com.mopl.domain.review.service;
 
 import com.mopl.domain.review.dto.request.ReviewCreateRequest;
+import com.mopl.domain.review.dto.request.ReviewUpdateRequest;
 import com.mopl.domain.review.dto.response.ReviewAuthorDto;
 import com.mopl.domain.review.dto.response.ReviewDto;
 import com.mopl.domain.review.entity.Review;
@@ -10,6 +11,8 @@ import com.mopl.global.exception.MoplException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +40,43 @@ public class ReviewService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
         return toDto(review);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReviewDto> findAllByContentId(Long contentId) {
+        return reviewRepository.findAllByContentIdOrderByCreatedAtDesc(contentId)
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    @Transactional
+    public ReviewDto update(Long requesterId, Long reviewId, ReviewUpdateRequest request) {
+        validateAuthenticated(requesterId);
+
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
+
+        if (!review.isAuthor(requesterId)) {
+            throw new MoplException(ErrorCode.FORBIDDEN);
+        }
+
+        review.update(request.text(), request.rating());
+        return toDto(review);
+    }
+
+    @Transactional
+    public void delete(Long requesterId, Long reviewId) {
+        validateAuthenticated(requesterId);
+
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
+
+        if (!review.isAuthor(requesterId)) {
+            throw new MoplException(ErrorCode.FORBIDDEN);
+        }
+
+        reviewRepository.delete(review);
     }
 
     private void validateAuthenticated(Long requesterId) {

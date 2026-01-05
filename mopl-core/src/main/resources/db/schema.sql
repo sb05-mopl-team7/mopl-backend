@@ -62,8 +62,9 @@ CREATE TABLE playlists
     user_id          BIGINT       NOT NULL,
     title            VARCHAR(255) NOT NULL,
     description      VARCHAR(255) NOT NULL,
-    subscriber_count INT          NULL DEFAULT 0,
+    subscriber_count BIGINT       NOT NULL DEFAULT 0,
     updated_at       DATETIME     NOT NULL,
+    created_at       DATETIME     NOT NULL,
     PRIMARY KEY (id)
 );
 

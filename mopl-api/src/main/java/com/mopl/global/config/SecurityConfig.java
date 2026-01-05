@@ -1,5 +1,7 @@
 package com.mopl.global.config;
 
+import com.mopl.domain.user.enums.Role;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,11 +20,14 @@ public class SecurityConfig {
     };
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable);
+        //인가
+        http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 // Swagger UI
@@ -30,9 +35,17 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger.html"
                         ).permitAll()
-                        .anyRequest().permitAll() // ← 전체 허용(개발용)
-                        //.anyRequest().authenticated()
+                        .anyRequest().hasRole(Role.USER.name())
                 );
+        //예외처리
+        http
+                .exceptionHandling(e-> e
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                        })
+                        .accessDeniedHandler((request, response, authException) -> {
+                            response.sendError(HttpServletResponse.SC_FORBIDDEN); // 403 응답
+                        }));
 
         return http.build();
     }

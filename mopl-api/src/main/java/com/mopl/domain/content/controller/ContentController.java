@@ -27,7 +27,10 @@ public class ContentController {
             @RequestPart("request") @Valid CreateContentDto request,
             @RequestPart(value = "thumbnail") MultipartFile thumbnail
     ) {
-        if (thumbnail == null || thumbnail.isEmpty()) throw new ContentException(ContentErrorCode.INVALID_THUMBNAIL);
+        if (thumbnail == null || thumbnail.isEmpty()) {
+            throw new ContentException(ContentErrorCode.INVALID_THUMBNAIL);
+        }
+
         return ResponseEntity.ok(contentService.create(request, thumbnail));
     }
 }

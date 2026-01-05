@@ -41,17 +41,17 @@ public class ContentService {
         List<String> tagNames = newContent.getContentTags().stream()
                                 .map(Contenttag -> Contenttag.getTag().getTag()).toList();
 
-        return ContentDto.builder()
-                .id(newContent.getId())
-                .title(newContent.getContentType().name())
-                .title(newContent.getTitle())
-                .thumbnailUrl(newContent.getThumbnailUrl())
-                .tags(tagNames)
-                .averageRating(newContent.getAverageRating())
-                .reviewCount(newContent.getReviewCount())
-                .watchCount(0)
-                .build();
-
+        return new ContentDto(
+                newContent.getId(),
+                newContent.getContentType(),
+                newContent.getTitle(),
+                newContent.getDescription(),
+                newContent.getThumbnailUrl(),
+                tagNames,
+                0,
+                0,
+                0
+        );
     }
 
     public void update() {

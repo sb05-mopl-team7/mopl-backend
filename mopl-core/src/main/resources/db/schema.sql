@@ -99,8 +99,9 @@ CREATE TABLE read_status
     id              BIGINT NOT NULL AUTO_INCREMENT,
     conversation_id BIGINT NOT NULL,
     user_id         BIGINT NOT NULL,
-    last_message_id BIGINT NOT NULL,
-    PRIMARY KEY (id)
+    last_message_id BIGINT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_read_status_conversation_user (conversation_id, user_id)
 );
 
 CREATE TABLE direct_messages

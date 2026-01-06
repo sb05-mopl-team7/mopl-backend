@@ -98,8 +98,23 @@ public class ContentService {
         log.info("콘텐츠 삭제 완료: id={}", contentId);
     }
 
-    public void detail() {
-        // TODO: 콘텐츠 단건 조회 로직 구현
+    public ContentDto detail(Long contentId) {
+        Content content = getContentOrThrow(contentId);
+        List<String> tagNames = content.getContentTags().stream()
+                .map(Contenttag -> Contenttag.getTag().getTag()).toList();
+        int watchCount = 0; // TODO: redis에서 가져오기
+
+        return new ContentDto(
+                content.getId(),
+                content.getContentType(),
+                content.getTitle(),
+                content.getDescription(),
+                content.getThumbnailUrl(),
+                tagNames,
+                content.getAverageRating(),
+                content.getReviewCount(),
+                watchCount
+        );
     }
 
     public void list() {

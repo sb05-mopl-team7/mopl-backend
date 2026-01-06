@@ -6,6 +6,7 @@ import com.mopl.domain.content.dto.UpdateContentDto;
 import com.mopl.domain.content.exception.ContentErrorCode;
 import com.mopl.domain.content.exception.ContentException;
 import com.mopl.domain.content.service.ContentService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -20,6 +21,7 @@ public class ContentController {
 
     private final ContentService contentService;
 
+    @Operation(summary = "콘텐츠 생성")
     @PostMapping(consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<ContentDto> create(
             @RequestPart("request") @Valid CreateContentDto request,
@@ -32,6 +34,7 @@ public class ContentController {
         return ResponseEntity.ok(contentService.create(request, thumbnail));
     }
 
+    @Operation(summary = "콘텐츠 수정")
     @PatchMapping(value = "/{contentId}", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<ContentDto> update(
             @PathVariable Long contentId,
@@ -41,17 +44,20 @@ public class ContentController {
         return ResponseEntity.ok(contentService.update(contentId, request, thumbnail));
     }
 
+    @Operation(summary = "콘텐츠 삭제")
     @DeleteMapping(value = "/{contentId}")
     public ResponseEntity<Void> delete(@PathVariable Long contentId) {
         contentService.delete(contentId);
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "콘텐츠 단건 조회")
     @GetMapping(value = "/{contentId}")
-    public void detail(@PathVariable Long contentId) {
-        //TODO: 콘텐츠 단건 조회 서비스 호출
+    public ResponseEntity<ContentDto> detail(@PathVariable Long contentId) {
+        return ResponseEntity.ok(contentService.detail(contentId));
     }
 
+    @Operation(summary = "콘텐츠 목록 조회")
     @GetMapping
     public void list() {
         //TODO: 콘텐츠 목록 조회 서비스 호출

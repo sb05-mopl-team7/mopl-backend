@@ -35,8 +35,8 @@ public enum ErrorCode {
 
     // 팔로우
     CANNOT_FOLLOW_SELF("자기 자신을 팔로우할 수 없습니다.", 400),
-    FOLLOW_NOT_FOUND("팔로우 관계가 존재하지 않습니다.", 404),
-    ALREADY_FOLLOWING("이미 팔로우 중인 사용자입니다.", 409)
+    FOLLOW_NOT_FOUND("팔로우 관계가 존재하지 않습니다.", 400),
+    ALREADY_FOLLOWING("이미 팔로우 중인 사용자입니다.", 400)
     ;
 
   private final String message;

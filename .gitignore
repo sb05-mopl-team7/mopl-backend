@@ -212,3 +212,4 @@ gradle-app.setting
 .env
 *.env
 custom.sh
+/mopl-api/src/main/resources/application-local.yml

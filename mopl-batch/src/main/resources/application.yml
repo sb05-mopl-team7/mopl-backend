@@ -2,6 +2,8 @@ server:
   port: 8081
 
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: mopl-batch
   batch:
@@ -9,3 +11,7 @@ spring:
       enabled: false
     jdbc:
       initialize-schema: always
+
+tmdb:
+  base-url: https://api.themoviedb.org/3
+  token: ${TMDB_API_TOKEN}

@@ -24,6 +24,7 @@ CREATE TABLE contents
     thumbnail_url  VARCHAR(255) NOT NULL,
     average_rating DOUBLE DEFAULT 0.0,
     review_count   INT    DEFAULT 0,
+    created_at        DATETIME     NOT NULL,
     PRIMARY KEY (id)
 );
 
@@ -62,8 +63,9 @@ CREATE TABLE playlists
     user_id          BIGINT       NOT NULL,
     title            VARCHAR(255) NOT NULL,
     description      VARCHAR(255) NOT NULL,
-    subscriber_count INT          NULL DEFAULT 0,
+    subscriber_count BIGINT       NOT NULL DEFAULT 0,
     updated_at       DATETIME     NOT NULL,
+    created_at       DATETIME     NOT NULL,
     PRIMARY KEY (id)
 );
 
@@ -97,8 +99,9 @@ CREATE TABLE read_status
     id              BIGINT NOT NULL AUTO_INCREMENT,
     conversation_id BIGINT NOT NULL,
     user_id         BIGINT NOT NULL,
-    last_message_id BIGINT NOT NULL,
-    PRIMARY KEY (id)
+    last_message_id BIGINT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_read_status_conversation_user (conversation_id, user_id)
 );
 
 CREATE TABLE direct_messages

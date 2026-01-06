@@ -4,9 +4,17 @@ spring:
     url: jdbc:h2:mem:mopldb;MODE=MySQL;DB_CLOSE_DELAY=-1
     username: sa
     password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  sql:
+    init:
+      mode: always # 자동 실행하려면 always. 수동으로 제어하려면 never
+      schema-locations: classpath:db/schema.sql
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:

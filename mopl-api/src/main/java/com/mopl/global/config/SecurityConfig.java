@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -20,7 +21,7 @@ public class SecurityConfig {
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder(){
         return new BCryptPasswordEncoder();
-    };
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -47,8 +48,11 @@ public class SecurityConfig {
                         //테스트 용
                         .requestMatchers("/api/users/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().hasRole(Role.USER.name())
-                )
+                        .anyRequest().permitAll())
+//                        .anyRequest().hasRole(Role.USER.name())
+                        .headers(headers -> headers
+                                .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+                
                 //예외처리
                 .exceptionHandling(e-> e
                         .authenticationEntryPoint((request, response, authException) -> {

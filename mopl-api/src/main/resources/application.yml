@@ -5,7 +5,11 @@ spring:
   application:
     name: mopl-api
   profiles:
+    include: core
     active: dev
+    group:
+      dev: core-dev
+      prod: core-prod
   servlet:
     multipart:
       max-file-size: 10MB

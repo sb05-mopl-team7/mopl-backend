@@ -46,7 +46,18 @@ public class Content extends BaseCreatedEntity {
     }
 
     public void addTag(Tag tag) {
-        ContentTag contentTag = new ContentTag(this, tag);
-        this.contentTags.add(contentTag);
+        boolean isDuplicate = this.contentTags.stream()
+                .anyMatch(ct -> ct.getTag().equals(tag));
+
+        if (!isDuplicate) {
+            ContentTag contentTag = new ContentTag(this, tag);
+            this.contentTags.add(contentTag);
+        }
+    }
+
+    public void update(String title, String description, String thumbnailUrl) {
+        this.title = title;
+        this.description = description;
+        this.thumbnailUrl = thumbnailUrl;
     }
 }

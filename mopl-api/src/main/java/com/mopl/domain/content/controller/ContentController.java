@@ -2,6 +2,7 @@ package com.mopl.domain.content.controller;
 
 import com.mopl.domain.content.dto.ContentDto;
 import com.mopl.domain.content.dto.CreateContentDto;
+import com.mopl.domain.content.dto.UpdateContentDto;
 import com.mopl.domain.content.exception.ContentErrorCode;
 import com.mopl.domain.content.exception.ContentException;
 import com.mopl.domain.content.service.ContentService;
@@ -9,10 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -32,5 +30,30 @@ public class ContentController {
         }
 
         return ResponseEntity.ok(contentService.create(request, thumbnail));
+    }
+
+    @PatchMapping(value = "/{contentId}", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
+    public ResponseEntity<ContentDto> update(
+            @PathVariable Long contentId,
+            @RequestPart("request") @Valid UpdateContentDto request,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
+    ) {
+        return ResponseEntity.ok(contentService.update(contentId, request, thumbnail));
+    }
+
+    @DeleteMapping(value = "/{contentId}")
+    public ResponseEntity<Void> delete(@PathVariable Long contentId) {
+        contentService.delete(contentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping(value = "/{contentId}")
+    public void detail(@PathVariable Long contentId) {
+        //TODO: 콘텐츠 단건 조회 서비스 호출
+    }
+
+    @GetMapping
+    public void list() {
+        //TODO: 콘텐츠 목록 조회 서비스 호출
     }
 }

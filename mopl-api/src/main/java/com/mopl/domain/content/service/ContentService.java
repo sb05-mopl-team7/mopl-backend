@@ -2,15 +2,18 @@ package com.mopl.domain.content.service;
 
 import com.mopl.domain.content.dto.ContentDto;
 import com.mopl.domain.content.dto.CreateContentDto;
+import com.mopl.domain.content.dto.UpdateContentDto;
 import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.entity.Tag;
+import com.mopl.domain.content.exception.ContentErrorCode;
+import com.mopl.domain.content.exception.ContentException;
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.content.repository.TagRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -34,7 +37,7 @@ public class ContentService {
         // 콘텐츠 생성
         Content content = new Content(req.type(), req.title(), req.description(), thumbnailUrl);
         // 콘텐츠에 태그 매핑
-        mapTagsToContent(req.tags(), content);
+        addTagsToContent(req.tags(), content);
         // 저장
         Content newContent = contentRepository.save(content);
 
@@ -54,12 +57,46 @@ public class ContentService {
         );
     }
 
-    public void update() {
-        // TODO: 콘텐츠 업데이트 로직 구현
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ContentDto update(Long contentId, UpdateContentDto req, MultipartFile thumbnail) {
+        Content content = getContentOrThrow(contentId);
+
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            String newThumbnailUrl = uploadThumbnail(thumbnail);
+            content.update(req.title(), req.description(), newThumbnailUrl);
+        } else {
+            content.update(req.title(), req.description(), content.getThumbnailUrl());
+        }
+
+        addTagsToContent(req.tags(), content);
+        Content newContent = contentRepository.save(content);
+        List<String> tagNames = newContent.getContentTags().stream()
+                .map(Contenttag -> Contenttag.getTag().getTag()).toList();
+
+        int watchCount = 0; // TODO: redis에서 가져오기
+
+        return new ContentDto(
+                newContent.getId(),
+                newContent.getContentType(),
+                newContent.getTitle(),
+                newContent.getDescription(),
+                newContent.getThumbnailUrl(),
+                tagNames,
+                newContent.getAverageRating(),
+                newContent.getReviewCount(),
+                watchCount
+        );
     }
 
-    public void delete() {
-        // TODO: 콘텐츠 삭제 로직 구현
+    @PreAuthorize("hasRole('ADMIN')")
+    public void delete(Long contentId) {
+        log.debug("콘텐츠 삭제 시작: id={}", contentId);
+        if(!contentRepository.existsById(contentId)) {
+            throw new ContentException(ContentErrorCode.CONTENT_NOT_FOUND);
+        }
+        contentRepository.deleteById(contentId);
+        log.info("콘텐츠 삭제 완료: id={}", contentId);
     }
 
     public void detail() {
@@ -68,6 +105,11 @@ public class ContentService {
 
     public void list() {
         // TODO: 콘텐츠 목록조회 로직 구현
+    }
+
+    private Content getContentOrThrow(Long contentId) {
+        return contentRepository.findById(contentId)
+            .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND));
     }
 
     private String uploadThumbnail(MultipartFile thumbnail) {
@@ -79,7 +121,7 @@ public class ContentService {
         return "https://example.com/thumbnail.jpg"; // TODO: 임시 URL, S3 업로드 로직으로 교체 필요
     }
 
-    private void mapTagsToContent(List<String> tagNames, Content content) {
+    private void addTagsToContent(List<String> tagNames, Content content) {
         if (tagNames == null || tagNames.isEmpty()) return;
 
         tagNames.stream()

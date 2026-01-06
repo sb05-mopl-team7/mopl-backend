@@ -35,7 +35,7 @@ public class UserService {
         }
         User user = new User(dto.name(),dto.email(),passwordEncoder.encode(dto.password()));
         User createdUser = userRepository.save(user);
-        return userMapper.toUserDto(createdUser);
+        return userMapper.toDto(createdUser);
     }
 
     @Transactional

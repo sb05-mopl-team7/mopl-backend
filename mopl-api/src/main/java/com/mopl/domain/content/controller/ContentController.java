@@ -1,11 +1,13 @@
 package com.mopl.domain.content.controller;
 
 import com.mopl.domain.content.dto.ContentDto;
+import com.mopl.domain.content.dto.ContentQueryParams;
 import com.mopl.domain.content.dto.CreateContentDto;
 import com.mopl.domain.content.dto.UpdateContentDto;
 import com.mopl.domain.content.exception.ContentErrorCode;
 import com.mopl.domain.content.exception.ContentException;
 import com.mopl.domain.content.service.ContentService;
+import com.mopl.global.dto.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +61,7 @@ public class ContentController {
 
     @Operation(summary = "콘텐츠 목록 조회")
     @GetMapping
-    public void list() {
-        //TODO: 콘텐츠 목록 조회 서비스 호출
+    public ResponseEntity<PageResponse<Object>> list(ContentQueryParams params) {
+        return ResponseEntity.ok(contentService.list(params));
     }
 }

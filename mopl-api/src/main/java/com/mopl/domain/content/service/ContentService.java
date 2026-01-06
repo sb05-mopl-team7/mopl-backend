@@ -70,21 +70,20 @@ public class ContentService {
         }
 
         addTagsToContent(req.tags(), content);
-        Content newContent = contentRepository.save(content);
-        List<String> tagNames = newContent.getContentTags().stream()
+        List<String> tagNames = content.getContentTags().stream()
                 .map(Contenttag -> Contenttag.getTag().getTag()).toList();
 
         int watchCount = 0; // TODO: redis에서 가져오기
 
         return new ContentDto(
-                newContent.getId(),
-                newContent.getContentType(),
-                newContent.getTitle(),
-                newContent.getDescription(),
-                newContent.getThumbnailUrl(),
+                content.getId(),
+                content.getContentType(),
+                content.getTitle(),
+                content.getDescription(),
+                content.getThumbnailUrl(),
                 tagNames,
-                newContent.getAverageRating(),
-                newContent.getReviewCount(),
+                content.getAverageRating(),
+                content.getReviewCount(),
                 watchCount
         );
     }

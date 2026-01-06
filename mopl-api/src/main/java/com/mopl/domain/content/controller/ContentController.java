@@ -42,8 +42,9 @@ public class ContentController {
     }
 
     @DeleteMapping(value = "/{contentId}")
-    public void delete(@PathVariable Long contentId) {
+    public ResponseEntity<Void> delete(@PathVariable Long contentId) {
         contentService.delete(contentId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping(value = "/{contentId}")

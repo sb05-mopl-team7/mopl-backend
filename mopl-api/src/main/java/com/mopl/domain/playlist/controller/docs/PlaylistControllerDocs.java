@@ -11,7 +11,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "플레이리스트 관리", description = "플레이리스트 관련 API")
 public interface PlaylistControllerDocs {
@@ -31,7 +35,7 @@ public interface PlaylistControllerDocs {
             @Parameter(description = "구독자 ID") Long subscriberIdEqual,
             @Parameter(description = "커서 키") String cursor,
             @Parameter(description = "보조 커서") String idAfter,
-            @Parameter(description = "한 번에 가져올 개수") Integer limit,
+            @Parameter(description = "한 번에 가져올 개수") @Min(1) @Max(100) Integer limit,
             @Schema(allowableValues = {"ASCENDING", "DESCENDING"}) SortDirection sortDirection,
             @Schema(allowableValues = {"updatedAt", "subscribeCount"}) String sortBy
     );
@@ -47,7 +51,7 @@ public interface PlaylistControllerDocs {
     })
     ResponseEntity<PlaylistDto> create(
             @Parameter(hidden = true) Long requesterId,
-            PlaylistCreateRequest request
+            @RequestBody @Valid PlaylistCreateRequest request
     );
 
     // 3) POST /api/playlists/{playlistId}/subscription
@@ -61,7 +65,7 @@ public interface PlaylistControllerDocs {
     })
     ResponseEntity<Void> subscribe(
             @Parameter(hidden = true) Long requesterId,
-            Long playlistId
+            @Parameter(description = "playlistId") Long playlistId
     );
 
     // 4) DELETE /api/playlists/{playlistId}/subscription
@@ -75,7 +79,7 @@ public interface PlaylistControllerDocs {
     })
     ResponseEntity<Void> unsubscribe(
             @Parameter(hidden = true) Long requesterId,
-            Long playlistId
+            @Parameter(description = "playlistId") Long playlistId
     );
 
     // 5) POST /api/playlists/{playlistId}/contents/{contentId}
@@ -90,8 +94,8 @@ public interface PlaylistControllerDocs {
     })
     ResponseEntity<Void> addContent(
             @Parameter(hidden = true) Long requesterId,
-            Long playlistId,
-            Long contentId
+            @Parameter(description = "playlistId") Long playlistId,
+            @Parameter(description = "contentId") Long contentId
     );
 
     // 6) DELETE /api/playlists/{playlistId}/contents/{contentId}
@@ -106,8 +110,8 @@ public interface PlaylistControllerDocs {
     })
     ResponseEntity<Void> removeContent(
             @Parameter(hidden = true) Long requesterId,
-            Long playlistId,
-            Long contentId
+            @Parameter(description = "playlistId") Long playlistId,
+            @Parameter(description = "contentId") Long contentId
     );
 
     // 7) GET /api/playlists/{playlistId}
@@ -120,7 +124,7 @@ public interface PlaylistControllerDocs {
     })
     ResponseEntity<PlaylistDto> find(
             @Parameter(hidden = true) Long requesterId,
-            Long playlistId
+            @Parameter(description = "playlistId") Long playlistId
     );
 
     // 8) DELETE /api/playlists/{playlistId}
@@ -134,7 +138,7 @@ public interface PlaylistControllerDocs {
     })
     ResponseEntity<Void> delete(
             @Parameter(hidden = true) Long requesterId,
-            Long playlistId
+            @Parameter(description = "playlistId") Long playlistId
     );
 
     // 9) PATCH /api/playlists/{playlistId}
@@ -148,7 +152,7 @@ public interface PlaylistControllerDocs {
     })
     ResponseEntity<PlaylistDto> update(
             @Parameter(hidden = true) Long requesterId,
-            Long playlistId,
-            PlaylistUpdateRequest request
+            @Parameter(description = "playlistId") Long playlistId,
+            @RequestBody @Valid PlaylistUpdateRequest request
     );
 }

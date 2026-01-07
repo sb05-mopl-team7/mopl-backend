@@ -7,6 +7,7 @@ import com.mopl.global.exception.MoplException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -21,6 +22,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -93,36 +95,12 @@ public class SecurityConfig {
         };
     }
 
-
     /**
      * - 인증은 됐지만, 해당 권한이 없을 때 호출됩니다. (예: 일반 유저가 admin API 접근 시)
      */
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) -> {
-            throw new MoplException(ErrorCode.FORBIDDEN);
+            throw new MoplException(ErrorCode.INSUFFICIENT_PERMISSIONS);
         };
     }
-//
-//    @Bean
-//    public JwtRegistry<Long> jwtRegistry(
-//            JwtTokenProvider jwtTokenProvider,
-//            ApplicationEventPublisher eventPublisher
-//    ) {
-//        return new InMemoryJwtRegistry<>(1, jwtTokenProvider, eventPublisher);
-//    }
-//    @Bean
-//    public RoleHierarchy roleHierarchy() {
-//        return RoleHierarchyImpl.withDefaultRolePrefix()
-//                .role(Role.ADMIN.name())
-//                .implies(Role.USER.name())
-//                .build();
-//    }
-//
-//    @Bean
-//    static MethodSecurityExpressionHandler methodSecurityExpressionHandler(
-//            RoleHierarchy roleHierarchy) {
-//        DefaultMethodSecurityExpressionHandler handler = new DefaultMethodSecurityExpressionHandler();
-//        handler.setRoleHierarchy(roleHierarchy);
-//        return handler;
-//    }
 }

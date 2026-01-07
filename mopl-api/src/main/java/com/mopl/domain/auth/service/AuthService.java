@@ -51,7 +51,7 @@ public class AuthService {
     private void addTokenCookie(HttpServletResponse response, String name, String value, int maxAge) {
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(true);       // JavaScript를 통한 XSS 공격 방지
-        cookie.setSecure(false);         // HTTPS 환경에서만 전송 (운영 환경 권장)
+        cookie.setSecure(false);         // HTTPS 환경에서만 전송 (운영 환경 권장) //TODO : 보완을 위해 나중에 변경
         cookie.setPath("/");            // 모든 경로에서 쿠키 유효
         cookie.setMaxAge(maxAge);       // 쿠키 만료 시간 설정
         response.addCookie(cookie);

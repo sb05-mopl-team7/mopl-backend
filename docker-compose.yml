@@ -1,0 +1,41 @@
+services:
+  # MySQL 설정
+  mysql:
+    image: mysql:8.0
+    container_name: mopl-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      # 비밀번호 및 초기 데이터베이스 이름
+      MYSQL_ROOT_PASSWORD: mopl1234
+      MYSQL_DATABASE: mopl-mysql-db
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    restart: unless-stopped
+    # 한글 깨짐 방지를 위한 기본 캐릭터셋 설정
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  # Redis 설정
+  redis:
+    image: redis:7.2-alpine
+    container_name: mopl-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes # 데이터 영속성 설정
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:

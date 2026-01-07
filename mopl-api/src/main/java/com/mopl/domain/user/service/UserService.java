@@ -41,6 +41,7 @@ public class UserService {
     @Transactional
     public void updatedPassword(Long userId,ChangePasswordRequest dto) {
         String sessionEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        System.out.println(sessionEmail);
         User user = userRepository.findByIdAndLocked(userId,false)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
         if(!sessionEmail.equals(user.getEmail())){

@@ -8,6 +8,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -81,12 +82,15 @@ public class JwtTokenProvider {
         );
     }
 
-    /** Http 요청 헤더에서 토큰을 추출 */
+    /** Http 쿠키에서 토큰을 추출 */
     public String resolveToken(HttpServletRequest request) {
-        String bearer = request.getHeader("Authorization");
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) return null;
 
-        if (bearer != null && bearer.startsWith("Bearer ")) {
-            return bearer.substring(7);
+        for (Cookie cookie : cookies) {
+            if ("accessToken".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
         }
         return null;
     }

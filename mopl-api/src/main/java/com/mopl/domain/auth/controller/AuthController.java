@@ -1,5 +1,6 @@
 package com.mopl.domain.auth.controller;
 
+import com.mopl.domain.auth.dto.JwtDto;
 import com.mopl.domain.auth.dto.LoginDto;
 import com.mopl.domain.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,8 +19,8 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/sign-in")
-    public ResponseEntity<String> login(@RequestBody LoginDto req, HttpServletResponse response) {
-        String accessToken = authService.login(req.username(), req.password(), response);
-        return ResponseEntity.ok(accessToken);
+    public ResponseEntity<JwtDto> login(@RequestBody LoginDto req, HttpServletResponse response) {
+        JwtDto jwtDto = authService.login(req.username(), req.password(), response);
+        return ResponseEntity.ok(jwtDto);
     }
 }

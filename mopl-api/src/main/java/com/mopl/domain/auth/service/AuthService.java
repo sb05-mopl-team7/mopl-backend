@@ -1,9 +1,11 @@
 package com.mopl.domain.auth.service;
 
+import com.mopl.domain.auth.dto.JwtDto;
 import com.mopl.domain.auth.jwt.JwtTokenProvider;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
+import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,8 +22,9 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserMapper userMapper;
 
-    public String login(String username, String password, HttpServletResponse response) {
+    public JwtDto login(String username, String password, HttpServletResponse response) {
         User user = userRepository.findByEmail(username)
             .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
 
@@ -32,9 +35,13 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getRole());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getEmail(), user.getRole());
 
+        JwtDto jwtDto = new JwtDto(userMapper.toDto(user),accessToken);
+
         // 쿠키로 응답
-        addTokenCookie(response, "refreshToken", refreshToken, (int) (jwtTokenProvider.getRefreshTokenValidity() / 1000));
-        return accessToken;
+        addTokenCookie(response, "accessToken", accessToken, 60 * 60 ); //1시간
+        addTokenCookie(response, "refreshToken", refreshToken, 60 * 60 * 24 * 14); //2주
+
+        return jwtDto;
     }
 
     private void addTokenCookie(HttpServletResponse response, String name, String value, int maxAge) {

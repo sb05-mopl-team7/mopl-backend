@@ -29,7 +29,7 @@ public class JwtFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // 요청 헤더에서 JWT 추출
+        // 요청 쿠키에서 JWT 추출
         String token = jwtTokenProvider.resolveToken(request);
 
         // 토큰 검증

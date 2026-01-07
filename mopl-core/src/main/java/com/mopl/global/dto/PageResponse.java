@@ -1,6 +1,6 @@
 package com.mopl.global.dto;
 
-import com.mopl.global.SortDirection;
+import com.mopl.global.enums.SortDirection;
 import lombok.Builder;
 
 import java.util.List;

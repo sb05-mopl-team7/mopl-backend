@@ -1,4 +1,4 @@
-package com.mopl.global;
+package com.mopl.global.enums;
 
 public enum SortDirection {
     ASCENDING, DESCENDING

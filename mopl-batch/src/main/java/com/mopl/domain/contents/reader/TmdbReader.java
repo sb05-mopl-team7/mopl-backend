@@ -1,6 +1,5 @@
 package com.mopl.domain.contents.reader;
 
-import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.contents.openapi.TmdbClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.infrastructure.item.ItemReader;
@@ -15,15 +14,12 @@ import java.util.List;
 public class TmdbReader implements ItemReader<Long> {
 
     private final TmdbClient tmdbClient;
-    private final ContentRepository contentRepository;
-
     private Iterator<Long> itemIterator;
 
     private int page = 1; // 시작 페이지
 
     @Override
     public Long read() throws IOException {
-
         if (itemIterator == null || !itemIterator.hasNext()) {
             List<Long> contentList = tmdbClient.getPopularMovieIdList(page).block();
 

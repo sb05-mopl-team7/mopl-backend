@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.util.List;
 
 @Component
@@ -31,7 +33,8 @@ public class TmdbClient {
                 .map(response -> response.results().stream()
                         .map(TmdbDto::id)
                         .toList()
-                );
+                )
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(2)));
     }
 
     public Mono<TmdbDetailDto> getMovieDetails(Long movieId) {
@@ -42,6 +45,7 @@ public class TmdbClient {
                         .queryParam("language", "ko-KR")
                         .build(movieId))
                 .retrieve()
-                .bodyToMono(TmdbDetailDto.class);
+                .bodyToMono(TmdbDetailDto.class)
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(1)));
     }
 }

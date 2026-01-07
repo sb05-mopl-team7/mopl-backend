@@ -12,6 +12,7 @@ spring:
     init:
       mode: always # 자동 실행하려면 always. 수동으로 제어하려면 never
       schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
   jpa:
     hibernate:
       ddl-auto: update

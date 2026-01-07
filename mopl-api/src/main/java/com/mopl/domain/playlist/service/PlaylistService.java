@@ -43,7 +43,7 @@ public class PlaylistService {
                 saved.getUpdatedAt(),
                 saved.getSubscriberCount(),
                 true,
-                List.of()
+                List.of()   // 콘텐츠 기능 미완성: 빈 리스트
         );
     }
 
@@ -56,7 +56,6 @@ public class PlaylistService {
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
         PlaylistDto.Owner owner = loadOwner(playlist.getUserId());
-
         boolean subscribedByMe = isSubscribedByMe(requesterId, playlist);
 
         return new PlaylistDto(
@@ -71,10 +70,22 @@ public class PlaylistService {
         );
     }
 
-    // 플레이리스트 수정 (TODO)
+    // 플레이리스트 수정
     @Transactional
     public PlaylistDto update(Long requesterId, Long playlistId, PlaylistUpdateRequest request) {
-        throw new UnsupportedOperationException("TODO: implement in next commits (update)");
+        validateAuthenticated(requesterId);
+
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
+
+        validateOwner(requesterId, playlist);
+
+        String newTitle = request.title() != null ? request.title() : playlist.getTitle();
+        String newDescription = request.description() != null ? request.description() : playlist.getDescription();
+
+        playlist.update(newTitle, newDescription);
+
+        return find(requesterId, playlistId);
     }
 
     // 플레이리스트 삭제 (TODO)
@@ -127,6 +138,13 @@ public class PlaylistService {
     private void validateAuthenticated(Long requesterId) {
         if (requesterId == null) {
             throw new MoplException(ErrorCode.UNAUTHORIZED);
+        }
+    }
+
+    // 소유자 체크
+    private void validateOwner(Long requesterId, Playlist playlist) {
+        if (!Objects.equals(playlist.getUserId(), requesterId)) {
+            throw new MoplException(ErrorCode.FORBIDDEN);
         }
     }
 

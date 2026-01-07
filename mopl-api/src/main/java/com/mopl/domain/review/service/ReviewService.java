@@ -2,21 +2,31 @@ package com.mopl.domain.review.service;
 
 import com.mopl.domain.review.dto.request.ReviewCreateRequest;
 import com.mopl.domain.review.dto.request.ReviewUpdateRequest;
+import com.mopl.domain.review.dto.response.CursorResponseReviewDto;
 import com.mopl.domain.review.dto.response.ReviewAuthorDto;
 import com.mopl.domain.review.dto.response.ReviewDto;
 import com.mopl.domain.review.entity.Review;
 import com.mopl.domain.review.repository.ReviewRepository;
+import com.mopl.global.SortDirection;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ReviewService {
+
+    private static final int DEFAULT_LIMIT = 20;
+    private static final int MAX_LIMIT = 100;
 
     private final ReviewRepository reviewRepository;
 
@@ -43,12 +53,55 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReviewDto> findAllByContentId(Long contentId) {
-        return reviewRepository.findAllByContentIdOrderByCreatedAtDesc(contentId)
-                .stream()
+    public CursorResponseReviewDto findAllLatestCursor(
+            Long contentId,
+            String cursor,
+            String idAfter,
+            Integer limit,
+            String sortBy,
+            String sortDirection
+    ) {
+        validateOnlyLatestSort(sortBy, sortDirection);
+
+        int size = normalizeLimit(limit);
+        CursorKey key = parseCursorKey(cursor, idAfter);
+
+        Pageable pageable = PageRequest.of(0, size + 1);
+
+        List<Review> fetched = reviewRepository.cursorLatest(
+                contentId,
+                key.cursorCreatedAt,
+                key.idAfter,
+                pageable
+        );
+
+        boolean hasNext = fetched.size() > size;
+        List<Review> page = hasNext ? fetched.subList(0, size) : fetched;
+
+        List<ReviewDto> data = page.stream()
                 .map(this::toDto)
                 .toList();
+
+        String nextCursor = null;
+        Long nextIdAfter = null;
+
+        if (hasNext && !page.isEmpty()) {
+            Review last = page.get(page.size() - 1);
+            nextIdAfter = last.getId();
+            nextCursor = formatCreatedAtCursor(last.getCreatedAt());
+        }
+
+        return CursorResponseReviewDto.builder()
+                .data(data)
+                .nextCursor(nextCursor)
+                .nextIdAfter(nextIdAfter)
+                .hasNext(hasNext)
+                .totalCount(0L)
+                .sortBy("createdAt")
+                .sortDirection(SortDirection.DESCENDING)
+                .build();
     }
+
 
     @Transactional
     public ReviewDto update(Long requesterId, Long reviewId, ReviewUpdateRequest request) {
@@ -85,6 +138,61 @@ public class ReviewService {
         }
     }
 
+    private void validateOnlyLatestSort(String sortBy, String sortDirection) {
+        // sortBy는 createdAt만 허용
+        if (sortBy != null && !sortBy.isBlank() && !"createdAt".equalsIgnoreCase(sortBy.trim())) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+        // sortDirection은 DESCENDING만 허용
+        if (sortDirection != null && !sortDirection.isBlank() && !"DESCENDING".equalsIgnoreCase(sortDirection.trim())) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private int normalizeLimit(Integer limit) {
+        if (limit == null) return DEFAULT_LIMIT;
+        if (limit < 1 || limit > MAX_LIMIT) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+        return limit;
+    }
+
+    private CursorKey parseCursorKey(String cursorRaw, String idAfterRaw) {
+        boolean hasCursor = cursorRaw != null && !cursorRaw.isBlank();
+        boolean hasIdAfter = idAfterRaw != null && !idAfterRaw.isBlank();
+
+        if (hasCursor != hasIdAfter) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+
+        if (!hasCursor) {
+            return new CursorKey(null, null);
+        }
+
+        return new CursorKey(parseCreatedAtCursor(cursorRaw), parseLong(idAfterRaw));
+    }
+
+    private Long parseLong(String raw) {
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (Exception e) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private LocalDateTime parseCreatedAtCursor(String raw) {
+        String normalized = raw.trim().replace(" ", "T");
+        try {
+            return LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (DateTimeParseException e) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private String formatCreatedAtCursor(LocalDateTime createdAt) {
+        return createdAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
+
     private ReviewDto toDto(Review review) {
         // User 도메인 연동 전이라서 userId만 채우고 나머지는 null
         ReviewAuthorDto author = new ReviewAuthorDto(review.getUserId(), null, null);
@@ -96,5 +204,8 @@ public class ReviewService {
                 review.getText(),
                 review.getRating()
         );
+    }
+
+    private record CursorKey(LocalDateTime cursorCreatedAt, Long idAfter) {
     }
 }

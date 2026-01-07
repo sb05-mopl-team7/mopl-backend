@@ -88,10 +88,17 @@ public class PlaylistService {
         return find(requesterId, playlistId);
     }
 
-    // 플레이리스트 삭제 (TODO)
+    // 플레이리스트 삭제
     @Transactional
     public void delete(Long requesterId, Long playlistId) {
-        throw new UnsupportedOperationException("TODO: implement in next commits (delete)");
+        validateAuthenticated(requesterId);
+
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
+
+        validateOwner(requesterId, playlist);
+
+        playlistRepository.delete(playlist);
     }
 
     // 플레이리스트 구독 (TODO)

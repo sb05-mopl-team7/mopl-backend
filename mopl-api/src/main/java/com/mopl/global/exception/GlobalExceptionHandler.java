@@ -43,9 +43,10 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(pd, HttpStatusCode.valueOf(errorCode.getStatus()));
     }
 
+    //인증되지 않은 사용자가 보호된 리소스에 접근할 때 호출 (예: 로그인 하지 않은 상태에서 API 호출)
     @ExceptionHandler(AuthorizationDeniedException.class)
     public ResponseEntity<ProblemDetail> handleAuthorizationDeniedException(AuthorizationDeniedException e) {
-        ErrorCode errorCode = ErrorCode.INSUFFICIENT_PERMISSIONS;
+        ErrorCode errorCode = ErrorCode.FORBIDDEN;
         log.error("권한 부족: {} - {}", errorCode.getStatus(), errorCode.getMessage(), e);
 
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
@@ -59,7 +60,8 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(pd, HttpStatusCode.valueOf(errorCode.getStatus()));
     }
-    // AccessDeniedException도 같이 처리 (혹시 모를 케이스 대비)
+
+    // 인증은 됐지만, 해당 권한이 없을 때 호출됩니다. (예: 일반 유저가 admin API 접근 시)
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ProblemDetail> handleAccessDeniedException(AccessDeniedException e) {
         ErrorCode errorCode = ErrorCode.INSUFFICIENT_PERMISSIONS;

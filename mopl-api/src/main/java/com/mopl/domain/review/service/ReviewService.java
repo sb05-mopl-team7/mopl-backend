@@ -2,12 +2,12 @@ package com.mopl.domain.review.service;
 
 import com.mopl.domain.review.dto.request.ReviewCreateRequest;
 import com.mopl.domain.review.dto.request.ReviewUpdateRequest;
-import com.mopl.domain.review.dto.response.CursorResponseReviewDto;
 import com.mopl.domain.review.dto.response.ReviewAuthorDto;
 import com.mopl.domain.review.dto.response.ReviewDto;
 import com.mopl.domain.review.entity.Review;
 import com.mopl.domain.review.repository.ReviewRepository;
 import com.mopl.global.SortDirection;
+import com.mopl.global.dto.PageResponse;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
 import lombok.RequiredArgsConstructor;
@@ -53,7 +53,7 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public CursorResponseReviewDto findAllLatestCursor(
+    public PageResponse<ReviewDto> findAllLatestCursor(
             Long contentId,
             String cursor,
             String idAfter,
@@ -91,7 +91,7 @@ public class ReviewService {
             nextCursor = formatCreatedAtCursor(last.getCreatedAt());
         }
 
-        return CursorResponseReviewDto.builder()
+        return PageResponse.<ReviewDto>builder()
                 .data(data)
                 .nextCursor(nextCursor)
                 .nextIdAfter(nextIdAfter)
@@ -101,7 +101,6 @@ public class ReviewService {
                 .sortDirection(SortDirection.DESCENDING)
                 .build();
     }
-
 
     @Transactional
     public ReviewDto update(Long requesterId, Long reviewId, ReviewUpdateRequest request) {
@@ -139,11 +138,9 @@ public class ReviewService {
     }
 
     private void validateOnlyLatestSort(String sortBy, String sortDirection) {
-        // sortBy는 createdAt만 허용
         if (sortBy != null && !sortBy.isBlank() && !"createdAt".equalsIgnoreCase(sortBy.trim())) {
             throw new MoplException(ErrorCode.INVALID_REQUEST);
         }
-        // sortDirection은 DESCENDING만 허용
         if (sortDirection != null && !sortDirection.isBlank() && !"DESCENDING".equalsIgnoreCase(sortDirection.trim())) {
             throw new MoplException(ErrorCode.INVALID_REQUEST);
         }
@@ -194,7 +191,6 @@ public class ReviewService {
     }
 
     private ReviewDto toDto(Review review) {
-        // User 도메인 연동 전이라서 userId만 채우고 나머지는 null
         ReviewAuthorDto author = new ReviewAuthorDto(review.getUserId(), null, null);
 
         return new ReviewDto(

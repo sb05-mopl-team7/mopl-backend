@@ -3,9 +3,9 @@ package com.mopl.domain.review.controller;
 import com.mopl.domain.review.controller.docs.ReviewControllerDocs;
 import com.mopl.domain.review.dto.request.ReviewCreateRequest;
 import com.mopl.domain.review.dto.request.ReviewUpdateRequest;
-import com.mopl.domain.review.dto.response.CursorResponseReviewDto;
 import com.mopl.domain.review.dto.response.ReviewDto;
 import com.mopl.domain.review.service.ReviewService;
+import com.mopl.global.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,7 +17,7 @@ public class ReviewController implements ReviewControllerDocs {
     private final ReviewService reviewService;
 
     @Override
-    public ResponseEntity<CursorResponseReviewDto> findAll(
+    public ResponseEntity<PageResponse<ReviewDto>> findAll(
             Long contentId,
             String cursor,
             String idAfter,

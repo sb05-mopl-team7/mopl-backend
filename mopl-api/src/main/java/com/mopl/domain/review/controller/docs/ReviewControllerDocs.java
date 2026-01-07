@@ -2,8 +2,8 @@ package com.mopl.domain.review.controller.docs;
 
 import com.mopl.domain.review.dto.request.ReviewCreateRequest;
 import com.mopl.domain.review.dto.request.ReviewUpdateRequest;
-import com.mopl.domain.review.dto.response.CursorResponseReviewDto;
 import com.mopl.domain.review.dto.response.ReviewDto;
+import com.mopl.global.dto.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -30,13 +30,13 @@ public interface ReviewControllerDocs {
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping
-    ResponseEntity<CursorResponseReviewDto> findAll(
+    ResponseEntity<PageResponse<ReviewDto>> findAll(
             @RequestParam Long contentId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) String idAfter,
             @RequestParam(required = false, defaultValue = "20") @Min(1) @Max(100) Integer limit,
 
-            @Parameter(description = "정렬 기준(", schema = @Schema(allowableValues = {"createdAt"}))
+            @Parameter(description = "정렬 기준", schema = @Schema(allowableValues = {"createdAt"}))
             @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
 
             @Parameter(description = "정렬 방향", schema = @Schema(allowableValues = {"DESCENDING"}))

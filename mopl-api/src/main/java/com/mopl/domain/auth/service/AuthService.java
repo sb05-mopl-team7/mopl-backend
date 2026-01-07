@@ -43,6 +43,10 @@ public class AuthService {
 
         return jwtDto;
     }
+    public void logout(HttpServletResponse response) {
+        deleteCookie(response, "accessToken");
+        deleteCookie(response, "refreshToken");
+    }
 
     private void addTokenCookie(HttpServletResponse response, String name, String value, int maxAge) {
         Cookie cookie = new Cookie(name, value);
@@ -52,4 +56,12 @@ public class AuthService {
         cookie.setMaxAge(maxAge);       // 쿠키 만료 시간 설정
         response.addCookie(cookie);
     }
+    private void deleteCookie(HttpServletResponse response, String name) {
+        Cookie cookie = new Cookie(name, null);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);   // 즉시 만료
+        cookie.setHttpOnly(true);
+        response.addCookie(cookie);
+    }
+
 }

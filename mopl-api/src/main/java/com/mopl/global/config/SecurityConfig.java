@@ -1,102 +1,110 @@
 package com.mopl.global.config;
 
-import com.mopl.domain.user.enums.Role;
-import com.mopl.security.*;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.context.ApplicationEventPublisher;
+import com.mopl.domain.auth.jwt.JwtFilter;
+import com.mopl.domain.auth.jwt.JwtTokenProvider;
+import com.mopl.global.exception.ErrorCode;
+import com.mopl.global.exception.MoplException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
-import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
-    //비밀번호 암호화
+
+    private final JwtTokenProvider jwtTokenProvider;
+
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
+        http
+            .csrf(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/api-docs/**",
+                    "/swagger-ui/**",
+                    "/swagger.html",
+                    "/favicon.ico",
+                    "/index.html",
+                    "/actuator/**"
+                ).permitAll()
+
+                .requestMatchers(
+                    "/api/auth/**"
+                ).permitAll()
+
+                .requestMatchers("/api/users/**").authenticated()
+                .anyRequest().authenticated()
+            )
+            // 세션 기반 인증 기능 비활성화
+            .formLogin(AbstractHttpConfigurer::disable)
+            .logout(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            // JWT 필터
+            .addFilterBefore(new JwtFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
+            // 인증 실패 / 권한 없음 핸들러
+            .exceptionHandling(ex -> ex
+                    .authenticationEntryPoint(authenticationEntryPoint())
+                    .accessDeniedHandler(accessDeniedHandler())
+            );
+
+        return http.build();
+    }
+
+    /** 비밀번호 암호화 */
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder(){
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            JwtLoginSuccessHandler jwtLoginSuccessHandler,
-            LoginFailureHandler loginFailureHandler,
-            JwtAuthenticationFilter jwtAuthenticationFilter
-                                                   ) throws Exception{
-
-        http
-                .csrf(AbstractHttpConfigurer::disable)
-                .formLogin(login->login
-                        .loginProcessingUrl("/api/auth/sign-in")
-                        .successHandler(jwtLoginSuccessHandler)
-                        .failureHandler(loginFailureHandler))
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
-                //인가
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                // Swagger UI
-                                "/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger.html"
-                        ).permitAll()
-                        //테스트 용
-                        .requestMatchers("/api/users/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().permitAll())
-//                        .anyRequest().hasRole(Role.USER.name())
-                        .headers(headers -> headers
-                                .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
-                
-                //예외처리
-                .exceptionHandling(e-> e
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-                        })
-                        .accessDeniedHandler((request, response, authException) -> {
-                            response.sendError(HttpServletResponse.SC_FORBIDDEN); // 403 응답
-                        }))
-                //세션 처리
-                .sessionManagement(session->session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
-        return http.build();
-    }
-    @Bean
-    public JwtRegistry<Long> jwtRegistry(
-            JwtTokenProvider jwtTokenProvider,
-            ApplicationEventPublisher eventPublisher
-    ) {
-        return new InMemoryJwtRegistry<>(1, jwtTokenProvider, eventPublisher);
-    }
-    @Bean
-    public RoleHierarchy roleHierarchy() {
-        return RoleHierarchyImpl.withDefaultRolePrefix()
-                .role(Role.ADMIN.name())
-                .implies(Role.USER.name())
-                .build();
+    /** 인증되지 않은 사용자가 보호된 리소스에 접근할 때 호출 (예: 로그인 하지 않은 상태에서 API 호출) */
+    private AuthenticationEntryPoint authenticationEntryPoint() {
+        return (request, response, authException) -> {
+            throw new MoplException(ErrorCode.FORBIDDEN);
+        };
     }
 
-    @Bean
-    static MethodSecurityExpressionHandler methodSecurityExpressionHandler(
-            RoleHierarchy roleHierarchy) {
-        DefaultMethodSecurityExpressionHandler handler = new DefaultMethodSecurityExpressionHandler();
-        handler.setRoleHierarchy(roleHierarchy);
-        return handler;
+
+    /** - 인증은 됐지만, 해당 권한이 없을 때 호출됩니다. (예: 일반 유저가 admin API 접근 시) */
+    public AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            throw new MoplException(ErrorCode.FORBIDDEN);
+        };
     }
+//
+//    @Bean
+//    public JwtRegistry<Long> jwtRegistry(
+//            JwtTokenProvider jwtTokenProvider,
+//            ApplicationEventPublisher eventPublisher
+//    ) {
+//        return new InMemoryJwtRegistry<>(1, jwtTokenProvider, eventPublisher);
+//    }
+//    @Bean
+//    public RoleHierarchy roleHierarchy() {
+//        return RoleHierarchyImpl.withDefaultRolePrefix()
+//                .role(Role.ADMIN.name())
+//                .implies(Role.USER.name())
+//                .build();
+//    }
+//
+//    @Bean
+//    static MethodSecurityExpressionHandler methodSecurityExpressionHandler(
+//            RoleHierarchy roleHierarchy) {
+//        DefaultMethodSecurityExpressionHandler handler = new DefaultMethodSecurityExpressionHandler();
+//        handler.setRoleHierarchy(roleHierarchy);
+//        return handler;
+//    }
 }

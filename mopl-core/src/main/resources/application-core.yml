@@ -10,3 +10,7 @@ spring:
     redis:
       repositories:
         enabled: true
+
+jwt:
+  access-secret: ${JWT_ACCESS_SECRET}
+  refresh-secret: ${JWT_REFRESH_SECRET}

@@ -10,7 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,7 +30,7 @@ public class UserController {
         UserDto userResponse = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
     }
-    @PreAuthorize("hasRole('ADMIN')")
+
     @PatchMapping(value = "/{userId}/password")
     public ResponseEntity<?> updatePassword(
             @PathVariable Long userId,

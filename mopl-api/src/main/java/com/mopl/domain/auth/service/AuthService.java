@@ -26,19 +26,19 @@ public class AuthService {
 
     public JwtDto login(String username, String password, HttpServletResponse response) {
         User user = userRepository.findByEmail(username)
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
 
-        if(!passwordEncoder.matches(password, user.getPassword()))
+        if (!passwordEncoder.matches(password, user.getPassword()))
             throw new UserException(UserErrorCode.PASSWORD_NOT_CORRECT);
 
         // 토큰 발급
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getRole());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getEmail(), user.getRole());
 
-        JwtDto jwtDto = new JwtDto(userMapper.toDto(user),accessToken);
+        JwtDto jwtDto = new JwtDto(userMapper.toDto(user), accessToken);
 
         // 쿠키로 응답
-        addTokenCookie(response, "accessToken", accessToken, 60 * 60 ); //1시간
+        addTokenCookie(response, "accessToken", accessToken, 60 * 60); //1시간
         addTokenCookie(response, "refreshToken", refreshToken, 60 * 60 * 24 * 14); //2주
 
         return jwtDto;

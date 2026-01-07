@@ -5,7 +5,7 @@ import com.mopl.domain.content.dto.ContentQueryParams;
 import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.entity.QContent;
 import com.mopl.domain.content.enums.ContentType;
-import com.mopl.global.SortDirection;
+import com.mopl.global.enums.SortDirection;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;

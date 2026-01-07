@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -43,29 +42,11 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(pd, HttpStatusCode.valueOf(errorCode.getStatus()));
     }
 
-    //인증되지 않은 사용자가 보호된 리소스에 접근할 때 호출 (예: 로그인 하지 않은 상태에서 API 호출)
+    //인증은 됐지만, 해당 권한이 없을 때 호출됩니다. (예: 일반 유저가 admin API 접근 시)
     @ExceptionHandler(AuthorizationDeniedException.class)
     public ResponseEntity<ProblemDetail> handleAuthorizationDeniedException(AuthorizationDeniedException e) {
-        ErrorCode errorCode = ErrorCode.FORBIDDEN;
-        log.error("권한 부족: {} - {}", errorCode.getStatus(), errorCode.getMessage(), e);
-
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
-                HttpStatusCode.valueOf(errorCode.getStatus()),
-                errorCode.getMessage()
-        );
-        pd.setTitle(errorCode.name());
-        pd.setType(URI.create("https://mopl.com/problems/" + errorCode.name().toLowerCase()));
-        pd.setDetail(errorCode.getMessage());
-        pd.setStatus(errorCode.getStatus());
-
-        return new ResponseEntity<>(pd, HttpStatusCode.valueOf(errorCode.getStatus()));
-    }
-
-    // 인증은 됐지만, 해당 권한이 없을 때 호출됩니다. (예: 일반 유저가 admin API 접근 시)
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ProblemDetail> handleAccessDeniedException(AccessDeniedException e) {
         ErrorCode errorCode = ErrorCode.INSUFFICIENT_PERMISSIONS;
-        log.error("접근 거부: {} - {}", errorCode.getStatus(), errorCode.getMessage(), e);
+        log.error("권한 부족: {} - {}", errorCode.getStatus(), errorCode.getMessage(), e);
 
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
                 HttpStatusCode.valueOf(errorCode.getStatus()),

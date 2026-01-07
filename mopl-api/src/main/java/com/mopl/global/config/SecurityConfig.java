@@ -16,7 +16,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -43,8 +42,7 @@ public class SecurityConfig {
                                 ).permitAll()
 
                                 .requestMatchers(
-                                        "/api/auth/**",
-                                        "/api/users"
+                                        "/api/auth/**"
                                 ).permitAll()
 
 //                .requestMatchers("/api/users/**").authenticated()
@@ -69,10 +67,9 @@ public class SecurityConfig {
 //                        .ignoringRequestMatchers("/api/users/**")
 //                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 //                )
-                // 인증 실패 / 권한 없음 핸들러
+                // 인증 실패
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint())
-                        .accessDeniedHandler(accessDeniedHandler())
                 );
 
         return http.build();
@@ -92,15 +89,6 @@ public class SecurityConfig {
     private AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
             throw new MoplException(ErrorCode.FORBIDDEN);
-        };
-    }
-
-    /**
-     * - 인증은 됐지만, 해당 권한이 없을 때 호출됩니다. (예: 일반 유저가 admin API 접근 시)
-     */
-    public AccessDeniedHandler accessDeniedHandler() {
-        return (request, response, accessDeniedException) -> {
-            throw new MoplException(ErrorCode.INSUFFICIENT_PERMISSIONS);
         };
     }
 }

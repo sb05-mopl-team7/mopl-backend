@@ -40,6 +40,17 @@ public class ContentRepositoryCustomImpl implements ContentRepositoryCustom{
             where.and(content.contentTags.any().tag.tag.in(params.tagsIn()));
         }
 
+        // 커서 기반 페이징 처리
+        if (params.cursor() != null && !params.cursor().trim().isEmpty()) {
+            Long cursor = Long.parseLong(params.cursor());
+            boolean isDesc = "DESCENDING".equalsIgnoreCase(params.sortDirection().toString());
+            if (isDesc) {
+                where.and(content.id.lt(cursor));
+            } else {
+                where.and(content.id.gt(cursor));
+            }
+        }
+
         OrderSpecifier<?>[] orderSpecifier = makeOrderSpecifier(params.sortDirection(), params.sortBy());
 
         return queryFactory.selectFrom(content)
@@ -53,20 +64,21 @@ public class ContentRepositoryCustomImpl implements ContentRepositoryCustom{
     private OrderSpecifier<?>[] makeOrderSpecifier(SortDirection direction, String sortBy) {
         Order order = "DESCENDING".equalsIgnoreCase(direction.toString()) ? Order.DESC : Order.ASC;
 
-        // 정렬 조건
         List<OrderSpecifier<?>> specifiers = new ArrayList<>();
 
         switch (sortBy) {
+            // 평점순
             case "rate" -> specifiers.add(new OrderSpecifier<>(order, content.averageRating));
+            // 인기순
             case "watcherCount" -> {
                 specifiers.add(new OrderSpecifier<>(order, content.reviewCount));
                 specifiers.add(new OrderSpecifier<>(order, content.averageRating)); // 리뷰 수 같으면 평점 순으로
             }
+            // 최신순
             default -> specifiers.add(new OrderSpecifier<>(order, content.createdAt));
         }
 
-        // 보조 정렬 조건 추가 (항상 마지막에 ID 역순) - 커서 기반 페이징용
-        specifiers.add(content.id.desc());
+        specifiers.add(new OrderSpecifier<>(order, content.id));
 
         return specifiers.toArray(new OrderSpecifier[0]);
     }

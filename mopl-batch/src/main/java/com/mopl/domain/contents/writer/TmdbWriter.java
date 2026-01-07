@@ -21,6 +21,11 @@ public class TmdbWriter implements ItemWriter<Content> {
         if(contents.isEmpty()) return;
 
         log.info("콘텐츠 DB에 저장중 {}", contents.size());
-        contentRepository.saveAll(contents);
+        try {
+            contentRepository.saveAll(contents.getItems());
+        } catch (Exception e) {
+            log.error("DB 저장 중 오류 발생: {}", e.getMessage());
+            throw e;
+        }
     }
 }

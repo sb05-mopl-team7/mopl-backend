@@ -9,7 +9,6 @@ import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,27 +28,25 @@ public class UserService {
     }
 
     @Transactional
-    public UserDto createUser(UserCreateRequest  dto) {
-        if(userRepository.existsByEmail(dto.email())){
+    public UserDto createUser(UserCreateRequest dto) {
+        if (userRepository.existsByEmail(dto.email())) {
             throw new UserException(UserErrorCode.DUPLICATE_USER);
         }
-        User user = new User(dto.name(),dto.email(),passwordEncoder.encode(dto.password()));
+        User user = new User(dto.name(), dto.email(), passwordEncoder.encode(dto.password()));
         User createdUser = userRepository.save(user);
         return userMapper.toDto(createdUser);
     }
 
     @Transactional
-    public void updatedPassword(Long userId,ChangePasswordRequest dto) {
+    public void updatePassword(Long userId, ChangePasswordRequest dto) {
         String sessionEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         System.out.println(sessionEmail);
-        User user = userRepository.findByIdAndLocked(userId,false)
+        User user = userRepository.findByIdAndLocked(userId, false)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
-        if(!sessionEmail.equals(user.getEmail())){
-            throw new AccessDeniedException("본인 계정만 수정 가능");
+        if (!sessionEmail.equals(user.getEmail())) {
+            throw new UserException(UserErrorCode.NOT_SELF_ACCOUNT);
         }
         user.updatePassword(passwordEncoder.encode(dto.password()));
-        userRepository.save(user);
-        System.out.println(user.getPassword());
     }
 
 

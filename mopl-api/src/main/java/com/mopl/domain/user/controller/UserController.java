@@ -32,9 +32,10 @@ public class UserController {
     }
 
     @PatchMapping(value = "/{userId}/password")
-    public void updatedPassword(
+    public ResponseEntity<?> updatePassword(
             @PathVariable Long userId,
             @RequestBody @Valid ChangePasswordRequest request) {
-        userService.updatedPassword(userId, request);
+        userService.updatePassword(userId, request);
+        return  ResponseEntity.ok().build();
     }
 }

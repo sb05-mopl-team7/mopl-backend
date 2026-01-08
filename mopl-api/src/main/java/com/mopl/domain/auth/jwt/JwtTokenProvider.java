@@ -49,19 +49,15 @@ public class JwtTokenProvider {
         refreshSecretKey = Keys.hmacShaKeyFor(refreshKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    private final long accessTokenValidity = 1000L * 60 * 15;      // 15분
-    private final long refreshTokenValidity = 1000L * 60 * 60 * 24 * 7; // 7일
+    @Value("${jwt.access-token-validity}")
+    private long accessTokenValidity;
+    @Value("${jwt.refresh-token-validity}")
+    private long refreshTokenValidity;
 
-    /**
-     * 토큰 생성
-     */
     public String createAccessToken(User user) {
         return createToken(user, accessTokenValidity, accessSecretKey);
     }
 
-    /**
-     * 토큰 생성
-     */
     public String createRefreshToken(User user) {
         return createToken(user, refreshTokenValidity, refreshSecretKey);
     }

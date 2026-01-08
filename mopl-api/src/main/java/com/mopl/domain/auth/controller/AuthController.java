@@ -22,4 +22,10 @@ public class AuthController {
         JwtDto jwtDto = authService.login(req.username(), req.password(), response);
         return ResponseEntity.ok(jwtDto);
     }
+
+    @PostMapping("/sign-out")
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        authService.logout(response);
+        return ResponseEntity.ok().build();
+    }
 }

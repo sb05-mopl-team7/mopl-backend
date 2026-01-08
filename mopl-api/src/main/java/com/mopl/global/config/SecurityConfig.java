@@ -53,7 +53,7 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .addFilterBefore(new JwtFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
-                .csrf(AbstractHttpConfigurer::disable) // TODO : 나중에 변경예정
+                .csrf(AbstractHttpConfigurer::disable) // TODO : 나중/#78에 변경예정
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint));
 

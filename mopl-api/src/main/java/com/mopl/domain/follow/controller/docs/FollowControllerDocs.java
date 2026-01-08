@@ -1,5 +1,6 @@
 package com.mopl.domain.follow.controller.docs;
 
+import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.follow.dto.request.FollowRequest;
 import com.mopl.domain.follow.dto.response.FollowResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -8,11 +9,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.jspecify.annotations.NonNull;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.security.Principal;
 
 @Tag(name = "팔로우 관리", description = "사용자 팔로우 API")
 @RequestMapping("/api/follows")
@@ -28,7 +27,7 @@ public interface FollowControllerDocs {
     })
     @PostMapping
     ResponseEntity<FollowResponse> followUser(
-            Principal principal,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user,
             @Valid @RequestBody FollowRequest request
     );
 
@@ -45,7 +44,7 @@ public interface FollowControllerDocs {
     })
     @DeleteMapping("/{followId}")
     ResponseEntity<Void> unfollowUser(
-            Principal principal,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user,
             @Parameter(description = "삭제할 팔로우 ID (PK)") @PathVariable Long followId
     );
 }

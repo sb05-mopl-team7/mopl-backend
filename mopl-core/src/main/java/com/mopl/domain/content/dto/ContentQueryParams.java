@@ -1,6 +1,6 @@
 package com.mopl.domain.content.dto;
 
-import com.mopl.global.SortDirection;
+import com.mopl.global.enums.SortDirection;
 
 import java.util.List;
 

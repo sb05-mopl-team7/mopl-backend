@@ -19,5 +19,7 @@ public interface PlaylistSubscribeRepository extends JpaRepository<PlaylistSubsc
 
     List<PlaylistSubscribe> findAllByUserIdAndPlaylistIdIn(Long userId, Collection<Long> playlistIds);
 
+    void deleteAllByPlaylistId(Long playlistId);
+
     long countByPlaylistId(Long playlistId);
 }

@@ -7,6 +7,8 @@ import com.mopl.domain.playlist.dto.response.PlaylistDto;
 import com.mopl.domain.playlist.service.PlaylistService;
 import com.mopl.global.dto.PageResponse;
 import com.mopl.global.enums.SortDirection;
+import com.mopl.global.exception.ErrorCode;
+import com.mopl.global.exception.MoplException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -14,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
 
 @Validated
 @RestController
@@ -27,7 +31,7 @@ public class PlaylistController implements PlaylistControllerDocs {
     @GetMapping
     @Override
     public ResponseEntity<PageResponse<PlaylistDto>> findAll(
-            @RequestHeader(value = "X-User-Id", required = false) Long requesterId,
+            Principal principal,
             @RequestParam(required = false) String keywordLike,
             @RequestParam(required = false) Long ownerIdEqual,
             @RequestParam(required = false) Long subscriberIdEqual,
@@ -37,10 +41,19 @@ public class PlaylistController implements PlaylistControllerDocs {
             @RequestParam(defaultValue = "DESCENDING") SortDirection sortDirection,
             @RequestParam(defaultValue = "updatedAt") String sortBy
     ) {
+        Long requesterId = requireUserId(principal);
+
         return ResponseEntity.ok(
                 playlistService.findAll(
-                        requesterId, keywordLike, ownerIdEqual, subscriberIdEqual,
-                        cursor, idAfter, limit, sortBy, sortDirection
+                        requesterId,
+                        keywordLike,
+                        ownerIdEqual,
+                        subscriberIdEqual,
+                        cursor,
+                        idAfter,
+                        limit,
+                        sortBy,
+                        sortDirection
                 )
         );
     }
@@ -49,9 +62,11 @@ public class PlaylistController implements PlaylistControllerDocs {
     @PostMapping
     @Override
     public ResponseEntity<PlaylistDto> create(
-            @RequestHeader(value = "X-User-Id", required = false) Long requesterId,
+            Principal principal,
             @RequestBody @Valid PlaylistCreateRequest request
     ) {
+        Long requesterId = requireUserId(principal);
+
         PlaylistDto response = playlistService.create(requesterId, request);
         return ResponseEntity.status(201).body(response);
     }
@@ -60,9 +75,11 @@ public class PlaylistController implements PlaylistControllerDocs {
     @PostMapping("/{playlistId}/subscription")
     @Override
     public ResponseEntity<Void> subscribe(
-            @RequestHeader(value = "X-User-Id", required = false) Long requesterId,
+            Principal principal,
             @PathVariable Long playlistId
     ) {
+        Long requesterId = requireUserId(principal);
+
         playlistService.subscribe(requesterId, playlistId);
         return ResponseEntity.noContent().build();
     }
@@ -71,9 +88,11 @@ public class PlaylistController implements PlaylistControllerDocs {
     @DeleteMapping("/{playlistId}/subscription")
     @Override
     public ResponseEntity<Void> unsubscribe(
-            @RequestHeader(value = "X-User-Id", required = false) Long requesterId,
+            Principal principal,
             @PathVariable Long playlistId
     ) {
+        Long requesterId = requireUserId(principal);
+
         playlistService.unsubscribe(requesterId, playlistId);
         return ResponseEntity.noContent().build();
     }
@@ -82,10 +101,12 @@ public class PlaylistController implements PlaylistControllerDocs {
     @PostMapping("/{playlistId}/contents/{contentId}")
     @Override
     public ResponseEntity<Void> addContent(
-            @RequestHeader(value = "X-User-Id", required = false) Long requesterId,
+            Principal principal,
             @PathVariable Long playlistId,
             @PathVariable Long contentId
     ) {
+        Long requesterId = requireUserId(principal);
+
         playlistService.addContent(requesterId, playlistId, contentId);
         return ResponseEntity.noContent().build();
     }
@@ -94,10 +115,12 @@ public class PlaylistController implements PlaylistControllerDocs {
     @DeleteMapping("/{playlistId}/contents/{contentId}")
     @Override
     public ResponseEntity<Void> removeContent(
-            @RequestHeader(value = "X-User-Id", required = false) Long requesterId,
+            Principal principal,
             @PathVariable Long playlistId,
             @PathVariable Long contentId
     ) {
+        Long requesterId = requireUserId(principal);
+
         playlistService.removeContent(requesterId, playlistId, contentId);
         return ResponseEntity.noContent().build();
     }
@@ -106,9 +129,11 @@ public class PlaylistController implements PlaylistControllerDocs {
     @GetMapping("/{playlistId}")
     @Override
     public ResponseEntity<PlaylistDto> find(
-            @RequestHeader(value = "X-User-Id", required = false) Long requesterId,
+            Principal principal,
             @PathVariable Long playlistId
     ) {
+        Long requesterId = requireUserId(principal);
+
         return ResponseEntity.ok(playlistService.find(requesterId, playlistId));
     }
 
@@ -116,9 +141,11 @@ public class PlaylistController implements PlaylistControllerDocs {
     @DeleteMapping("/{playlistId}")
     @Override
     public ResponseEntity<Void> delete(
-            @RequestHeader(value = "X-User-Id", required = false) Long requesterId,
+            Principal principal,
             @PathVariable Long playlistId
     ) {
+        Long requesterId = requireUserId(principal);
+
         playlistService.delete(requesterId, playlistId);
         return ResponseEntity.noContent().build();
     }
@@ -127,10 +154,24 @@ public class PlaylistController implements PlaylistControllerDocs {
     @PatchMapping("/{playlistId}")
     @Override
     public ResponseEntity<PlaylistDto> update(
-            @RequestHeader(value = "X-User-Id", required = false) Long requesterId,
+            Principal principal,
             @PathVariable Long playlistId,
             @RequestBody @Valid PlaylistUpdateRequest request
     ) {
+        Long requesterId = requireUserId(principal);
+
         return ResponseEntity.ok(playlistService.update(requesterId, playlistId, request));
+    }
+
+    // JWT 인증 주체에서 userId 꺼내기 (FollowController 방식과 동일)
+    private Long requireUserId(Principal principal) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            throw new MoplException(ErrorCode.UNAUTHORIZED);
+        }
+        try {
+            return Long.parseLong(principal.getName());
+        } catch (NumberFormatException e) {
+            throw new MoplException(ErrorCode.UNAUTHORIZED);
+        }
     }
 }

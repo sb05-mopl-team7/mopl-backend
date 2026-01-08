@@ -2,3 +2,7 @@ logging:
   level:
     org.springframework.web: INFO
     org.springframework.web.servlet: INFO
+
+jwt:
+  cookie:
+    secure: true   # HTTPS 강제

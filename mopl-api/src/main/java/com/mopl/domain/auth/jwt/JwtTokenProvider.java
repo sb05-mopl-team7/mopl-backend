@@ -34,12 +34,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtTokenProvider {
 
-    // TODO: application.yml과 .env로 키 분리
-    @Value("${JWT_ACCESS_SECRET}")
+    @Value("${jwt.access-secret}")
     private String accessKey;
     private SecretKey accessSecretKey;
 
-    @Value("${JWT_REFRESH_SECRET}")
+    @Value("${jwt.refresh-secret}")
     private String refreshKey;
     private SecretKey refreshSecretKey;
 

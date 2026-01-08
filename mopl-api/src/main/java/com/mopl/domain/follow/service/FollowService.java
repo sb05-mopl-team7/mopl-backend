@@ -20,6 +20,7 @@ public class FollowService {
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
 
+    // 팔로우 로직
     @Transactional
     public FollowResponse follow(Long myId, FollowRequest request) {
         Long targetId = request.followeeId();
@@ -30,6 +31,7 @@ public class FollowService {
         }
 
         // 2. 이미 팔로우 중인지 확인 (400)
+        // // TODO: 동시성 이슈 체크할 것
         if (followRepository.existsByFollowerIdAndFolloweeId(myId, targetId)) {
             throw new MoplException(ErrorCode.ALREADY_FOLLOWING);
         }

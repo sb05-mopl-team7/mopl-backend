@@ -20,7 +20,7 @@ CREATE TABLE contents
     id             BIGINT       NOT NULL AUTO_INCREMENT,
     content_type   VARCHAR(255) NOT NULL,
     title          VARCHAR(255) NOT NULL,
-    description    VARCHAR(255) NOT NULL,
+    description    TEXT         NOT NULL,
     thumbnail_url  VARCHAR(255) NOT NULL,
     average_rating DOUBLE DEFAULT 0.0,
     review_count   INT    DEFAULT 0,

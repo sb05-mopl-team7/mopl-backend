@@ -1,13 +1,15 @@
 package com.mopl.domain.contents.openapi;
 
-import com.mopl.domain.contents.dto.TmdbDto;
-import com.mopl.domain.contents.dto.TmdbResponse;
+import com.mopl.domain.contents.dto.tmdb.TmdbDetailDto;
+import com.mopl.domain.contents.dto.tmdb.TmdbDto;
+import com.mopl.domain.contents.dto.tmdb.TmdbResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.util.List;
 
 @Component
@@ -19,7 +21,7 @@ public class TmdbClient {
         this.webClient = webClient;
     }
 
-    public Mono<List<TmdbDto>> getPopularMovies(int page) {
+    public Mono<List<Long>> getPopularMovieIdList(int page) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/movie/popular")
@@ -27,10 +29,23 @@ public class TmdbClient {
                         .queryParam("language", "ko-KR")
                         .build())
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<TmdbResponse<TmdbDto>>() {})
+                .bodyToMono(TmdbResponse.class)
                 .map(response -> response.results().stream()
-                    .filter(dto -> dto.description() != null && !dto.description().isBlank())
-                    .toList()
-                );
+                        .map(TmdbDto::id)
+                        .toList()
+                )
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(2)));
+    }
+
+    public Mono<TmdbDetailDto> getMovieDetails(Long movieId) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/movie/{movie_id}")
+                        .queryParam("append_to_response", "keywords")
+                        .queryParam("language", "ko-KR")
+                        .build(movieId))
+                .retrieve()
+                .bodyToMono(TmdbDetailDto.class)
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(1)));
     }
 }

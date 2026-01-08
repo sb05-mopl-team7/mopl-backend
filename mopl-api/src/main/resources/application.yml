@@ -25,3 +25,10 @@ springdoc:
     path: /swagger-ui.html
     display-request-duration: true
     persist-authorization: true
+
+#jwt
+jwt:
+  access-secret: ${JWT_ACCESS_SECRET}
+  refresh-secret: ${JWT_REFRESH_SECRET}
+  access-token-validity: 900000      # 15분 (밀리초)
+  refresh-token-validity: 604800000  # 7일 (밀리초)

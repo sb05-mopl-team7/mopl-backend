@@ -111,22 +111,33 @@ public class PlaylistService {
 
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
-
         if (Objects.equals(playlist.getUserId(), requesterId)) {
             return;
         }
         if (playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlistId)) {
             return;
         }
-        // 구독 저장
         playlistSubscribeRepository.save(new PlaylistSubscribe(requesterId, playlistId));
         playlist.increaseSubscriberCount();
     }
 
-    // 플레이리스트 구독 취소 (TODO)
+    // 플레이리스트 구독 취소
     @Transactional
     public void unsubscribe(Long requesterId, Long playlistId) {
-        throw new UnsupportedOperationException("TODO: implement in next commits (unsubscribe)");
+        validateAuthenticated(requesterId);
+
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
+        if (Objects.equals(playlist.getUserId(), requesterId)) {
+            return;
+        }
+
+        if (!playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlistId)) {
+            return;
+        }
+        playlistSubscribeRepository.deleteByUserIdAndPlaylistId(requesterId, playlistId);
+        // 0 아래로 내려가지 않도록 방어
+        safeDecreaseSubscriberCount(playlist);
     }
 
     // 플레이리스트에 콘텐츠 추가 (TODO)
@@ -186,5 +197,10 @@ public class PlaylistService {
             return true;
         }
         return playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlist.getId());
+    }
+
+    // subscriber_count 감소 방어
+    private void safeDecreaseSubscriberCount(Playlist playlist) {
+        playlist.decreaseSubscriberCount();
     }
 }

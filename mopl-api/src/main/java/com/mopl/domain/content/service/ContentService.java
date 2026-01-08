@@ -1,6 +1,7 @@
 package com.mopl.domain.content.service;
 
 import com.mopl.domain.content.dto.ContentDto;
+import com.mopl.domain.content.dto.ContentQueryParams;
 import com.mopl.domain.content.dto.CreateContentDto;
 import com.mopl.domain.content.dto.UpdateContentDto;
 import com.mopl.domain.content.entity.Content;
@@ -9,6 +10,7 @@ import com.mopl.domain.content.exception.ContentErrorCode;
 import com.mopl.domain.content.exception.ContentException;
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.content.repository.TagRepository;
+import com.mopl.global.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -41,7 +44,7 @@ public class ContentService {
         // 저장
         Content newContent = contentRepository.save(content);
 
-        List<String> tagNames = newContent.getContentTags().stream()
+        List<String> tagNames = content.getContentTags().stream()
                                 .map(Contenttag -> Contenttag.getTag().getTag()).toList();
 
         return new ContentDto(
@@ -98,12 +101,66 @@ public class ContentService {
         log.info("콘텐츠 삭제 완료: id={}", contentId);
     }
 
-    public void detail() {
-        // TODO: 콘텐츠 단건 조회 로직 구현
+    public ContentDto detail(Long contentId) {
+        Content content = getContentOrThrow(contentId);
+        List<String> tagNames = content.getContentTags().stream()
+                .map(Contenttag -> Contenttag.getTag().getTag()).toList();
+        int watchCount = 0; // TODO: redis에서 가져오기
+
+        return new ContentDto(
+                content.getId(),
+                content.getContentType(),
+                content.getTitle(),
+                content.getDescription(),
+                content.getThumbnailUrl(),
+                tagNames,
+                content.getAverageRating(),
+                content.getReviewCount(),
+                watchCount
+        );
     }
 
-    public void list() {
-        // TODO: 콘텐츠 목록조회 로직 구현
+    public PageResponse<Object> list(ContentQueryParams params) {
+        List<Content> contentList = contentRepository.list(params);
+
+        boolean hasNext = contentList.size() > params.limit();
+        String nextCursor = null;
+        String nextAfter = null;
+
+        if(hasNext) {
+            Content lastContent = contentList.get(contentList.size() - 1);
+            contentList.remove(lastContent);
+            nextCursor = contentList.get(contentList.size()-1).getId().toString();
+            nextAfter = contentList.get(contentList.size()-1).getCreatedAt().toString();
+        }
+
+        List<ContentDto> response = contentList.stream().map(content -> {
+            int watchCount = 0; // TODO: redis에서 가져오기
+            List<String> tagNames = content.getContentTags().stream()
+                    .map(Contenttag -> Contenttag.getTag().getTag()).toList();
+
+            return new ContentDto(
+                    content.getId(),
+                    content.getContentType(),
+                    content.getTitle(),
+                    content.getDescription(),
+                    content.getThumbnailUrl(),
+                    tagNames,
+                    content.getAverageRating(),
+                    content.getReviewCount(),
+                    watchCount
+            );
+        }).toList();
+
+        return PageResponse.builder()
+                .data(Collections.singletonList(response))
+                .nextCursor(nextCursor)
+                .nextIdAfter(nextAfter)
+                .hasNext(hasNext)
+                .totalCount(0)
+                .sortBy(params.sortBy())
+                .sortDirection(params.sortDirection())
+                .build();
     }
 
     private Content getContentOrThrow(Long contentId) {

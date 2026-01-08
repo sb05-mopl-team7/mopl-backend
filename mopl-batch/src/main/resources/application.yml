@@ -2,10 +2,15 @@ server:
   port: 8081
 
 spring:
-  config:
-    import: optional:file:.env[.properties]
   application:
     name: mopl-batch
+  profiles:
+    include: core
+    active: dev
+    group:
+      dev: core-dev
+      prod: core-prod
+
   batch:
     job:
       enabled: false

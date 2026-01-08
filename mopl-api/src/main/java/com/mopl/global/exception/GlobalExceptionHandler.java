@@ -5,6 +5,7 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -35,7 +36,7 @@ public class GlobalExceptionHandler {
         return createErrorResponse(e.getErrorCode(), e.getMessage());
     }
 
-    //3. 타입 불일치 예외 (400)
+    // 3. 타입 불일치 예외 (400)
     // ErrorCode.INVALID_INPUT_VALUE와 연결
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<@NonNull ProblemDetail> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
@@ -45,6 +46,16 @@ public class GlobalExceptionHandler {
         log.error("타입 불일치 오류 발생: {}", detail, e);
 
         return createErrorResponse(ErrorCode.INVALID_INPUT_VALUE, detail);
+    }
+
+    // 4. 권한 부족 예외 (403)
+    // ErrorCode.INSUFFICIENT_PERMISSIONS과 연결
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<@NonNull ProblemDetail> handleAuthorizationDeniedException(AuthorizationDeniedException e) {
+
+        log.error("권한 부족: {}", ErrorCode.INSUFFICIENT_PERMISSIONS.getMessage(), e);
+
+        return createErrorResponse(ErrorCode.INSUFFICIENT_PERMISSIONS, ErrorCode.INSUFFICIENT_PERMISSIONS.getMessage());
     }
 
     // 공통 응답 생성 메서드

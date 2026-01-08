@@ -1,12 +1,13 @@
 package com.mopl.global.exception;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
+import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.net.URI;
 
@@ -14,30 +15,49 @@ import java.net.URI;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // 1. 예상치 못한 시스템 예외 (500)
+    // ErrorCode.INTERNAL_SERVER_ERROR와 연결
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ProblemDetail> handleException(Exception e) {
+    public ResponseEntity<@NonNull ProblemDetail> handleException(Exception e) {
+
         log.error("예상치 못한 오류 발생: {}", e.getMessage(), e);
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
 
-        pd.setTitle("Internal Server Error");
-        pd.setType(URI.create("https://mopl.com/problems/internal-server-error"));
-        pd.setDetail(e.getMessage());
-        pd.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-
-        return new ResponseEntity<>(pd, HttpStatus.INTERNAL_SERVER_ERROR);
+        return createErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
+    // 2. 비즈니스 로직 예외 (Custom Exception)
+    // MoplException 안에 있는 ErrorCode와 연결
     @ExceptionHandler(MoplException.class)
-    public ResponseEntity<ProblemDetail> handleMynMyException(MoplException e) {
-        ErrorCode errorCode = e.getErrorCode();
-        log.error("MoplException 발생: {} - {}", errorCode.getStatus(), e.getMessage(), e);
+    public ResponseEntity<@NonNull ProblemDetail> handleMoplException(MoplException e) {
 
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(errorCode.getStatus()), e.getMessage());
+        log.error("MoplException 발생: {} - {}", e.getErrorCode().getStatus(), e.getMessage(), e);
+
+        return createErrorResponse(e.getErrorCode(), e.getMessage());
+    }
+
+    //3. 타입 불일치 예외 (400)
+    // ErrorCode.INVALID_INPUT_VALUE와 연결
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<@NonNull ProblemDetail> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+
+        String detail = String.format("파라미터 '%s'의 값이 유효하지 않습니다. (입력값: %s)", e.getName(), e.getValue());
+
+        log.error("타입 불일치 오류 발생: {}", detail, e);
+
+        return createErrorResponse(ErrorCode.INVALID_INPUT_VALUE, detail);
+    }
+
+    // 공통 응답 생성 메서드
+    private ResponseEntity<@NonNull ProblemDetail> createErrorResponse(ErrorCode errorCode, String detail) {
+
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(errorCode.getStatus()), detail);
+
         pd.setTitle(errorCode.name());
         pd.setType(URI.create("https://mopl.com/problems/" + errorCode.name().toLowerCase()));
-        pd.setDetail(e.getMessage());
-        pd.setStatus(errorCode.getStatus());
+        pd.setProperty("status", errorCode.getStatus());
 
-        return new ResponseEntity<>(pd, HttpStatusCode.valueOf(errorCode.getStatus()));
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(pd);
     }
 }

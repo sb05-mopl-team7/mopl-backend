@@ -4,8 +4,6 @@ import com.mopl.domain.follow.controller.docs.FollowControllerDocs;
 import com.mopl.domain.follow.dto.request.FollowRequest;
 import com.mopl.domain.follow.dto.response.FollowResponse;
 import com.mopl.domain.follow.service.FollowService;
-import com.mopl.global.exception.ErrorCode;
-import com.mopl.global.exception.MoplException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

@@ -2,7 +2,6 @@ package com.mopl.domain.user.service;
 
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
-import com.mopl.domain.user.dto.UserRoleUpdateRequest;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.enums.Role;
 import com.mopl.domain.user.exception.UserErrorCode;
@@ -29,25 +28,25 @@ public class UserService {
     }
 
     @Transactional
-    public UserDto createUser(UserCreateRequest  dto) {
-        if(existUser(dto.email())){
+    public UserDto createUser(UserCreateRequest dto) {
+        if (existUser(dto.email())) {
             throw new UserException(UserErrorCode.DUPLICATE_USER);
         }
-        User user = new User(dto.name(),dto.email(),passwordEncoder.encode(dto.password()));
+        User user = new User(dto.name(), dto.email(), passwordEncoder.encode(dto.password()));
         User createdUser = userRepository.save(user);
         return userMapper.toDto(createdUser);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public Role updateRole(Long userId, UserRoleUpdateRequest request){
+    public void updateRole(Long userId, String requestRole) {
         User user = userRepository.findById(userId)
-                .orElseThrow(()->new UserException(UserErrorCode.USER_NOT_EXIST));
-        Role newRole = parseRole(request.role());
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+        Role newRole = parseRole(requestRole);
         user.updateRole(newRole);
-        return user.getRole();
     }
-    private Role parseRole(String roleString){
+
+    private Role parseRole(String roleString) {
         if (roleString == null || roleString.isBlank()) {
             throw new UserException(UserErrorCode.INVALID_ROLE);
         }

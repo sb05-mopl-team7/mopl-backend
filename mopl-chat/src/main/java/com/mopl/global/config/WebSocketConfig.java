@@ -18,7 +18,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(org.springframework.web.socket.config.annotation.StompEndpointRegistry registry) {
         registry.addEndpoint("/ws") // 클라이언트가 웹소켓 연결을 시작할 엔드포인트
-            .setAllowedOrigins("*") // 운영 시 보안을 위해 * 대신 실제 도메인 넣어야 함 ex) https://www.mopl.com
+            .setAllowedOrigins("http://localhost:3000") // 운영 시 실제 도메인 넣어야 함
             .withSockJS(); // SockJS 지원 (웹소켓 미지원 브라우저 대응)
     }
 

@@ -22,7 +22,7 @@ public class SseManager {
      * @return 실시간 통신을 위한 SseEmitter 객체
      */
     public SseEmitter subscribe(Long userId) {
-        SseEmitter emitter = new SseEmitter();
+        SseEmitter emitter = new SseEmitter(60_000L); // 프론트엔 재연결 주기 기준
         emitters.put(userId, emitter);
 
         emitter.onCompletion(() -> emitters.remove(userId));

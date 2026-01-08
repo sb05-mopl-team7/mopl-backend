@@ -45,12 +45,26 @@ public class AuthService {
 
         return jwtDto;
     }
+
+    public void logout(HttpServletResponse response) {
+        deleteCookie(response, "ACCESS_TOKEN");
+        deleteCookie(response, "REFRESH_TOKEN");
+    }
+
     private void addTokenCookie(HttpServletResponse response, String name, String value, int maxAge) {
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(true);
         cookie.setSecure(cookieSecure);
         cookie.setPath("/");
         cookie.setMaxAge(maxAge);
+        response.addCookie(cookie);
+    }
+
+    private void deleteCookie(HttpServletResponse response, String name) {
+        Cookie cookie = new Cookie(name, null);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);   // 즉시 만료
+        cookie.setHttpOnly(true);
         response.addCookie(cookie);
     }
 

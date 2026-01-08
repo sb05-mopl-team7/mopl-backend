@@ -1,13 +1,14 @@
 package com.mopl.domain.auth.controller;
 
 import com.mopl.domain.auth.dto.JwtDto;
+import com.mopl.domain.auth.dto.SignInRequest;
 import com.mopl.domain.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -17,10 +18,8 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/sign-in")
-    public ResponseEntity<JwtDto> login(@RequestParam String username,
-                                        @RequestParam String password,
-                                        HttpServletResponse response) {
-        JwtDto jwtDto = authService.login(username, password, response);
+    public ResponseEntity<JwtDto> login(@RequestBody SignInRequest req, HttpServletResponse response) {
+        JwtDto jwtDto = authService.login(req.username(), req.password(), response);
         return ResponseEntity.ok(jwtDto);
     }
 }

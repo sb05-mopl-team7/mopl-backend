@@ -2,12 +2,15 @@ package com.mopl.domain.user.service;
 
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
+import com.mopl.domain.user.dto.UserRoleUpdateRequest;
 import com.mopl.domain.user.entity.User;
+import com.mopl.domain.user.enums.Role;
 import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +36,26 @@ public class UserService {
         User user = new User(dto.name(),dto.email(),passwordEncoder.encode(dto.password()));
         User createdUser = userRepository.save(user);
         return userMapper.toDto(createdUser);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public Role updateRole(Long userId, UserRoleUpdateRequest request){
+        User user = userRepository.findById(userId)
+                .orElseThrow(()->new UserException(UserErrorCode.USER_NOT_EXIST));
+        Role newRole = parseRole(request.role());
+        user.updateRole(newRole);
+        return user.getRole();
+    }
+    private Role parseRole(String roleString){
+        if (roleString == null || roleString.isBlank()) {
+            throw new UserException(UserErrorCode.INVALID_ROLE);
+        }
+        try {
+            return Role.valueOf(roleString.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new UserException(UserErrorCode.INVALID_ROLE);
+        }
     }
 
 

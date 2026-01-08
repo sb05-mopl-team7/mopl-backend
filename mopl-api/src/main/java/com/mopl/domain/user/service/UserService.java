@@ -18,9 +18,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.DateTimeException;
 import java.time.LocalDateTime;
@@ -48,6 +50,17 @@ public class UserService {
         User user = new User(dto.name(), dto.email(), passwordEncoder.encode(dto.password()));
         User createdUser = userRepository.save(user);
         return userMapper.toDto(createdUser);
+    }
+
+    @PreAuthorize("principal.userId == #id")
+    @Transactional
+    public UserDto updateImage(long userId, String name, MultipartFile avatarImage) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
+        if(name != null) user.updateName(name);
+
+        if(avatarImage != null && ) {}
+
     }
 
     @Transactional

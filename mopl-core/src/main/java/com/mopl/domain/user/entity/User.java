@@ -57,4 +57,7 @@ public class User extends BaseTimeEntity {
     public void updateLocked(Boolean locked){
         this.locked = locked;
     }
+    public void updateName(String name){
+        this.name = name;
+    }
 }

@@ -28,4 +28,14 @@ public class ReadStatus {
     @JoinColumn(name = "last_message_id")
     private DirectMessage lastReadMessage;
 
+    public static ReadStatus create(Conversation conversation, User user) {
+        ReadStatus readStatus = new ReadStatus();
+        readStatus.conversation = conversation;
+        readStatus.user = user;
+        return readStatus;
+    }
+
+    public void updateLastReadMsg(DirectMessage lastReadMessage) {
+        this.lastReadMessage = lastReadMessage;
+    }
 }

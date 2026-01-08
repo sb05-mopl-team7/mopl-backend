@@ -7,9 +7,14 @@ import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.domain.contents.openapi.TmdbClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.annotation.BeforeStep;
 import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -19,6 +24,18 @@ public class TmdbProcessor implements ItemProcessor<Long, Content> {
 
     private final TmdbClient tmdbClient;
     private final TagRepository tagRepository;
+
+    // 키를 미리 담아놓을 메모리 캐시 key - 장르이름, value - Tag 객체
+    private Map<String, Tag> tagCache;
+
+    @BeforeStep
+    public void beforeStep(StepExecution stepExecution) {
+        if (tagCache == null) {
+            tagCache = tagRepository.findAll().stream()
+                    .collect(Collectors.toMap(Tag::getTag, tag -> tag));
+            log.info("태그 {}개를 캐시에 로드했습니다.", tagCache.size());
+        }
+    }
 
     @Override
     public Content process(Long movieId) throws Exception {
@@ -37,8 +54,10 @@ public class TmdbProcessor implements ItemProcessor<Long, Content> {
                         movie.genres().stream()
                             .distinct()
                             .forEach(genre -> {
-                                Tag tag = tagRepository.findByTag(genre.name())
-                                        .orElseGet(() -> tagRepository.save(new Tag(genre.name())));
+                                Tag tag = tagCache.computeIfAbsent(genre.name(), name -> {
+                                    Tag newTag = new Tag(name);
+                                    return tagRepository.save(newTag);
+                                });
                                 content.addTag(tag);
                             });
 

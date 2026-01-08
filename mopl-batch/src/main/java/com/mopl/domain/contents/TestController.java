@@ -26,7 +26,7 @@ public class TestController {
     private final SportDbClient sportDbClient;
 
     private final JobLauncher jobLauncher;
-    private final Job TmdbJob;
+    private final Job tmdbJob;
 
     @GetMapping("/tmdb")
     public Mono<List<Long>> getPopularMovieIds(@RequestParam(name = "page", defaultValue = "1") int page) {
@@ -51,7 +51,7 @@ public class TestController {
                         .addString("datetime", LocalDateTime.now().toString())
                         .toJobParameters();
 
-                jobLauncher.run(TmdbJob, jobParameters);
+                jobLauncher.run(tmdbJob, jobParameters);
             } catch (Exception e) {
                 e.printStackTrace();
             }

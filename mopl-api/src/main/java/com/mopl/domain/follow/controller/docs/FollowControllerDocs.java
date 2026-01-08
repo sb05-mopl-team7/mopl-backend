@@ -6,12 +6,16 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.jspecify.annotations.NonNull;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 
+@Tag(name = "팔로우 관리", description = "사용자 팔로우 API")
+@RequestMapping("/api/follows")
 public interface FollowControllerDocs {
 
     // 팔로우 명세서
@@ -22,9 +26,10 @@ public interface FollowControllerDocs {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "사용자 찾을 수 없음")
     })
-    ResponseEntity<@NonNull FollowResponse> followUser(
+    @PostMapping
+    ResponseEntity<FollowResponse> followUser(
             Principal principal,
-            FollowRequest request
+            @Valid @RequestBody FollowRequest request
     );
 
     // 언팔로우 명세서
@@ -38,6 +43,7 @@ public interface FollowControllerDocs {
             @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음 (이미 삭제되었거나 존재하지 않음)"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
+    @DeleteMapping("/{followId}")
     ResponseEntity<Void> unfollowUser(
             Principal principal,
             @Parameter(description = "삭제할 팔로우 ID (PK)") @PathVariable Long followId

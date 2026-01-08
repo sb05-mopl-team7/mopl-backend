@@ -24,7 +24,7 @@ public class AuthController {
     }
 
     @PostMapping("/sign-out")
-    public ResponseEntity<?>logout(HttpServletResponse response) {
+    public ResponseEntity<?> logout(HttpServletResponse response) {
         authService.logout(response);
         return ResponseEntity.ok().build();
     }

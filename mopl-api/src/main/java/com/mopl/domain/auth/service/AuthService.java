@@ -62,9 +62,10 @@ public class AuthService {
 
     private void deleteCookie(HttpServletResponse response, String name) {
         Cookie cookie = new Cookie(name, null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(cookieSecure);
         cookie.setPath("/");
         cookie.setMaxAge(0);   // 즉시 만료
-        cookie.setHttpOnly(true);
         response.addCookie(cookie);
     }
 

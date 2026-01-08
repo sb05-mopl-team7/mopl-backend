@@ -100,7 +100,7 @@ public class JwtTokenProvider {
         if (cookies == null) return null;
 
         for (Cookie cookie : cookies) {
-            if ("accessToken".equals(cookie.getName())) {
+            if ("ACCESS_TOKEN".equals(cookie.getName())) {
                 return cookie.getValue();
             }
         }

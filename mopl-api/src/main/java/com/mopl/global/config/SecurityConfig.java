@@ -42,10 +42,9 @@ public class SecurityConfig {
                                 ).permitAll()
 
                                 .requestMatchers(
-                                        "/api/auth/**"
+                                        "/api/auth/**",
+                                        "/api/users/"
                                 ).permitAll()
-
-//                .requestMatchers("/api/users/**").authenticated()
                                 .anyRequest().authenticated()
                 )
                 .headers(headers -> headers

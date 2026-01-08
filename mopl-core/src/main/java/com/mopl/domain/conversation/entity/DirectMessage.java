@@ -27,4 +27,10 @@ public class DirectMessage extends BaseCreatedEntity {
 
     @Column(nullable = false)
     private String content;
+
+    public DirectMessage(Conversation conversation, User author, String content) {
+        this.conversation = conversation;
+        this.author = author;
+        this.content = content;
+    }
 }

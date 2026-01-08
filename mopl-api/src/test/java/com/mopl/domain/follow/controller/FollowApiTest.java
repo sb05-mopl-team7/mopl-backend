@@ -106,8 +106,23 @@ class FollowApiTest {
                 .andExpect(jsonPath("$.detail").value(ErrorCode.ALREADY_FOLLOWING.getMessage()));
     }
 
-    // 3. 리소스 없음 (404)
+    // 3. 인증 실패 (401)
+    @Test
+    @DisplayName("[401] 로그인 정보 없이 요청하면 UNAUTHORIZED 에러 발생")
+    void followUser_Unauthorized_Fail() throws Exception {
+        // Given
+        FollowRequest request = new FollowRequest(user2.getId());
 
+        // When & Then
+        mockMvc.perform(post("/api/follows")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.title").value(ErrorCode.UNAUTHORIZED.name()));
+    }
+
+    // 4. 리소스 없음 (404)
     @Test
     @DisplayName("[404] 존재하지 않는 유저를 팔로우하면 NOT_FOUND 에러 발생")
     void followUser_NotFound_Fail() throws Exception {
@@ -124,22 +139,6 @@ class FollowApiTest {
                 .andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value(ErrorCode.NOT_FOUND.name()));
-    }
-
-    // 4. 인증 실패 (401)
-    @Test
-    @DisplayName("[401] 로그인 정보 없이 요청하면 UNAUTHORIZED 에러 발생")
-    void followUser_Unauthorized_Fail() throws Exception {
-        // Given
-        FollowRequest request = new FollowRequest(user2.getId());
-
-        // When & Then
-        mockMvc.perform(post("/api/follows")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andDo(print())
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.title").value(ErrorCode.UNAUTHORIZED.name()));
     }
 
 }

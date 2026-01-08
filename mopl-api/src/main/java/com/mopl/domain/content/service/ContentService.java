@@ -120,6 +120,7 @@ public class ContentService {
         );
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<Object> list(ContentQueryParams params) {
         List<Content> contentList = contentRepository.list(params);
 

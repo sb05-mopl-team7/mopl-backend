@@ -6,23 +6,15 @@ import com.mopl.domain.follow.dto.response.FollowResponse;
 import com.mopl.domain.follow.service.FollowService;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 
-@Tag(name = "팔로우 관리", description = "사용자 팔로우 API")
 @RestController
 @RequestMapping("/api/follows")
 @RequiredArgsConstructor
@@ -46,5 +38,24 @@ public class FollowController implements FollowControllerDocs {
         FollowResponse response = followService.follow(myId, request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // 언팔로우 하기 API
+    @Override
+    @DeleteMapping("/{followId}")
+    public ResponseEntity<@NonNull Void> unfollowUser(
+            Principal principal,
+            @PathVariable Long followId
+    ) {
+        if (principal == null) {
+            throw new MoplException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Long myId = Long.parseLong(principal.getName());
+
+        // 서비스에 내 ID와 삭제할 팔로우 ID를 넘깁니다.
+        followService.unfollow(myId, followId);
+
+        return ResponseEntity.noContent().build();
     }
 }

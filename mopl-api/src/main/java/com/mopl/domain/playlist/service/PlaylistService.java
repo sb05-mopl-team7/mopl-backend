@@ -1,10 +1,13 @@
 package com.mopl.domain.playlist.service;
 
+import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.mopl.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.mopl.domain.playlist.dto.response.PlaylistDto;
 import com.mopl.domain.playlist.entity.Playlist;
+import com.mopl.domain.playlist.entity.PlaylistContent;
 import com.mopl.domain.playlist.entity.PlaylistSubscribe;
+import com.mopl.domain.playlist.repository.PlaylistContentRepository;
 import com.mopl.domain.playlist.repository.PlaylistRepository;
 import com.mopl.domain.playlist.repository.PlaylistSubscribeRepository;
 import com.mopl.domain.user.entity.User;
@@ -27,6 +30,8 @@ public class PlaylistService {
     private final PlaylistRepository playlistRepository;
     private final PlaylistSubscribeRepository playlistSubscribeRepository;
     private final UserRepository userRepository;
+    private final PlaylistContentRepository playlistContentRepository;
+    private final ContentRepository contentRepository;
 
     // 플레이리스트 생성
     @Transactional
@@ -140,10 +145,22 @@ public class PlaylistService {
         safeDecreaseSubscriberCount(playlist);
     }
 
-    // 플레이리스트에 콘텐츠 추가 (TODO)
+    // 플레이리스트 콘텐츠 추가
     @Transactional
     public void addContent(Long requesterId, Long playlistId, Long contentId) {
-        throw new UnsupportedOperationException("TODO: implement in next commits (addContent)");
+        validateAuthenticated(requesterId);
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
+        validateOwner(requesterId, playlist);
+        //콘텐츠 존재 검증
+        if (!contentRepository.existsById(contentId)) {
+            throw new MoplException(ErrorCode.NOT_FOUND);
+        }
+        boolean alreadyExists = playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId);
+        if (alreadyExists) {
+            return;
+        }
+        playlistContentRepository.save(new PlaylistContent(playlistId, contentId));
     }
 
     // 플레이리스트에서 콘텐츠 삭제 (TODO)

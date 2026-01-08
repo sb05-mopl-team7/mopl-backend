@@ -21,11 +21,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class PlaylistService {
+
+    private static final int DEFAULT_LIMIT = 20;
+    private static final int MAX_LIMIT = 100;
 
     private final PlaylistRepository playlistRepository;
     private final PlaylistSubscribeRepository playlistSubscribeRepository;
@@ -149,9 +155,11 @@ public class PlaylistService {
     @Transactional
     public void addContent(Long requesterId, Long playlistId, Long contentId) {
         validateAuthenticated(requesterId);
+
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
         validateOwner(requesterId, playlist);
+
         if (!contentRepository.existsById(contentId)) {
             throw new MoplException(ErrorCode.NOT_FOUND);
         }
@@ -165,16 +173,18 @@ public class PlaylistService {
     @Transactional
     public void removeContent(Long requesterId, Long playlistId, Long contentId) {
         validateAuthenticated(requesterId);
+
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
         validateOwner(requesterId, playlist);
+
         if (!playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId)) {
             return;
         }
         playlistContentRepository.deleteByPlaylistIdAndContentId(playlistId, contentId);
     }
 
-    // 플레이리스트 목록 조회 (커서 페이지네이션) (TODO)
+    // 플레이리스트 목록 조회 (커서 페이지네이션)
     @Transactional(readOnly = true)
     public PageResponse<PlaylistDto> findAll(
             Long requesterId,
@@ -187,9 +197,83 @@ public class PlaylistService {
             String sortBy,
             SortDirection sortDirection
     ) {
-        throw new UnsupportedOperationException("TODO: implement in next commits (findAll)");
-    }
+        int size = normalizeLimit(limit);
 
+        String normalizedSortBy = normalizeSortBy(sortBy);
+        SortDirection normalizedDirection = (sortDirection == null) ? SortDirection.DESCENDING : sortDirection;
+
+        CursorKey key = parseCursorKey(cursor, idAfter, normalizedSortBy);
+
+        // limit+1 조회로 hasNext 판별
+        List<Playlist> fetched = playlistRepository.cursorFindAll(
+                keywordLike,
+                ownerIdEqual,
+                subscriberIdEqual,
+                key.cursorUpdatedAt,
+                key.cursorSubscriberCount,
+                key.idAfter,
+                size + 1,
+                normalizedSortBy,
+                normalizedDirection
+        );
+
+        boolean hasNext = fetched.size() > size;
+        List<Playlist> page = hasNext ? fetched.subList(0, size) : fetched;
+
+        List<Long> playlistIds = page.stream().map(Playlist::getId).toList();
+
+        Map<Long, PlaylistDto.Owner> ownerMap = loadOwnerMap(
+                page.stream().map(Playlist::getUserId).collect(java.util.stream.Collectors.toSet())
+        );
+
+        Set<Long> subscribedPlaylistIds = loadSubscribedPlaylistIds(requesterId, playlistIds);
+
+        Map<Long, List<PlaylistDto.Content>> contentsMap = loadContentsByPlaylistIds(playlistIds);
+
+        List<PlaylistDto> data = page.stream().map(p -> {
+            PlaylistDto.Owner owner = ownerMap.getOrDefault(p.getUserId(), new PlaylistDto.Owner(p.getUserId(), null, null));
+
+            boolean subscribedByMe = requesterId != null
+                    && (Objects.equals(p.getUserId(), requesterId) || subscribedPlaylistIds.contains(p.getId()));
+
+            List<PlaylistDto.Content> contents = contentsMap.getOrDefault(p.getId(), List.of());
+
+            return new PlaylistDto(
+                    p.getId(),
+                    owner,
+                    p.getTitle(),
+                    p.getDescription(),
+                    p.getUpdatedAt(),
+                    p.getSubscriberCount(),
+                    subscribedByMe,
+                    contents
+            );
+        }).toList();
+
+        String nextCursor = null;
+        Long nextIdAfter = null;
+
+        if (hasNext && !page.isEmpty()) {
+            Playlist last = page.get(page.size() - 1);
+            nextIdAfter = last.getId();
+
+            if ("updatedAt".equalsIgnoreCase(normalizedSortBy)) {
+                nextCursor = formatDateTimeCursor(last.getUpdatedAt());
+            } else {
+                nextCursor = String.valueOf(last.getSubscriberCount());
+            }
+        }
+
+        return PageResponse.<PlaylistDto>builder()
+                .data(data)
+                .nextCursor(nextCursor)
+                .nextIdAfter(nextIdAfter)
+                .hasNext(hasNext)
+                .totalCount(0L)
+                .sortBy(normalizedSortBy)
+                .sortDirection(normalizedDirection)
+                .build();
+    }
     // contents 로딩/매핑
     private List<PlaylistDto.Content> loadContentsByPlaylistId(Long playlistId) {
         List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistId(playlistId);
@@ -208,6 +292,49 @@ public class PlaylistService {
             Content content = contentMap.get(contentId);
             if (content == null) continue;
             result.add(toPlaylistContentDto(content));
+        }
+        return result;
+    }
+
+    // 목록 조회용
+    private Map<Long, List<PlaylistDto.Content>> loadContentsByPlaylistIds(List<Long> playlistIds) {
+        if (playlistIds == null || playlistIds.isEmpty()) return Map.of();
+
+        List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistIdIn(playlistIds);
+        if (pcs.isEmpty()) {
+            Map<Long, List<PlaylistDto.Content>> empty = new HashMap<>();
+            for (Long pid : playlistIds) empty.put(pid, List.of());
+            return empty;
+        }
+
+        pcs.sort(Comparator.comparing(PlaylistContent::getId));
+
+        Map<Long, List<Long>> playlistToContentIds = new HashMap<>();
+        Set<Long> allContentIds = new LinkedHashSet<>();
+
+        for (PlaylistContent pc : pcs) {
+            playlistToContentIds.computeIfAbsent(pc.getPlaylistId(), k -> new ArrayList<>())
+                    .add(pc.getContentId());
+            allContentIds.add(pc.getContentId());
+        }
+
+        Map<Long, Content> contentMap = loadContentMap(allContentIds);
+
+        Map<Long, List<PlaylistDto.Content>> result = new HashMap<>();
+        for (Long playlistId : playlistIds) {
+            List<Long> contentIds = playlistToContentIds.getOrDefault(playlistId, List.of());
+            if (contentIds.isEmpty()) {
+                result.put(playlistId, List.of());
+                continue;
+            }
+
+            List<PlaylistDto.Content> dtos = new ArrayList<>();
+            for (Long contentId : contentIds) {
+                Content content = contentMap.get(contentId);
+                if (content == null) continue;
+                dtos.add(toPlaylistContentDto(content));
+            }
+            result.put(playlistId, dtos);
         }
         return result;
     }
@@ -241,21 +368,118 @@ public class PlaylistService {
                 content.getReviewCount()
         );
     }
-    // 인증 체크
+
+    // owner
+    private Map<Long, PlaylistDto.Owner> loadOwnerMap(Set<Long> ownerIds) {
+        if (ownerIds == null || ownerIds.isEmpty()) return Map.of();
+
+        List<User> owners = userRepository.findAllById(ownerIds);
+
+        Map<Long, PlaylistDto.Owner> map = new HashMap<>();
+        for (User u : owners) {
+            map.put(u.getId(), new PlaylistDto.Owner(u.getId(), u.getName(), u.getProfileImageUrl()));
+        }
+        return map;
+    }
+
+    private Set<Long> loadSubscribedPlaylistIds(Long requesterId, List<Long> playlistIds) {
+        if (requesterId == null || playlistIds == null || playlistIds.isEmpty()) return Set.of();
+
+        List<PlaylistSubscribe> subs = playlistSubscribeRepository.findAllByUserIdAndPlaylistIdIn(requesterId, playlistIds);
+
+        Set<Long> set = new HashSet<>();
+        for (PlaylistSubscribe s : subs) {
+            set.add(s.getPlaylistId());
+        }
+        return set;
+    }
+
+    // cursor
+    private int normalizeLimit(Integer limit) {
+        if (limit == null) return DEFAULT_LIMIT;
+        if (limit < 1 || limit > MAX_LIMIT) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+        return limit;
+    }
+
+    private String normalizeSortBy(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) return "updatedAt";
+
+        String v = sortBy.trim();
+        if ("updatedAt".equalsIgnoreCase(v)) return "updatedAt";
+
+        // 요구사항: subscribeCount(subscriberCount)
+        if ("subscribeCount".equalsIgnoreCase(v) || "subscriberCount".equalsIgnoreCase(v)) {
+            return "subscriberCount";
+        }
+
+        throw new MoplException(ErrorCode.INVALID_REQUEST);
+    }
+
+    private CursorKey parseCursorKey(String cursorRaw, String idAfterRaw, String normalizedSortBy) {
+        boolean hasCursor = cursorRaw != null && !cursorRaw.isBlank();
+        boolean hasIdAfter = idAfterRaw != null && !idAfterRaw.isBlank();
+
+        if (hasCursor != hasIdAfter) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+
+        if (!hasCursor) {
+            return new CursorKey(null, null, null);
+        }
+
+        Long parsedIdAfter = parseLong(idAfterRaw);
+
+        if ("updatedAt".equalsIgnoreCase(normalizedSortBy)) {
+            LocalDateTime updatedAt = parseDateTimeCursor(cursorRaw);
+            return new CursorKey(updatedAt, null, parsedIdAfter);
+        } else {
+            Long subscriberCount = parseLong(cursorRaw);
+            return new CursorKey(null, subscriberCount, parsedIdAfter);
+        }
+    }
+
+    private Long parseLong(String raw) {
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (Exception e) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private LocalDateTime parseDateTimeCursor(String raw) {
+        String normalized = raw.trim().replace(" ", "T");
+        try {
+            return LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (DateTimeParseException e) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private String formatDateTimeCursor(LocalDateTime value) {
+        return value.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
+
+    private record CursorKey(
+            LocalDateTime cursorUpdatedAt,
+            Long cursorSubscriberCount,
+            Long idAfter
+    ) {}
+
+    // 인증/인가
     private void validateAuthenticated(Long requesterId) {
         if (requesterId == null) {
             throw new MoplException(ErrorCode.UNAUTHORIZED);
         }
     }
 
-    // 소유자 체크
     private void validateOwner(Long requesterId, Playlist playlist) {
         if (!Objects.equals(playlist.getUserId(), requesterId)) {
             throw new MoplException(ErrorCode.FORBIDDEN);
         }
     }
 
-    // owner 로드
     private PlaylistDto.Owner loadOwner(Long ownerId) {
         User owner = userRepository.findById(ownerId).orElse(null);
         if (owner == null) {
@@ -264,7 +488,6 @@ public class PlaylistService {
         return new PlaylistDto.Owner(owner.getId(), owner.getName(), owner.getProfileImageUrl());
     }
 
-    // 구독 여부
     private boolean isSubscribedByMe(Long requesterId, Playlist playlist) {
         if (Objects.equals(playlist.getUserId(), requesterId)) {
             return true;
@@ -272,7 +495,6 @@ public class PlaylistService {
         return playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlist.getId());
     }
 
-    // subscriber_count 감소 방어
     private void safeDecreaseSubscriberCount(Playlist playlist) {
         if (playlist.getSubscriberCount() <= 0L) {
             return;

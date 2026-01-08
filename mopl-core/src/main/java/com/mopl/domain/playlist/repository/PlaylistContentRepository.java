@@ -15,8 +15,6 @@ public interface PlaylistContentRepository extends JpaRepository<PlaylistContent
 
     boolean existsByPlaylistIdAndContentId(Long playlistId, Long contentId);
 
-    Optional<PlaylistContent> findByPlaylistIdAndContentId(Long playlistId, Long contentId);
-
     void deleteByPlaylistIdAndContentId(Long playlistId, Long contentId);
 
     void deleteAllByPlaylistId(Long playlistId);

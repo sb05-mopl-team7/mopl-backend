@@ -28,7 +28,7 @@ public interface FollowControllerDocs {
     })
     @PostMapping
     ResponseEntity<FollowResponse> followUser(
-            Principal principal,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user,
             @Valid @RequestBody FollowRequest request
     );
 
@@ -45,7 +45,7 @@ public interface FollowControllerDocs {
     })
     @DeleteMapping("/{followId}")
     ResponseEntity<Void> unfollowUser(
-            Principal principal,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user,
             @Parameter(description = "삭제할 팔로우 ID (PK)") @PathVariable Long followId
     );
 }

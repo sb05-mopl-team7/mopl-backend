@@ -38,14 +38,14 @@ public class AuthService {
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user), accessToken);
 
         // 쿠키로 응답
-        addTokenCookie(response, "accessToken", accessToken, 60 * 60); //1시간
-        addTokenCookie(response, "refreshToken", refreshToken, 60 * 60 * 24 * 14); //2주
+        addTokenCookie(response, "ACCESS_TOKEN", accessToken, 60 * 60); //1시간
+        addTokenCookie(response, "REFRESH_TOKEN", refreshToken, 60 * 60 * 24 * 14); //2주
 
         return jwtDto;
     }
     public void logout(HttpServletResponse response) {
-        deleteCookie(response, "accessToken");
-        deleteCookie(response, "refreshToken");
+        deleteCookie(response, "ACCESS_TOKEN");
+        deleteCookie(response, "REFRESH_TOKEN");
     }
 
     private void addTokenCookie(HttpServletResponse response, String name, String value, int maxAge) {

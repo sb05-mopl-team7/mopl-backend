@@ -5,15 +5,13 @@ import com.mopl.domain.follow.dto.response.FollowResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import org.jspecify.annotations.NonNull;
 import org.springframework.http.ResponseEntity;
-
 import java.security.Principal;
 
-@Tag(name = "팔로우 관리", description = "사용자 팔로우 API")
 public interface FollowControllerDocs {
 
+    // 팔로우 명세서
     @Operation(summary = "사용자 팔로우", description = "특정 사용자를 팔로우합니다. (자기 자신 팔로우 불가)")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "팔로우 성공"),

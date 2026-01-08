@@ -27,12 +27,12 @@ public class UserService {
 
     @Transactional
     public UserDto createUser(UserCreateRequest  dto) {
-        if(userRepository.existsByEmail(dto.email())){
+        if(existUser(dto.email())){
             throw new UserException(UserErrorCode.DUPLICATE_USER);
         }
         User user = new User(dto.name(),dto.email(),passwordEncoder.encode(dto.password()));
         User createdUser = userRepository.save(user);
-        return userMapper.toUserDto(createdUser);
+        return userMapper.toDto(createdUser);
     }
 
 

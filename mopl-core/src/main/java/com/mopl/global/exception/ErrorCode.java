@@ -28,6 +28,7 @@ public enum ErrorCode {
     INVALID_TOKEN("유효하지 않은 토큰입니다.", 401),
     EXPIRED_TOKEN("만료된 토큰입니다.", 401),
     TOKEN_NOT_FOUND("토큰을 찾을 수 없습니다.", 401),
+    FAILED_JWT_TOKEN_PARSE( "JWT Claims 파싱 실패: 올바르지 않은 토큰입니다.", 401),
 
     // 인가
     FORBIDDEN("접근 권한이 없습니다.", 403),

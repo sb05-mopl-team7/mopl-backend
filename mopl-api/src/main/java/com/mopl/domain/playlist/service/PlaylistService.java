@@ -166,7 +166,15 @@ public class PlaylistService {
     // 플레이리스트에서 콘텐츠 삭제 (TODO)
     @Transactional
     public void removeContent(Long requesterId, Long playlistId, Long contentId) {
-        throw new UnsupportedOperationException("TODO: implement in next commits (removeContent)");
+        validateAuthenticated(requesterId);
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
+        validateOwner(requesterId, playlist);
+        boolean exists = playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId);
+        if (!exists) {
+            return;
+        }
+        playlistContentRepository.deleteByPlaylistIdAndContentId(playlistId, contentId);
     }
 
     // 플레이리스트 목록 조회 (커서 페이지네이션) (TODO)

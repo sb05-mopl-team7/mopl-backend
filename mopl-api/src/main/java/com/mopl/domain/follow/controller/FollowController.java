@@ -25,9 +25,6 @@ public class FollowController implements FollowControllerDocs {
             Principal principal,
             FollowRequest request
     ) {
-        if (principal == null) {
-            throw new MoplException(ErrorCode.UNAUTHORIZED);
-        }
 
         Long myId = Long.parseLong(principal.getName());
 
@@ -42,9 +39,6 @@ public class FollowController implements FollowControllerDocs {
             Principal principal,
             Long followId
     ) {
-        if (principal == null) {
-            throw new MoplException(ErrorCode.UNAUTHORIZED);
-        }
 
         Long myId = Long.parseLong(principal.getName());
 

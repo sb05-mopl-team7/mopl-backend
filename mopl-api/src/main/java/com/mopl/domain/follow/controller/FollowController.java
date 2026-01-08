@@ -1,5 +1,6 @@
 package com.mopl.domain.follow.controller;
 
+import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.follow.controller.docs.FollowControllerDocs;
 import com.mopl.domain.follow.dto.request.FollowRequest;
 import com.mopl.domain.follow.dto.response.FollowResponse;
@@ -7,9 +8,8 @@ import com.mopl.domain.follow.service.FollowService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.security.Principal;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,11 +20,11 @@ public class FollowController implements FollowControllerDocs {
     // 팔로우 하기 API
     @Override
     public ResponseEntity<FollowResponse> followUser(
-            Principal principal,
+            @AuthenticationPrincipal UserPrincipal user,
             FollowRequest request
     ) {
 
-        Long myId = Long.parseLong(principal.getName());
+        Long myId = user.getUserId();
 
         FollowResponse response = followService.follow(myId, request);
 
@@ -34,11 +34,11 @@ public class FollowController implements FollowControllerDocs {
     // 언팔로우 하기 API
     @Override
     public ResponseEntity<Void> unfollowUser(
-            Principal principal,
+            @AuthenticationPrincipal UserPrincipal user,
             Long followId
     ) {
 
-        Long myId = Long.parseLong(principal.getName());
+        Long myId = user.getUserId();
 
         // 서비스에 내 ID와 언팔로우할 ID를 넘긴다.
         followService.unfollow(myId, followId);

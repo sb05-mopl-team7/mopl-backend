@@ -15,7 +15,6 @@ import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +26,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@Slf4j
 @SpringBootTest
 @Transactional
 class ConversationServiceTest {
@@ -85,10 +83,6 @@ class ConversationServiceTest {
 
         em.flush();
         em.clear();
-
-        for (DirectMessage directMessage : directMessageRepository.findAll()) {
-            log.info("대화방 {}: dm_id: {}, 작성자:{}, 내용: {}",directMessage.getConversation().getId() , directMessage.getId(), directMessage.getAuthor(), directMessage.getContent());
-        }
 
         ConversationCreateRequest request = new ConversationCreateRequest(target.getId());
 

@@ -53,6 +53,22 @@ public class FollowService {
         // notificationService.send(target, NotificationType.FOLLOW, me.getName() + "님이 팔로우했습니다.");
     }
 
+    // 언팔로우 로직
+    @Transactional
+    public void unfollow(Long myId, Long followId) {
+        // 1. 팔로우 존재 확인 (404)
+        Follow follow = followRepository.findById(followId)
+                .orElseThrow(() -> new MoplException(ErrorCode.FOLLOW_NOT_FOUND));
+
+        // 2. 언팔로우 권한 확인 (403)
+        if (!follow.getFollower().getId().equals(myId)) {
+            throw new MoplException(ErrorCode.FORBIDDEN);
+        }
+
+        // 3. 언팔로우
+        followRepository.delete(follow);
+    }
+
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));

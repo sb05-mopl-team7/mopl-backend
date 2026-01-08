@@ -1,6 +1,5 @@
 package com.mopl.domain.conversation.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.mopl.domain.conversation.dto.request.ConversationCreateRequest;
 import com.mopl.domain.conversation.dto.response.ConversationDto;
 import com.mopl.domain.conversation.service.ConversationService;
@@ -21,7 +20,7 @@ public class ConversationController {
 
     // TODO 회원가입/로그인 완료 후 AuthenticationPrincipal 로 변경 필요
     @PostMapping
-    public ResponseEntity<ConversationDto> create(@RequestBody @Valid ConversationCreateRequest createRequest) throws JsonProcessingException {
+    public ResponseEntity<ConversationDto> create(@RequestBody @Valid ConversationCreateRequest createRequest) {
         long tempUserId = 1L;
         ConversationDto conversationDto = conversationService.createConversation(tempUserId, createRequest);
         return ResponseEntity.ok(conversationDto);

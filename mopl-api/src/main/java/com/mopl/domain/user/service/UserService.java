@@ -35,5 +35,13 @@ public class UserService {
         return userMapper.toDto(createdUser);
     }
 
+    @Transactional(readOnly = true)
+    public UserDto findById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
+        return  userMapper.toDto(user);
+    }
+
+
 
 }

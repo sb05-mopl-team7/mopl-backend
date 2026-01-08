@@ -29,4 +29,10 @@ public class UserController {
         UserDto userResponse = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
     }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<UserDto> findById(@PathVariable Long userId) {
+        UserDto userdto = userService.findById(userId);
+        return ResponseEntity.ok().body(userdto);
+    }
 }

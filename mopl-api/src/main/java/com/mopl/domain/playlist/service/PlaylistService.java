@@ -4,7 +4,9 @@ import com.mopl.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.mopl.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.mopl.domain.playlist.dto.response.PlaylistDto;
 import com.mopl.domain.playlist.entity.Playlist;
+import com.mopl.domain.playlist.entity.PlaylistSubscribe;
 import com.mopl.domain.playlist.repository.PlaylistRepository;
+import com.mopl.domain.playlist.repository.PlaylistSubscribeRepository;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.dto.PageResponse;
@@ -23,6 +25,7 @@ import java.util.Objects;
 public class PlaylistService {
 
     private final PlaylistRepository playlistRepository;
+    private final PlaylistSubscribeRepository playlistSubscribeRepository;
     private final UserRepository userRepository;
 
     // 플레이리스트 생성
@@ -43,7 +46,7 @@ public class PlaylistService {
                 saved.getUpdatedAt(),
                 saved.getSubscriberCount(),
                 true,
-                List.of()   // 콘텐츠 기능 미완성: 빈 리스트
+                List.of()
         );
     }
 
@@ -101,10 +104,23 @@ public class PlaylistService {
         playlistRepository.delete(playlist);
     }
 
-    // 플레이리스트 구독 (TODO)
+    // 플레이리스트 구독
     @Transactional
     public void subscribe(Long requesterId, Long playlistId) {
-        throw new UnsupportedOperationException("TODO: implement in next commits (subscribe)");
+        validateAuthenticated(requesterId);
+
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
+
+        if (Objects.equals(playlist.getUserId(), requesterId)) {
+            return;
+        }
+        if (playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlistId)) {
+            return;
+        }
+        // 구독 저장
+        playlistSubscribeRepository.save(new PlaylistSubscribe(requesterId, playlistId));
+        playlist.increaseSubscriberCount();
     }
 
     // 플레이리스트 구독 취소 (TODO)
@@ -166,6 +182,9 @@ public class PlaylistService {
 
     // 구독 여부
     private boolean isSubscribedByMe(Long requesterId, Playlist playlist) {
-        return Objects.equals(playlist.getUserId(), requesterId);
+        if (Objects.equals(playlist.getUserId(), requesterId)) {
+            return true;
+        }
+        return playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlist.getId());
     }
 }

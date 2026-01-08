@@ -11,7 +11,7 @@ public interface PlaylistContentRepository extends JpaRepository<PlaylistContent
 
     List<PlaylistContent> findAllByPlaylistId(Long playlistId);
 
-    List<PlaylistContent> findAllByPlaylistIdIn(Collection<Long> playlistIds);
+    List<PlaylistContent> findAllByPlaylistIdIn(List<Long> playlistIds);
 
     boolean existsByPlaylistIdAndContentId(Long playlistId, Long contentId);
 

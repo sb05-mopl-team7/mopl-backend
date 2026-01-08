@@ -1,5 +1,6 @@
 package com.mopl.domain.playlist.service;
 
+import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.mopl.domain.playlist.dto.request.PlaylistUpdateRequest;
@@ -20,8 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +65,7 @@ public class PlaylistService {
 
         PlaylistDto.Owner owner = loadOwner(playlist.getUserId());
         boolean subscribedByMe = isSubscribedByMe(requesterId, playlist);
+        List<PlaylistDto.Content> contents = loadContentsByPlaylistId(playlist.getId());
 
         return new PlaylistDto(
                 playlist.getId(),
@@ -74,7 +75,7 @@ public class PlaylistService {
                 playlist.getUpdatedAt(),
                 playlist.getSubscriberCount(),
                 subscribedByMe,
-                List.of() // 콘텐츠 기능 미완성: 빈 리스트
+                contents
         );
     }
 
@@ -136,12 +137,11 @@ public class PlaylistService {
         if (Objects.equals(playlist.getUserId(), requesterId)) {
             return;
         }
-
         if (!playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlistId)) {
             return;
         }
         playlistSubscribeRepository.deleteByUserIdAndPlaylistId(requesterId, playlistId);
-        // 0 아래로 내려가지 않도록 방어
+
         safeDecreaseSubscriberCount(playlist);
     }
 
@@ -152,26 +152,23 @@ public class PlaylistService {
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
         validateOwner(requesterId, playlist);
-        //콘텐츠 존재 검증
         if (!contentRepository.existsById(contentId)) {
             throw new MoplException(ErrorCode.NOT_FOUND);
         }
-        boolean alreadyExists = playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId);
-        if (alreadyExists) {
+        if (playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId)) {
             return;
         }
         playlistContentRepository.save(new PlaylistContent(playlistId, contentId));
     }
 
-    // 플레이리스트에서 콘텐츠 삭제 (TODO)
+    // 플레이리스트에서 콘텐츠 삭제
     @Transactional
     public void removeContent(Long requesterId, Long playlistId, Long contentId) {
         validateAuthenticated(requesterId);
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
         validateOwner(requesterId, playlist);
-        boolean exists = playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId);
-        if (!exists) {
+        if (!playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId)) {
             return;
         }
         playlistContentRepository.deleteByPlaylistIdAndContentId(playlistId, contentId);
@@ -193,6 +190,57 @@ public class PlaylistService {
         throw new UnsupportedOperationException("TODO: implement in next commits (findAll)");
     }
 
+    // contents 로딩/매핑
+    private List<PlaylistDto.Content> loadContentsByPlaylistId(Long playlistId) {
+        List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistId(playlistId);
+        if (pcs.isEmpty()) return List.of();
+
+        pcs.sort(Comparator.comparing(PlaylistContent::getId));
+
+        List<Long> contentIds = pcs.stream()
+                .map(PlaylistContent::getContentId)
+                .toList();
+
+        Map<Long, Content> contentMap = loadContentMap(contentIds);
+
+        List<PlaylistDto.Content> result = new ArrayList<>();
+        for (Long contentId : contentIds) {
+            Content content = contentMap.get(contentId);
+            if (content == null) continue;
+            result.add(toPlaylistContentDto(content));
+        }
+        return result;
+    }
+
+    private Map<Long, Content> loadContentMap(Collection<Long> contentIds) {
+        if (contentIds == null || contentIds.isEmpty()) return Map.of();
+
+        List<Content> fetched = contentRepository.findAllByIdInWithTags(contentIds);
+
+        Map<Long, Content> map = new LinkedHashMap<>();
+        for (Content c : fetched) {
+            map.putIfAbsent(c.getId(), c);
+        }
+        return map;
+    }
+
+    private PlaylistDto.Content toPlaylistContentDto(Content content) {
+        List<String> tags = content.getContentTags().stream()
+                .map(ct -> ct.getTag().getTag())
+                .distinct()
+                .toList();
+
+        return new PlaylistDto.Content(
+                content.getId(),
+                content.getContentType() == null ? null : content.getContentType().name(),
+                content.getTitle(),
+                content.getDescription(),
+                content.getThumbnailUrl(),
+                tags,
+                content.getAverageRating(),
+                content.getReviewCount()
+        );
+    }
     // 인증 체크
     private void validateAuthenticated(Long requesterId) {
         if (requesterId == null) {
@@ -207,7 +255,7 @@ public class PlaylistService {
         }
     }
 
-    // owner 로드 (없으면 null 필드로)
+    // owner 로드
     private PlaylistDto.Owner loadOwner(Long ownerId) {
         User owner = userRepository.findById(ownerId).orElse(null);
         if (owner == null) {
@@ -226,6 +274,9 @@ public class PlaylistService {
 
     // subscriber_count 감소 방어
     private void safeDecreaseSubscriberCount(Playlist playlist) {
+        if (playlist.getSubscriberCount() <= 0L) {
+            return;
+        }
         playlist.decreaseSubscriberCount();
     }
 }

@@ -1,5 +1,7 @@
 package com.mopl.domain.auth.jwt;
 
+import com.mopl.domain.auth.dto.UserPrincipal;
+import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.enums.Role;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
@@ -53,48 +55,40 @@ public class JwtTokenProvider {
     /**
      * 토큰 생성
      */
-    public String createAccessToken(String email, Role role) {
-        return createToken(email, role, accessTokenValidity, accessSecretKey);
+    public String createAccessToken(User user) {
+        return createToken(user, accessTokenValidity, accessSecretKey);
     }
 
     /**
      * 토큰 생성
      */
-    public String createRefreshToken(String email, Role role) {
-        return createToken(email, role, refreshTokenValidity, refreshSecretKey);
+    public String createRefreshToken(User user) {
+        return createToken(user, refreshTokenValidity, refreshSecretKey);
     }
 
-    /**
-     * 토큰 검증
-     */
+
     public boolean validateAccessToken(String token) {
         return validateToken(token, accessSecretKey);
     }
 
-    /**
-     * 토큰 검증
-     */
     public boolean validateRefreshToken(String token) {
         return validateToken(token, refreshSecretKey);
     }
 
-    /**
-     * 토큰을 Spring Security가 이해하는 Authentication 객체로 변환
-     */
     public Authentication getAuthentication(String token) {
+        Long userId = getUserId(token);
         String email = getEmail(token);
         Role role = getRole(token);
 
+        UserPrincipal principal = new UserPrincipal(userId, email, role);
+
         return new UsernamePasswordAuthenticationToken(
-                email,
-                "",
+                principal,
+                null,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role.name()))
         );
     }
 
-    /**
-     * Http 쿠키에서 토큰을 추출
-     */
     public String resolveToken(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) return null;
@@ -107,15 +101,16 @@ public class JwtTokenProvider {
         return null;
     }
 
-    private String createToken(String email, Role role, long validity, Key key) {
+    private String createToken(User user, long validity, Key key) {
 
         Instant now = Instant.now();
         Instant expiry = now.plusMillis(validity);
 
         return Jwts.builder()
                 .setIssuer("mopl-app")
-                .setSubject(email)
-                .claim("role", role.name())
+                .setSubject(user.getEmail())
+                .claim("userId", user.getId())
+                .claim("role", user.getRole())
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(expiry))
                 .signWith(key)
@@ -164,5 +159,8 @@ public class JwtTokenProvider {
     public Role getRole(String token) {
         String role = getClaims(token).get("role", String.class);
         return Role.valueOf(role);
+    }
+    public Long getUserId(String token) {
+        return getClaims(token).get("userId", Long.class);
     }
 }

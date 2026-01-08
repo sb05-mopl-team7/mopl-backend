@@ -32,8 +32,8 @@ public class AuthService {
             throw new UserException(UserErrorCode.PASSWORD_NOT_CORRECT);
 
         // 토큰 발급
-        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getRole());
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getEmail(), user.getRole());
+        String accessToken = jwtTokenProvider.createAccessToken(user);
+        String refreshToken = jwtTokenProvider.createRefreshToken(user);
 
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user), accessToken);
 

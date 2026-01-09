@@ -1,5 +1,8 @@
 package com.mopl.domain.auth.service;
 
+import com.mopl.domain.user.exception.UserErrorCode;
+import com.mopl.domain.user.exception.UserException;
+import com.mopl.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,12 +23,15 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final SecureRandom random = new SecureRandom();
     private final SpringTemplateEngine templateEngine;
+    private final UserRepository userRepository;
 
     @Value("${spring.mail.username}")
     private String moplEmail;
 
     @Transactional
     public void resetPassword(String email) {
+        // 이메일 검증
+        emailValid(email);
         // 임시 비밀번호 생성
         String temporaryPassword = createTemporaryPassword(10);
 
@@ -33,7 +39,6 @@ public class EmailService {
 
         // 이메일 전송
         sendEmail(email, temporaryPassword);
-
     }
 
     /** 이메일 전송 */
@@ -69,5 +74,10 @@ public class EmailService {
         }
 
         return sb.toString();
+    }
+
+    private void emailValid(String email) {
+        userRepository.findByEmail(email)
+        .orElseThrow(() -> new UserException(UserErrorCode.EMAIL_NOT_EXIST));
     }
 }

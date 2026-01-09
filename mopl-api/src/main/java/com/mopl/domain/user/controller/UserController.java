@@ -8,7 +8,9 @@ import com.mopl.global.dto.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,6 +26,8 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
     }
 
+    @PreAuthorize("principal.userId == #userId")
+    @PatchMapping(value = "/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{userId}/role")
     public ResponseEntity<Void> updateRole(@PathVariable Long userId, @Valid @RequestBody UserRoleUpdateRequest request){
@@ -53,9 +57,9 @@ public class UserController {
 
     @PatchMapping("/{userId}")
     public ResponseEntity<UserDto> updateImage(@PathVariable long userId,
-                                               @RequestPart(required = true) UserUpdateRequest request,
-                                               @RequestPart(required = false) MultipartFile avatarImage){
-        UserDto updatedImage = userService.updateImage(userId, request.name(), avatarImage);
+                                               @RequestPart(value = "request", required = true) UserUpdateRequest request,
+                                               @RequestPart(value = "image", required = false) MultipartFile image){
+        UserDto updatedImage = userService.updateImage(userId, request.name(), image);
         return ResponseEntity.ok().body(updatedImage);
     }
 }

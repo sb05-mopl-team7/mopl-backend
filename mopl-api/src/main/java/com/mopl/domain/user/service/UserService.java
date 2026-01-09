@@ -14,6 +14,7 @@ import com.mopl.global.enums.SortBy;
 import com.mopl.global.enums.SortDirection;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
+import com.mopl.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +37,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final FileStorage fileStorage;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String email) {
@@ -54,13 +56,29 @@ public class UserService {
 
     @PreAuthorize("principal.userId == #id")
     @Transactional
-    public UserDto updateImage(long userId, String name, MultipartFile avatarImage) {
+    public UserDto updateImage(long userId, String name, MultipartFile image) {
         User user = userRepository.findById(userId)
-                .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
-        if(name != null) user.updateName(name);
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+        if (name != null && !name.isBlank()) user.updateName(name);
 
-        if(avatarImage != null && ) {}
+        if (image != null && !image.isEmpty()) {
+            if (user.getProfileImageUrl() != null) {
+                String oldFileName = extractFileName(user.getProfileImageUrl());
+                fileStorage.deleteFile(oldFileName);
+            }
 
+            String newAvatarUrl = fileStorage.saveFile(image, userId);
+            user.updateProfileImageUrl(newAvatarUrl);
+        }
+        return userMapper.toDto(user);
+    }
+
+    private String extractFileName(String url) {
+        if (url == null || url.isEmpty()) return null;
+
+        int lastSlash = url.lastIndexOf("/");
+        if (lastSlash == -1) return url;
+        return url.substring(lastSlash + 1);
     }
 
     @Transactional

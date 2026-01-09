@@ -1,6 +1,7 @@
 package com.mopl.domain.follow.controller;
 
 import com.mopl.domain.follow.entity.Follow;
+import com.mopl.domain.follow.exception.FollowErrorCode;
 import com.mopl.domain.follow.repository.FollowRepository;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.repository.UserRepository;
@@ -100,7 +101,7 @@ class UnFollowApiTest {
                         .with(user(String.valueOf(user1.getId()))))
                 .andDo(print())
                 .andExpect(status().isNotFound()) // 404
-                .andExpect(jsonPath("$.title").value(ErrorCode.FOLLOW_NOT_FOUND.name()));
+                .andExpect(jsonPath("$.title").value(FollowErrorCode.FOLLOW_NOT_FOUND.name()));
     }
 
 }

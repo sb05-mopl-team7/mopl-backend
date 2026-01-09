@@ -1,5 +1,6 @@
 package com.mopl.domain.follow.controller;
 
+import com.mopl.domain.follow.exception.FollowErrorCode;
 import tools.jackson.databind.ObjectMapper;
 import com.mopl.domain.follow.dto.request.FollowRequest;
 import com.mopl.domain.follow.entity.Follow;
@@ -83,8 +84,8 @@ class FollowApiTest {
                         .with(user(String.valueOf(user1.getId()))))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(ErrorCode.CANNOT_FOLLOW_SELF.name()))
-                .andExpect(jsonPath("$.detail").value(ErrorCode.CANNOT_FOLLOW_SELF.getMessage()));
+                .andExpect(jsonPath("$.title").value(FollowErrorCode.CANNOT_FOLLOW_SELF.name()))
+                .andExpect(jsonPath("$.detail").value(FollowErrorCode.CANNOT_FOLLOW_SELF.getMessage()));
     }
 
     @Test
@@ -102,8 +103,8 @@ class FollowApiTest {
                         .with(user(String.valueOf(user1.getId()))))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(ErrorCode.ALREADY_FOLLOWING.name()))
-                .andExpect(jsonPath("$.detail").value(ErrorCode.ALREADY_FOLLOWING.getMessage()));
+                .andExpect(jsonPath("$.title").value(FollowErrorCode.ALREADY_FOLLOWING.name()))
+                .andExpect(jsonPath("$.detail").value(FollowErrorCode.ALREADY_FOLLOWING.getMessage()));
     }
 
     // 3. 인증 실패 (401)

@@ -1,5 +1,6 @@
-package com.mopl.global.sse;
+package com.mopl.domain.notification;
 
+import com.mopl.global.sse.SseManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;

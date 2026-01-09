@@ -1,6 +1,7 @@
 package com.mopl.domain.conversation.service;
 
 import com.mopl.domain.conversation.dto.request.ConversationCreateRequest;
+import com.mopl.domain.conversation.dto.request.ConversationSearchCondition;
 import com.mopl.domain.conversation.dto.response.ConversationDto;
 import com.mopl.domain.conversation.dto.response.LastMessage;
 import com.mopl.domain.conversation.entity.Conversation;
@@ -15,11 +16,14 @@ import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.repository.UserRepository;
+import com.mopl.global.dto.PageResponse;
+import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.mopl.domain.conversation.exception.ConversationErrorCode.CONVERSATION_NOT_FOUND;
@@ -118,5 +122,86 @@ public class ConversationService {
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+    }
+
+    // 대화 목록 전체 조회 (커서 페이지네이션)
+    public PageResponse<ConversationDto> findMyAllConversations(ConversationSearchCondition searchCondition, long userId) {
+        String keyword = searchCondition.keywordLike();
+        LocalDateTime cursor = searchCondition.cursor();
+        Long idAfter = searchCondition.idAfter();
+        int limit = searchCondition.limit();
+
+        List<Tuple> myConversations = conversationRepository.findMyConversations(userId, keyword, cursor, idAfter, limit + 1);
+
+        boolean hasNext = false;
+        if (myConversations.size() > limit) {
+            hasNext = true;
+            myConversations.remove(limit);
+        }
+
+        List<ConversationDto> dtos = myConversations.stream()
+                .map(tuple -> convertToDto(tuple, userId))
+                .toList();
+
+        String nextCursor = null;
+        String nextIdAfter = null;
+
+        if (hasNext && !dtos.isEmpty()) {
+            ConversationDto lastConversation = dtos.get(dtos.size() - 1);
+
+            if (lastConversation.lastestMessage() != null) {
+                nextCursor = lastConversation.lastestMessage().createdAt().toString();
+            } else {
+                Tuple lastTuple = myConversations.get(myConversations.size() - 1);
+                Conversation lastEntity = lastTuple.get(0, Conversation.class);
+
+                nextCursor = lastEntity.getCreatedAt().toString();
+            }
+
+            nextIdAfter = lastConversation.id().toString();
+        }
+
+        return PageResponse.<ConversationDto>builder()
+                .data(dtos)
+                .nextCursor(nextCursor)
+                .nextIdAfter(nextIdAfter)
+                .hasNext(hasNext)
+                .totalCount(0)
+                .sortBy(searchCondition.sortBy())
+                .sortDirection(searchCondition.sortDirection())
+                .build();
+    }
+
+    private ConversationDto convertToDto(Tuple tuple, Long userId) {
+        Conversation conversation = tuple.get(0, Conversation.class);
+        User targetUser = tuple.get(1, User.class);
+        DirectMessage message = tuple.get(2, DirectMessage.class);
+        ReadStatus myStatus = tuple.get(3, ReadStatus.class);
+
+        UserSummaryDto withUserDto = new UserSummaryDto(targetUser.getId(), targetUser.getName(), targetUser.getProfileImageUrl());
+
+        if (message == null) {
+            return new ConversationDto(conversation.getId(), withUserDto, null, false);
+        }
+
+        boolean isSenderMe = message.getAuthor().getId().equals(userId);
+        UserSummaryDto meSummaryDto = new UserSummaryDto(userId, "me", null); // 아이디 외 정보 생략
+
+        UserSummaryDto sender = isSenderMe ? meSummaryDto : withUserDto;
+        UserSummaryDto receiver = isSenderMe ? withUserDto : meSummaryDto;
+
+        LastMessage lastMessageDto = new LastMessage(
+                message.getId(),
+                conversation.getId(),
+                message.getCreatedAt(),
+                sender,
+                receiver,
+                message.getContent()
+        );
+
+        long lastReadMsgId = myStatus.getLastReadMessage() != null ? myStatus.getLastReadMessage().getId() : 0L;
+        boolean hasUnread = lastReadMsgId < message.getId();
+
+        return new ConversationDto(conversation.getId(), withUserDto, lastMessageDto, hasUnread);
     }
 }

@@ -50,8 +50,7 @@ public class User extends BaseTimeEntity {
         this.role = Role.USER;
         this.locked = false;
     }
-    public Role updateRole(Role role){
+    public void updateRole(Role role){
         this.role = role;
-        return this.role;
     }
 }

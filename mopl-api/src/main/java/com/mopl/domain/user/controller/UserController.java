@@ -27,14 +27,14 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserDto>create(@RequestBody @Valid UserCreateRequest request) {
+    public ResponseEntity<UserDto> create(@RequestBody @Valid UserCreateRequest request) {
         UserDto userResponse = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{userId}/role")
-    public ResponseEntity<?>updateRole(@PathVariable Long userId, @RequestBody UserRoleUpdateRequest request){
+    public ResponseEntity<Void> updateRole(@PathVariable Long userId, @Valid @RequestBody UserRoleUpdateRequest request){
         userService.updateRole(userId, request.role());
         return ResponseEntity.ok().build();
     }

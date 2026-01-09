@@ -9,7 +9,6 @@ import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,25 +36,10 @@ public class UserService {
         return userMapper.toDto(createdUser);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public void updateRole(Long userId, String requestRole) {
+    public void updateRole(Long userId, Role newRole) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
-        Role newRole = parseRole(requestRole);
         user.updateRole(newRole);
     }
-
-    private Role parseRole(String roleString) {
-        if (roleString == null || roleString.isBlank()) {
-            throw new UserException(UserErrorCode.INVALID_ROLE);
-        }
-        try {
-            return Role.valueOf(roleString.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new UserException(UserErrorCode.INVALID_ROLE);
-        }
-    }
-
-
 }

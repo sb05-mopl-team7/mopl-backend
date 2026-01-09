@@ -1,29 +1,35 @@
 package com.mopl.domain.review.controller;
 
+import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.review.controller.docs.ReviewControllerDocs;
 import com.mopl.domain.review.dto.request.ReviewCreateRequest;
 import com.mopl.domain.review.dto.request.ReviewUpdateRequest;
 import com.mopl.domain.review.dto.response.ReviewDto;
 import com.mopl.domain.review.service.ReviewService;
 import com.mopl.global.dto.PageResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/reviews")
 public class ReviewController implements ReviewControllerDocs {
 
     private final ReviewService reviewService;
 
     @Override
-    public ResponseEntity<PageResponse<ReviewDto>> findAll(
-            Long contentId,
-            String cursor,
-            String idAfter,
-            Integer limit,
-            String sortBy,
-            String sortDirection
+    @GetMapping
+    public ResponseEntity<PageResponse<ReviewDto>> findAllLatestCursor(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestParam Long contentId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) String idAfter,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection
     ) {
         return ResponseEntity.ok(
                 reviewService.findAllLatestCursor(contentId, cursor, idAfter, limit, sortBy, sortDirection)
@@ -31,22 +37,42 @@ public class ReviewController implements ReviewControllerDocs {
     }
 
     @Override
-    public ResponseEntity<ReviewDto> create(Long requesterId, ReviewCreateRequest request) {
-        return ResponseEntity.status(201).body(reviewService.create(requesterId, request));
+    @PostMapping
+    public ResponseEntity<ReviewDto> create(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @Valid @RequestBody ReviewCreateRequest request
+    ) {
+        Long requesterId = userPrincipal.getUserId();
+        return ResponseEntity.ok(reviewService.create(requesterId, request));
     }
 
     @Override
-    public ResponseEntity<ReviewDto> find(Long reviewId) {
+    @GetMapping("/{reviewId}")
+    public ResponseEntity<ReviewDto> find(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long reviewId
+    ) {
         return ResponseEntity.ok(reviewService.find(reviewId));
     }
 
     @Override
-    public ResponseEntity<ReviewDto> update(Long requesterId, Long reviewId, ReviewUpdateRequest request) {
+    @PatchMapping("/{reviewId}")
+    public ResponseEntity<ReviewDto> update(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long reviewId,
+            @Valid @RequestBody ReviewUpdateRequest request
+    ) {
+        Long requesterId = userPrincipal.getUserId();
         return ResponseEntity.ok(reviewService.update(requesterId, reviewId, request));
     }
 
     @Override
-    public ResponseEntity<Void> delete(Long requesterId, Long reviewId) {
+    @DeleteMapping("/{reviewId}")
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long reviewId
+    ) {
+        Long requesterId = userPrincipal.getUserId();
         reviewService.delete(requesterId, reviewId);
         return ResponseEntity.noContent().build();
     }

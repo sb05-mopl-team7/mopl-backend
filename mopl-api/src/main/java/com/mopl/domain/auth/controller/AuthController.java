@@ -22,7 +22,7 @@ public class AuthController {
     private final EmailService emailService;
 
     @PostMapping("/sign-in")
-    public ResponseEntity<JwtDto> login(@RequestBody SignInRequest req, HttpServletResponse response) {
+    public ResponseEntity<JwtDto> login(@ModelAttribute SignInRequest req, HttpServletResponse response) {
         JwtDto jwtDto = authService.login(req.username(), req.password(), response);
         return ResponseEntity.ok(jwtDto);
     }

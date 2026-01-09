@@ -43,10 +43,19 @@ public class SecurityConfig {
                                 "/swagger.html",
                                 "/favicon.ico",
                                 "/index.html",
+                                "/vite.svg",
                                 "/actuator/**",
-                                "/h2-console/**"
+                                "/h2-console/**",
+                                "/",
+                                "/assets/**"
                         ).permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/sign-in",
+                                "/api/auth/sign-out",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh"
+                        ).permitAll()
+                        .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
                         .anyRequest().authenticated()
                 )

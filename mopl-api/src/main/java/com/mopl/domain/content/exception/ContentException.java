@@ -1,14 +1,11 @@
 package com.mopl.domain.content.exception;
 
+import com.mopl.global.exception.DomainException;
 import lombok.Getter;
 
 @Getter
-public class ContentException extends RuntimeException {
-
-    private final ContentErrorCode errorCode;
-
+public class ContentException extends DomainException {
     public ContentException(ContentErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
+        super(errorCode);
     }
 }

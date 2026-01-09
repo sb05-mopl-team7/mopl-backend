@@ -9,6 +9,7 @@ import com.mopl.domain.review.service.ReviewService;
 import com.mopl.global.dto.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -42,8 +43,9 @@ public class ReviewController implements ReviewControllerDocs {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody ReviewCreateRequest request
     ) {
-        Long requesterId = userPrincipal.getUserId();
-        return ResponseEntity.ok(reviewService.create(requesterId, request));
+        long requesterId = userPrincipal.getUserId();
+        ReviewDto created = reviewService.create(requesterId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @Override
@@ -62,7 +64,7 @@ public class ReviewController implements ReviewControllerDocs {
             @PathVariable Long reviewId,
             @Valid @RequestBody ReviewUpdateRequest request
     ) {
-        Long requesterId = userPrincipal.getUserId();
+        long requesterId = userPrincipal.getUserId();
         return ResponseEntity.ok(reviewService.update(requesterId, reviewId, request));
     }
 
@@ -72,8 +74,8 @@ public class ReviewController implements ReviewControllerDocs {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long reviewId
     ) {
-        Long requesterId = userPrincipal.getUserId();
+        long requesterId = userPrincipal.getUserId();
         reviewService.delete(requesterId, reviewId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 }

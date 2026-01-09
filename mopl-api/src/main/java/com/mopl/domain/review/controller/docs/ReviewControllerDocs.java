@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 @Tag(name = "리뷰 관리", description = "리뷰 관련 API")
 public interface ReviewControllerDocs {
 
-    @Operation(summary = "리뷰 목록 조회 (커서 페이지네이션, 최신순만 지원)")
+    @Operation(summary = "리뷰 목록 조회 (커서 페이지네이션)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -28,16 +28,17 @@ public interface ReviewControllerDocs {
     ResponseEntity<PageResponse<ReviewDto>> findAllLatestCursor(
             @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "콘텐츠 ID") Long contentId,
-            @Parameter(description = "커서(createdAt)") String cursor,
-            @Parameter(description = "보조 커서(id)") String idAfter,
+            @Parameter(description = "커서") String cursor,
+            @Parameter(description = "보조 커서") String idAfter,
             @Parameter(description = "한 번에 가져올 개수") Integer limit,
-            @Parameter(description = "정렬 기준(고정: createdAt)") String sortBy,
-            @Parameter(description = "정렬 방향(고정: DESCENDING)") String sortDirection
+            @Parameter(description = "정렬 기준") String sortBy,
+            @Parameter(description = "정렬 방향") String sortDirection
     );
 
-    @Operation(summary = "리뷰 생성")
+    @Operation(summary = "리뷰 생성", description = "생성한 리뷰는 API 요청자 본인의 리뷰로 생성됩니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "201", description = "성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
@@ -59,13 +60,12 @@ public interface ReviewControllerDocs {
             @Parameter(description = "리뷰 ID") Long reviewId
     );
 
-    @Operation(summary = "리뷰 수정")
+    @Operation(summary = "리뷰 수정", description = "리뷰 작성자만 수정할 수 있습니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
-            @ApiResponse(responseCode = "403", description = "권한 없음(작성자 아님)"),
-            @ApiResponse(responseCode = "404", description = "대상 없음"),
+            @ApiResponse(responseCode = "403", description = "권한 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     ResponseEntity<ReviewDto> update(
@@ -74,12 +74,12 @@ public interface ReviewControllerDocs {
             @Valid @RequestBody ReviewUpdateRequest request
     );
 
-    @Operation(summary = "리뷰 삭제")
+    @Operation(summary = "리뷰 삭제", description = "리뷰 작성자만 삭제할 수 있습니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "성공"),
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
-            @ApiResponse(responseCode = "403", description = "권한 없음(작성자 아님)"),
-            @ApiResponse(responseCode = "404", description = "대상 없음"),
+            @ApiResponse(responseCode = "403", description = "권한 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     ResponseEntity<Void> delete(

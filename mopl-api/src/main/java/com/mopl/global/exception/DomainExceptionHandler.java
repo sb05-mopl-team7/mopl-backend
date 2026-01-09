@@ -20,13 +20,10 @@ public class DomainExceptionHandler {
     public ResponseEntity<ProblemDetail> handleDomainException(DomainException e) {
 
         DomainErrorCode errorCode = e.getErrorCode();
-
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(errorCode.getHttpStatus(), errorCode.getMessage());
 
         pd.setTitle(errorCode.name());
         pd.setProperty("code", errorCode.getErrorCode());
-        pd.setDetail(errorCode.getMessage());
-        pd.setStatus(errorCode.getHttpStatus().value());
 
         return ResponseEntity
                 .status(errorCode.getHttpStatus())

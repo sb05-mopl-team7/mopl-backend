@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface ConversationRepository extends JpaRepository<Conversation, Long> {
+public interface ConversationRepository extends JpaRepository<Conversation, Long>, ConversationRepositoryCustom {
 
     @Query("""
             SELECT c FROM Conversation c

@@ -36,4 +36,14 @@ public class ConversationController {
 
         return ResponseEntity.ok(results);
     }
+
+    @PostMapping("/{conversationId}/direct-messages/{directMessageId}/read")
+    public ResponseEntity<Void> markAsRead(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                           @PathVariable Long conversationId,
+                                           @PathVariable Long directMessageId) {
+
+        Long userId = userPrincipal.getUserId();
+        conversationService.updateAsRead(userId, conversationId, directMessageId);
+        return ResponseEntity.ok().build();
+    }
 }

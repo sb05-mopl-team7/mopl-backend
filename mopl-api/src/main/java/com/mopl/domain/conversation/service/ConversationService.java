@@ -178,17 +178,17 @@ public class ConversationService {
         DirectMessage message = tuple.get(2, DirectMessage.class);
         ReadStatus myStatus = tuple.get(3, ReadStatus.class);
 
-        UserSummaryDto witUserDto = new UserSummaryDto(targetUser.getId(), targetUser.getName(), targetUser.getProfileImageUrl());
+        UserSummaryDto withUserDto = new UserSummaryDto(targetUser.getId(), targetUser.getName(), targetUser.getProfileImageUrl());
 
         if (message == null) {
-            return new ConversationDto(conversation.getId(), witUserDto, null, false);
+            return new ConversationDto(conversation.getId(), withUserDto, null, false);
         }
 
         boolean isSenderMe = message.getAuthor().getId().equals(userId);
         UserSummaryDto meSummaryDto = new UserSummaryDto(userId, "me", null); // 아이디 외 정보 생략
 
-        UserSummaryDto sender = isSenderMe ? meSummaryDto : witUserDto;
-        UserSummaryDto receiver = isSenderMe ? witUserDto : meSummaryDto;
+        UserSummaryDto sender = isSenderMe ? meSummaryDto : withUserDto;
+        UserSummaryDto receiver = isSenderMe ? withUserDto : meSummaryDto;
 
         LastMessage lastMessageDto = new LastMessage(
                 message.getId(),
@@ -202,6 +202,6 @@ public class ConversationService {
         long lastReadMsgId = myStatus.getLastReadMessage() != null ? myStatus.getLastReadMessage().getId() : 0L;
         boolean hasUnread = lastReadMsgId < message.getId();
 
-        return new ConversationDto(conversation.getId(), witUserDto, lastMessageDto, hasUnread);
+        return new ConversationDto(conversation.getId(), withUserDto, lastMessageDto, hasUnread);
     }
 }

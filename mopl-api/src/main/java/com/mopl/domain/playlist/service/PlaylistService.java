@@ -130,7 +130,8 @@ public class PlaylistService {
             return;
         }
         playlistSubscribeRepository.save(new PlaylistSubscribe(requesterId, playlistId));
-        playlist.increaseSubscriberCount();
+        // Race Condition 방지: 엔티티 더티체킹 대신 원자 UPDATE 사용
+        playlistRepository.increaseSubscriberCount(playlistId);
     }
 
     // 플레이리스트 구독 취소
@@ -143,12 +144,11 @@ public class PlaylistService {
         if (Objects.equals(playlist.getUserId(), requesterId)) {
             return;
         }
-        if (!playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlistId)) {
-            return;
-        }
-        playlistSubscribeRepository.deleteByUserIdAndPlaylistId(requesterId, playlistId);
 
-        safeDecreaseSubscriberCount(playlist);
+        long deleted = playlistSubscribeRepository.deleteByUserIdAndPlaylistId(requesterId, playlistId);
+        if (deleted > 0) {
+            playlistRepository.decreaseSubscriberCount(playlistId);
+        }
     }
 
     // 플레이리스트 콘텐츠 추가
@@ -231,7 +231,10 @@ public class PlaylistService {
         Map<Long, List<PlaylistDto.Content>> contentsMap = loadContentsByPlaylistIds(playlistIds);
 
         List<PlaylistDto> data = page.stream().map(p -> {
-            PlaylistDto.Owner owner = ownerMap.getOrDefault(p.getUserId(), new PlaylistDto.Owner(p.getUserId(), null, null));
+            PlaylistDto.Owner owner = ownerMap.getOrDefault(
+                    p.getUserId(),
+                    new PlaylistDto.Owner(p.getUserId(), null, null)
+            );
 
             boolean subscribedByMe = requesterId != null
                     && (Objects.equals(p.getUserId(), requesterId) || subscribedPlaylistIds.contains(p.getId()));
@@ -274,6 +277,7 @@ public class PlaylistService {
                 .sortDirection(normalizedDirection)
                 .build();
     }
+
     // contents 로딩/매핑
     private List<PlaylistDto.Content> loadContentsByPlaylistId(Long playlistId) {
         List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistId(playlistId);
@@ -408,8 +412,6 @@ public class PlaylistService {
 
         String v = sortBy.trim();
         if ("updatedAt".equalsIgnoreCase(v)) return "updatedAt";
-
-        // 요구사항: subscribeCount(subscriberCount)
         if ("subscribeCount".equalsIgnoreCase(v) || "subscriberCount".equalsIgnoreCase(v)) {
             return "subscriberCount";
         }
@@ -493,12 +495,5 @@ public class PlaylistService {
             return true;
         }
         return playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlist.getId());
-    }
-
-    private void safeDecreaseSubscriberCount(Playlist playlist) {
-        if (playlist.getSubscriberCount() <= 0L) {
-            return;
-        }
-        playlist.decreaseSubscriberCount();
     }
 }

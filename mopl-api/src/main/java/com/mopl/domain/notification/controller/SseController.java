@@ -1,4 +1,4 @@
-package com.mopl.domain.notification;
+package com.mopl.domain.notification.controller;
 
 import com.mopl.global.sse.SseManager;
 import lombok.RequiredArgsConstructor;

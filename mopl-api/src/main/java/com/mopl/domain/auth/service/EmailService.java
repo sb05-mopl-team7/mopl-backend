@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
@@ -28,18 +27,13 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String moplEmail;
 
-    @Transactional
     public void resetPassword(String email) {
-        // 이메일 검증
         emailValid(email);
-        // 임시 비밀번호 생성
         String temporaryPassword = createTemporaryPassword(10);
-
         // TODO: Redis에 저장
-
-        // 이메일 전송
         sendEmail(email, temporaryPassword);
     }
+
 
     /** 이메일 전송 */
     private void sendEmail(String email, String temporaryPassword) {
@@ -76,8 +70,11 @@ public class EmailService {
         return sb.toString();
     }
 
+    /** 이메일 검증 */
     private void emailValid(String email) {
         userRepository.findByEmail(email)
         .orElseThrow(() -> new UserException(UserErrorCode.EMAIL_NOT_EXIST));
     }
+
+
 }

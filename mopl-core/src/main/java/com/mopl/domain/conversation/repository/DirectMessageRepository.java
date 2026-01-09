@@ -9,4 +9,6 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
 
     // createdAt이 같을 수 있으므로 id로 2차 정렬
     Optional<DirectMessage> findTopByConversationIdOrderByCreatedAtDescIdDesc(Long conversationId);
+
+    Optional<DirectMessage> findByIdAndConversationId(Long directMessageId, Long conversationId);
 }

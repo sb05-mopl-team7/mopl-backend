@@ -204,4 +204,16 @@ public class ConversationService {
 
         return new ConversationDto(conversation.getId(), withUserDto, lastMessageDto, hasUnread);
     }
+
+    // 대화방의 메시지 읽음 처리
+    @Transactional
+    public void updateAsRead(Long userId, Long conversationId, Long directMessageId) {
+        ReadStatus myStatus = readStatusRepository.findByConversationIdAndUserId(conversationId, userId)
+                .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
+
+        DirectMessage message = directMessageRepository.findByIdAndConversationId(directMessageId, conversationId)
+                .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
+
+        myStatus.updateLastReadMsg(message);
+    }
 }

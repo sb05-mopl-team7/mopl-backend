@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.net.URI;
 
 @Slf4j
 @Component
@@ -33,8 +32,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                 HttpStatusCode.valueOf(errorCode.getStatus()),
                 errorCode.getMessage()
         );
-        pd.setTitle("errorCode.name()");
-        pd.setType(URI.create("https://mopl.com/problems/unauthorized"+ errorCode.name().toLowerCase()));
+        pd.setTitle(errorCode.name());
         pd.setDetail(errorCode.getMessage());
         pd.setStatus(errorCode.getStatus());
 

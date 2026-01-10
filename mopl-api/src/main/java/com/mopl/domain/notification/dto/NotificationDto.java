@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 public record NotificationDto(
         Long id,
         LocalDateTime createdAt,
-        Long reveiverId,
+        Long receiverId,
         String title,
         String content,
         Level level

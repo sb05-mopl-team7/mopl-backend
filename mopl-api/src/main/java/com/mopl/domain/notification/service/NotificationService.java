@@ -80,18 +80,18 @@ public class NotificationService {
 
         // 6. nextCursor와 nextIdAfter 계산
         String nextCursor = null;
-        Long nextIdAfter = null;
+        String nextIdAfter = null;
 
         if (hasNext && !page.isEmpty()) {
             Notification last = page.get(page.size() - 1);
-            nextIdAfter = last.getId();
+            nextIdAfter = String.valueOf(last.getId());
             nextCursor = formatCreatedAtCursor(last.getCreatedAt());
         }
 
 
         // 8. 응답 생성
         return  PageResponse.<NotificationDto>builder()
-                .data(data)
+                .data(data != null ? data : List.of())
                 .nextCursor(nextCursor)
                 .nextIdAfter(nextIdAfter)
                 .hasNext(hasNext)
@@ -142,7 +142,7 @@ public class NotificationService {
         return new NotificationDto(
                 notification.getId(),
                 notification.getCreatedAt(),
-                notification.getId(),
+                notification.getReceiverId(),
                 notification.getTitle(),
                 notification.getContent(),
                 notification.getLevel()

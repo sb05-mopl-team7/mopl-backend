@@ -2,7 +2,6 @@ package com.mopl.domain.user.service;
 
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
-import com.mopl.domain.user.dto.UserSearchCondition;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.enums.Role;
 import com.mopl.domain.user.exception.UserErrorCode;
@@ -55,6 +54,13 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
         user.updateRole(newRole);
+    }
+
+    @Transactional
+    public void updateLocked(Long userId, boolean newLocked) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+        user.updateLocked(newLocked);
     }
 
     public PageResponse<UserDto> findAllUsers(UserSearchCondition searchCondition) {

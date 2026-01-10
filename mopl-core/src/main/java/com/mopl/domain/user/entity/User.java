@@ -53,4 +53,8 @@ public class User extends BaseTimeEntity {
     public void updateRole(Role role){
         this.role = role;
     }
+
+    public void updateLocked(Boolean locked){
+        this.locked = locked;
+    }
 }

@@ -3,11 +3,13 @@ package com.mopl.domain.notification.service;
 
 import com.mopl.domain.notification.dto.NotificationDto;
 import com.mopl.domain.notification.entity.Notification;
+import com.mopl.domain.notification.enums.Level;
 import com.mopl.domain.notification.repository.NotificationRepository;
 import com.mopl.global.dto.PageResponse;
 import com.mopl.global.enums.SortDirection;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
+import com.mopl.global.sse.SseManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +26,25 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final SseManager sseManager;
+
+    @Transactional
+    public void createAndSendNotification(
+            Long receiverId,
+            String title,
+            String content,
+            Level level
+    ){
+        Notification notification = new Notification(receiverId,title,content,level);
+        notificationRepository.save(notification);
+
+        NotificationDto notificationDto = toDto(notification);
+        sseManager.sendToUser(
+                receiverId,
+                "notification",
+                notificationDto
+        );
+    }
 
     @Transactional(readOnly = true)
     public PageResponse<NotificationDto> findAll(

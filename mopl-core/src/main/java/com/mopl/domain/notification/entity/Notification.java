@@ -3,11 +3,14 @@ package com.mopl.domain.notification.entity;
 import com.mopl.domain.notification.enums.Level;
 import com.mopl.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
 @Table(name = "notifications")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification extends BaseCreatedEntity {
 
     @Id

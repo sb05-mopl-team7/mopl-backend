@@ -13,7 +13,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("""
             SELECT n FROM Notification n
             WHERE n.receiverId = :userId
-                    AND (n.createdAt < :cursor
+                    AND (:cursor IS NULL
+                           OR n.createdAt < :cursor
                            OR (n.createdAt = :cursor AND n.id < :idAfter))
             ORDER BY n.createdAt DESC, n.id DESC
             """)

@@ -22,8 +22,8 @@ public class ConversationController {
     @PostMapping
     public ResponseEntity<ConversationDto> create(@AuthenticationPrincipal UserPrincipal userPrincipal,
                                                   @RequestBody @Valid ConversationCreateRequest createRequest) {
-        Long userId = userPrincipal.getUserId();
-        ConversationDto conversationDto = conversationService.createConversation(userId, createRequest);
+        Long myId = userPrincipal.getUserId();
+        ConversationDto conversationDto = conversationService.createConversation(myId, createRequest);
         return ResponseEntity.ok(conversationDto);
     }
 
@@ -31,8 +31,8 @@ public class ConversationController {
     public ResponseEntity<PageResponse<ConversationDto>> findAll(@AuthenticationPrincipal UserPrincipal userPrincipal,
                                                                  @ModelAttribute @Valid ConversationSearchCondition searchCondition) {
 
-        Long userId = userPrincipal.getUserId();
-        PageResponse<ConversationDto> results = conversationService.findMyAllConversations(searchCondition, userId);
+        Long myId = userPrincipal.getUserId();
+        PageResponse<ConversationDto> results = conversationService.findMyAllConversations(searchCondition, myId);
 
         return ResponseEntity.ok(results);
     }
@@ -42,8 +42,8 @@ public class ConversationController {
                                            @PathVariable Long conversationId,
                                            @PathVariable Long directMessageId) {
 
-        Long userId = userPrincipal.getUserId();
-        conversationService.updateAsRead(userId, conversationId, directMessageId);
+        Long myId = userPrincipal.getUserId();
+        conversationService.updateAsRead(myId, conversationId, directMessageId);
         return ResponseEntity.ok().build();
     }
 }

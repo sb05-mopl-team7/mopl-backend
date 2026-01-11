@@ -101,7 +101,7 @@ public class ConversationService {
         }
 
         List<ConversationDto> dtos = myConversations.stream()
-                .map(tuple -> queryResultToDto(tuple, myId))
+                .map(result -> queryResultToDto(result, myId))
                 .toList();
 
         String nextCursor = null;

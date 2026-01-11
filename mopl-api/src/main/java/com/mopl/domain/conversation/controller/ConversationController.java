@@ -4,6 +4,7 @@ import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.conversation.dto.request.ConversationCreateRequest;
 import com.mopl.domain.conversation.dto.request.ConversationSearchCondition;
 import com.mopl.domain.conversation.dto.response.ConversationDto;
+import com.mopl.domain.conversation.dto.response.ConversationSimpleDto;
 import com.mopl.domain.conversation.service.ConversationService;
 import com.mopl.global.dto.PageResponse;
 import jakarta.validation.Valid;
@@ -45,5 +46,13 @@ public class ConversationController {
         Long myId = userPrincipal.getUserId();
         conversationService.updateAsRead(myId, conversationId, directMessageId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/with")
+    public ResponseEntity<ConversationSimpleDto> getConversationWithUser(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                                                             @RequestParam("userId") Long withUserId) {
+        Long myId = userPrincipal.getUserId();
+        ConversationSimpleDto simpleDto = conversationService.findConversationWithUser(myId, withUserId);
+        return ResponseEntity.ok(simpleDto);
     }
 }

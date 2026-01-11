@@ -16,6 +16,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static com.mopl.domain.conversation.entity.QConversation.conversation;
 
@@ -67,6 +68,41 @@ public class ConversationRepositoryCustomImpl implements ConversationRepositoryC
                 ).orderBy(sortDateTime.desc(), conversation.id.desc())
                 .limit(limit)
                 .fetch();
+    }
+
+    /**
+     * 현재 미사용 메서드지만 추후 필요시 사용할 목적으로 작성
+     * 특정 사용자와의 대화방 상세 정보 조회
+     * - 조회: 상대방 정보, 최신 메시지, 나의 읽음 상태를 동시 조회
+     */
+    @Override
+    public Optional<ConversationQueryResult> findConversationQueryResult(Long myId, Long withUserId) {
+        QUser targetUser = new QUser("targetUser");
+        QDirectMessage lastMessage = new QDirectMessage("lastMessage");
+        QReadStatus myStatus = new QReadStatus("myStatus");
+        QReadStatus targetStatus = new QReadStatus("targetStatus");
+        QDirectMessage subMessage = new QDirectMessage("subMessage");
+
+        // 각 대화방 최신 메시지 생성 시간 서브쿼리
+        JPQLQuery<LocalDateTime> subquery = JPAExpressions
+                .select(subMessage.createdAt.max())
+                .from(subMessage)
+                .where(subMessage.conversation.eq(conversation));
+
+        return Optional.ofNullable(queryFactory.select(Projections.constructor(ConversationQueryResult.class,
+                        conversation,
+                        targetUser,
+                        lastMessage,
+                        myStatus
+                )).from(conversation)
+                // 로그인한 유저가 참여한 방
+                .join(myStatus).on(myStatus.conversation.eq(conversation).and(myStatus.user.id.eq(myId)))
+                // 대화 상대 정보
+                .join(targetStatus).on(targetStatus.conversation.eq(conversation).and(targetStatus.user.id.eq(withUserId)))
+                .join(targetUser).on(targetStatus.user.eq(targetUser))
+                // 최신 메시지 (메시지 없는 방 고려해 left join)
+                .leftJoin(lastMessage).on(lastMessage.conversation.eq(conversation).and(lastMessage.createdAt.eq(subquery)))
+                .fetchOne());
     }
 
     // 검색 조건 - 상대 이름 or 메시지 내용

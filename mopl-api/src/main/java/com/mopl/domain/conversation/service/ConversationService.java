@@ -169,6 +169,22 @@ public class ConversationService {
 */
     }
 
+    // 특정 대화방 단건 조회
+    public ConversationDto findMyConversation(Long myId, Long conversationId) {
+        ReadStatus myReadStatus = readStatusRepository.findByConversationIdAndUserId(conversationId, myId)
+                .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
+
+        Conversation conversation = myReadStatus.getConversation();
+
+        // 해당 대화방의 읽음 상태 중에 userId가 myId가 아닌 유저 조회
+        User targetUser = readStatusRepository.findPartnerByConversationId(conversationId, myId)
+                .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
+
+        DirectMessage lastMessage = directMessageRepository.findTopByConversationIdOrderByCreatedAtDescIdDesc(conversationId)
+                .orElse(null);
+        return convertToDto(conversation, myId, targetUser, myReadStatus, lastMessage);
+    }
+
     private ConversationDto convertToDto(Conversation conversation, Long myId, User targetUser,
                                          ReadStatus myReadStatus, DirectMessage lastMessage) {
 

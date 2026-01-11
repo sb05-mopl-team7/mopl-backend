@@ -26,8 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static com.mopl.domain.conversation.exception.ConversationErrorCode.CONVERSATION_NOT_FOUND;
-import static com.mopl.domain.conversation.exception.ConversationErrorCode.SELF_CONVERSATION_NOT_ALLOWED;
+import static com.mopl.domain.conversation.exception.ConversationErrorCode.*;
 
 @Slf4j
 @Service
@@ -150,7 +149,7 @@ public class ConversationService {
                 .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
 
         DirectMessage message = directMessageRepository.findByIdAndConversationId(directMessageId, conversationId)
-                .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
+                .orElseThrow(() -> new ConversationException(MESSAGE_NOT_FOUND));
 
         myStatus.updateLastReadMsg(message);
     }

@@ -41,17 +41,17 @@ public class ConversationService {
     private final DirectMessageRepository directMessageRepository;
 
     @Transactional
-    public ConversationDto createConversation(Long userId, ConversationCreateRequest createRequest) {
+    public ConversationDto createConversation(Long myId, ConversationCreateRequest createRequest) {
         Long withUserId = createRequest.withUserId();
-        if (userId.equals(withUserId)) {
+        if (myId.equals(withUserId)) {
             throw new ConversationException(SELF_CONVERSATION_NOT_ALLOWED);
         }
 
-        User me = getUserOrThrow(userId);
+        User me = getUserOrThrow(myId);
         User targetUser = getUserOrThrow(withUserId);
 
-        return conversationRepository.findByParticipants(userId, withUserId)
-                .map(conversation -> convertToDtoWithTarget(conversation, me, targetUser))
+        return conversationRepository.findByParticipants(myId, withUserId)
+                .map(conversation -> fetchDetailsAndConvertToDto(conversation, me.getId(), targetUser))
                 .orElseGet(() -> createNewConversation(me, targetUser));
     }
 
@@ -64,59 +64,20 @@ public class ConversationService {
         ReadStatus targetReadStatus = ReadStatus.create(newConversation, target);
         readStatusRepository.saveAll(List.of(myReadStatus, targetReadStatus));
 
-        UserSummaryDto targetUserDto = new UserSummaryDto(target.getId(), target.getName(), target.getProfileImageUrl());
-
-        return new ConversationDto(
-                newConversation.getId(),
-                targetUserDto,
-                null,
-                false
-        );
+        return convertToDto(newConversation, me.getId(), target, myReadStatus, null);
     }
 
-    private ConversationDto convertToDtoWithTarget(Conversation conversation, User me, User target) {
-        UserSummaryDto withUserDto = new UserSummaryDto(target.getId(), target.getName(), target.getProfileImageUrl());
-
+    /**
+     * 추가 정보(채팅방의 마지막 메시지, 나의 읽음 상태) DB 조회 후 DTO로 컨버팅
+     */
+    private ConversationDto fetchDetailsAndConvertToDto(Conversation conversation, Long myId, User target) {
         DirectMessage lastMessage = directMessageRepository.findTopByConversationIdOrderByCreatedAtDescIdDesc(conversation.getId())
                 .orElse(null);
 
-        if (lastMessage == null) {
-            return new ConversationDto(conversation.getId(),
-                    withUserDto,
-                    null,
-                    false);
-        }
-
-        User sender = lastMessage.getAuthor();
-        UserSummaryDto senderDto = null;
-        UserSummaryDto receiverDto = null;
-
-        if (sender.getId().equals(me.getId())) {
-            senderDto = new UserSummaryDto(me.getId(),
-                    me.getName(),
-                    me.getProfileImageUrl());
-            receiverDto = new UserSummaryDto(target.getId(), target.getName(), target.getProfileImageUrl());
-        } else {
-            senderDto = new UserSummaryDto(target.getId(), target.getName(), target.getProfileImageUrl());
-            receiverDto = new UserSummaryDto(me.getId(),
-                    me.getName(),
-                    me.getProfileImageUrl());
-        }
-
-        LastMessage lastMessageDto = new LastMessage(lastMessage.getId(),
-                conversation.getId(),
-                lastMessage.getCreatedAt(),
-                senderDto,
-                receiverDto,
-                lastMessage.getContent());
-
-        ReadStatus myReadStatus = readStatusRepository.findByConversationIdAndUserId(conversation.getId(), me.getId())
+        ReadStatus myReadStatus = readStatusRepository.findByConversationIdAndUserId(conversation.getId(), myId)
                 .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
 
-        long lastReadMsgId = myReadStatus.getLastReadMessage() != null ? myReadStatus.getLastReadMessage().getId() : 0L;
-        boolean hasUnread = lastReadMsgId < lastMessage.getId();
-
-        return new ConversationDto(conversation.getId(), withUserDto, lastMessageDto, hasUnread);
+        return convertToDto(conversation, myId, target, myReadStatus, lastMessage);
     }
 
     private User getUserOrThrow(Long userId) {
@@ -125,13 +86,13 @@ public class ConversationService {
     }
 
     // 대화 목록 전체 조회 (커서 페이지네이션)
-    public PageResponse<ConversationDto> findMyAllConversations(ConversationSearchCondition searchCondition, long userId) {
+    public PageResponse<ConversationDto> findMyAllConversations(ConversationSearchCondition searchCondition, long myId) {
         String keyword = searchCondition.keywordLike();
         LocalDateTime cursor = searchCondition.cursor();
         Long idAfter = searchCondition.idAfter();
         int limit = searchCondition.limit();
 
-        List<Tuple> myConversations = conversationRepository.findMyConversations(userId, keyword, cursor, idAfter, limit + 1);
+        List<Tuple> myConversations = conversationRepository.findMyConversations(myId, keyword, cursor, idAfter, limit + 1);
 
         boolean hasNext = false;
         if (myConversations.size() > limit) {
@@ -140,7 +101,7 @@ public class ConversationService {
         }
 
         List<ConversationDto> dtos = myConversations.stream()
-                .map(tuple -> convertToDto(tuple, userId))
+                .map(tuple -> tupleToDto(tuple, myId))
                 .toList();
 
         String nextCursor = null;
@@ -172,48 +133,50 @@ public class ConversationService {
                 .build();
     }
 
-    private ConversationDto convertToDto(Tuple tuple, Long userId) {
+    // 추후 리포지토리에서 DTO를 받아오게 변경할 예정
+    private ConversationDto tupleToDto(Tuple tuple, Long myId) {
         Conversation conversation = tuple.get(0, Conversation.class);
         User targetUser = tuple.get(1, User.class);
         DirectMessage message = tuple.get(2, DirectMessage.class);
         ReadStatus myStatus = tuple.get(3, ReadStatus.class);
 
-        UserSummaryDto withUserDto = new UserSummaryDto(targetUser.getId(), targetUser.getName(), targetUser.getProfileImageUrl());
-
-        if (message == null) {
-            return new ConversationDto(conversation.getId(), withUserDto, null, false);
-        }
-
-        boolean isSenderMe = message.getAuthor().getId().equals(userId);
-        UserSummaryDto meSummaryDto = new UserSummaryDto(userId, "me", null); // 아이디 외 정보 생략
-
-        UserSummaryDto sender = isSenderMe ? meSummaryDto : withUserDto;
-        UserSummaryDto receiver = isSenderMe ? withUserDto : meSummaryDto;
-
-        LastMessage lastMessageDto = new LastMessage(
-                message.getId(),
-                conversation.getId(),
-                message.getCreatedAt(),
-                sender,
-                receiver,
-                message.getContent()
-        );
-
-        long lastReadMsgId = myStatus.getLastReadMessage() != null ? myStatus.getLastReadMessage().getId() : 0L;
-        boolean hasUnread = lastReadMsgId < message.getId();
-
-        return new ConversationDto(conversation.getId(), withUserDto, lastMessageDto, hasUnread);
+        return convertToDto(conversation, myId, targetUser, myStatus, message);
     }
 
     // 대화방의 메시지 읽음 처리
     @Transactional
-    public void updateAsRead(Long userId, Long conversationId, Long directMessageId) {
-        ReadStatus myStatus = readStatusRepository.findByConversationIdAndUserId(conversationId, userId)
+    public void updateAsRead(Long myId, Long conversationId, Long directMessageId) {
+        ReadStatus myStatus = readStatusRepository.findByConversationIdAndUserId(conversationId, myId)
                 .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
 
         DirectMessage message = directMessageRepository.findByIdAndConversationId(directMessageId, conversationId)
                 .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
 
         myStatus.updateLastReadMsg(message);
+    }
+
+    private ConversationDto convertToDto(Conversation conversation, Long myId, User targetUser,
+                                         ReadStatus myReadStatus, DirectMessage lastMessage) {
+
+        Long conversationId = conversation.getId();
+        UserSummaryDto with = new UserSummaryDto(targetUser.getId(), targetUser.getName(), targetUser.getProfileImageUrl());
+
+        if (lastMessage == null) {
+            return new ConversationDto(conversationId, with, null, false);
+        }
+
+        boolean isSenderMe = lastMessage.getAuthor().getId().equals(myId);
+        UserSummaryDto mySummaryDto = new UserSummaryDto(myId, "me", null); // 아이디 외 정보 생략
+
+        UserSummaryDto sender = isSenderMe ? mySummaryDto : with;
+        UserSummaryDto receiver = isSenderMe ? with : mySummaryDto;
+
+        LastMessage lastMessageDto = new LastMessage(lastMessage.getId(), conversationId, lastMessage.getCreatedAt(),
+                                                     sender, receiver, lastMessage.getContent());
+
+        long myLastReadMsgId = myReadStatus.getLastReadMessage() != null ? myReadStatus.getLastReadMessage().getId() : 0L;
+        boolean hasUnread = myLastReadMsgId < lastMessage.getId();
+
+        return new ConversationDto(conversationId, with, lastMessageDto, hasUnread);
     }
 }

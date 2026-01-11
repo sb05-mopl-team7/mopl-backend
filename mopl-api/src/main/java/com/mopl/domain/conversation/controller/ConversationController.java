@@ -58,7 +58,7 @@ public class ConversationController {
 
     @GetMapping("/{conversationId}")
     public ResponseEntity<ConversationDto> getConversationById(@AuthenticationPrincipal UserPrincipal userPrincipal,
-                                                @PathVariable Long conversationId) {
+                                                               @PathVariable Long conversationId) {
         Long myId = userPrincipal.getUserId();
         ConversationDto conversationDto = conversationService.findMyConversation(myId, conversationId);
         return ResponseEntity.ok(conversationDto);

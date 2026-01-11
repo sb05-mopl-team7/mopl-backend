@@ -1,6 +1,8 @@
 package com.mopl.domain.auth.service;
 
 import com.mopl.domain.auth.dto.JwtDto;
+import com.mopl.domain.auth.exception.AuthErrorCode;
+import com.mopl.domain.auth.exception.AuthException;
 import com.mopl.domain.auth.jwt.JwtTokenProvider;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.exception.UserErrorCode;
@@ -54,6 +56,21 @@ public class AuthService {
         deleteCookie(response, "ACCESS_TOKEN");
         deleteCookie(response, "REFRESH_TOKEN");
     }
+    public JwtDto refresh(String refreshToken, HttpServletResponse response) {
+        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
+            throw new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID);
+        }
+        Long userId = jwtTokenProvider.getUserId(refreshToken);
+        User user =  userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+        String newaccessToken = jwtTokenProvider.createAccessToken(user);
+        String newrefreshToken = jwtTokenProvider.createRefreshToken(user);
+        JwtDto jwtDto = new JwtDto(userMapper.toDto(user), newaccessToken);
+        addTokenCookie(response, "ACCESS_TOKEN", newaccessToken, 60 * 60); //1시간
+        addTokenCookie(response, "REFRESH_TOKEN", newrefreshToken, 60 * 60 * 24 * 14); //2주
+
+        return  jwtDto;
+    }
 
     private void addTokenCookie(HttpServletResponse response, String name, String value, int maxAge) {
         ResponseCookie cookie = ResponseCookie.from(name, value)
@@ -76,5 +93,4 @@ public class AuthService {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
-
 }

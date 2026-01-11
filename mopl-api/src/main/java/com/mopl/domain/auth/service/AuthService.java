@@ -34,12 +34,6 @@ public class AuthService {
     @Value("${jwt.cookie.same-site:Lax}")  // 기본값 Lax
     private String cookieSameSite;
 
-    @Value("${jwt.access-token-validity}")
-    private int accessTokenMaxAge;
-
-    @Value("${jwt.refresh-token-validity}")
-    private int refreshTokenMaxAge;
-
     public JwtDto login(String username, String password, HttpServletResponse response) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
@@ -52,8 +46,8 @@ public class AuthService {
 
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user), accessToken);
 
-        addTokenCookie(response, "ACCESS_TOKEN", accessToken, accessTokenMaxAge); //1시간
-        addTokenCookie(response, "REFRESH_TOKEN", refreshToken, refreshTokenMaxAge); //2주
+        addTokenCookie(response, "ACCESS_TOKEN", accessToken, 60 * 60); //1시간
+        addTokenCookie(response, "REFRESH_TOKEN", refreshToken, 60 * 60 * 24 * 14); //2주
 
         return jwtDto;
     }
@@ -74,8 +68,8 @@ public class AuthService {
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user), newAccessToken);
 
-        addTokenCookie(response, "ACCESS_TOKEN", newAccessToken, accessTokenMaxAge);
-        addTokenCookie(response, "REFRESH_TOKEN", newRefreshToken, refreshTokenMaxAge);
+        addTokenCookie(response, "ACCESS_TOKEN", newAccessToken, 60 * 60);
+        addTokenCookie(response, "REFRESH_TOKEN", newRefreshToken, 60 * 60 * 24 * 14);
 
         return jwtDto;
     }

@@ -66,6 +66,8 @@ public class NotificationService {
                 pageable
         );
 
+        Long totalCount = (long)fetched.size();
+
         boolean hasNext = fetched.size() > limit;
 
         // 4. 실제 반환할 데이터 (limit 개수만큼만)
@@ -95,7 +97,7 @@ public class NotificationService {
                 .nextCursor(nextCursor)
                 .nextIdAfter(nextIdAfter)
                 .hasNext(hasNext)
-                .totalCount(0L)
+                .totalCount(totalCount)
                 .sortBy(sortBy)
                 .sortDirection(sortDirection)
                 .build();

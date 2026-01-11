@@ -35,3 +35,10 @@ VALUES (1, '새로운 메시지 도착', '김철수님이 메시지를 보냈습
        (10, '좋아요 알림', '박민수님이 회원님의 게시물을 좋아합니다.', 'INFO', '2026-01-10 13:15:00'),
        (7, '쿠폰 발급', '신규 회원 10% 할인 쿠폰이 발급되었습니다.', 'WARNING', '2026-01-10 13:30:00'),
        (8, 'API 사용량 초과', '일일 API 호출 한도의 80%를 초과했습니다.', 'WARNING', '2026-01-10 13:45:00');
+-- 샘플 데이터 5개 삽입
+INSERT INTO contents (content_type, title, description, thumbnail_url, average_rating, review_count, created_at)
+VALUES ('MOVIE', '인터스텔라', '인류의 생존을 위해 우주로 떠나는 탐험가들의 이야기를 그린 SF 대작', 'https://example.com/interstellar.jpg', 4.8, 15234,'2026-01-10 10:00:00'),
+       ('BOOK', '해리포터와 마법사의 돌', 'J.K. 롤링의 판타지 소설 시리즈 첫 번째 작품', 'https://example.com/harry-potter.jpg', 4.7, 28901,'2026-01-10 11:00:00'),
+       ('GAME', '젤다의 전설: 브레스 오브 더 와일드', '광활한 오픈 월드를 탐험하는 액션 어드벤처 게임', 'https://example.com/zelda.jpg', 4.9, 42156,'2026-01-10 12:00:00'),
+       ('MUSIC', 'Bohemian Rhapsody', '퀸의 대표곡으로 록 오페라 스타일의 명곡', 'https://example.com/bohemian.jpg', 4.9, 67823,'2026-01-10 13:00:00'),
+       ('DRAMA', '브레이킹 배드', '화학 교사가 마약 제조자로 변해가는 과정을 그린 범죄 드라마', 'https://example.com/breaking-bad.jpg', 4.8, 51290,'2026-01-10 14:00:00');

@@ -1,5 +1,6 @@
 package com.mopl.domain.conversation.service;
 
+import com.mopl.domain.conversation.dto.ConversationQueryResult;
 import com.mopl.domain.conversation.dto.request.ConversationCreateRequest;
 import com.mopl.domain.conversation.dto.request.ConversationSearchCondition;
 import com.mopl.domain.conversation.dto.response.ConversationDto;
@@ -17,7 +18,6 @@ import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.dto.PageResponse;
-import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -91,7 +91,7 @@ public class ConversationService {
         Long idAfter = searchCondition.idAfter();
         int limit = searchCondition.limit();
 
-        List<Tuple> myConversations = conversationRepository.findMyConversations(myId, keyword, cursor, idAfter, limit + 1);
+        List<ConversationQueryResult> myConversations = conversationRepository.findMyConversations(myId, keyword, cursor, idAfter, limit + 1);
 
         boolean hasNext = false;
         if (myConversations.size() > limit) {
@@ -100,7 +100,7 @@ public class ConversationService {
         }
 
         List<ConversationDto> dtos = myConversations.stream()
-                .map(tuple -> tupleToDto(tuple, myId))
+                .map(tuple -> queryResultToDto(tuple, myId))
                 .toList();
 
         String nextCursor = null;
@@ -112,8 +112,8 @@ public class ConversationService {
             if (lastConversation.lastestMessage() != null) {
                 nextCursor = lastConversation.lastestMessage().createdAt().toString();
             } else {
-                Tuple lastTuple = myConversations.get(myConversations.size() - 1);
-                Conversation lastEntity = lastTuple.get(0, Conversation.class);
+                ConversationQueryResult lastQueryResult = myConversations.get(myConversations.size() - 1);
+                Conversation lastEntity = lastQueryResult.conversation();
 
                 nextCursor = lastEntity.getCreatedAt().toString();
             }
@@ -132,12 +132,11 @@ public class ConversationService {
                 .build();
     }
 
-    // 추후 리포지토리에서 DTO를 받아오게 변경할 예정
-    private ConversationDto tupleToDto(Tuple tuple, Long myId) {
-        Conversation conversation = tuple.get(0, Conversation.class);
-        User targetUser = tuple.get(1, User.class);
-        DirectMessage message = tuple.get(2, DirectMessage.class);
-        ReadStatus myStatus = tuple.get(3, ReadStatus.class);
+    private ConversationDto queryResultToDto(ConversationQueryResult queryResult, Long myId) {
+        Conversation conversation = queryResult.conversation();
+        User targetUser = queryResult.targetUser();
+        DirectMessage message = queryResult.lastMessage();
+        ReadStatus myStatus = queryResult.myReadStatus();
 
         return convertToDto(conversation, myId, targetUser, myStatus, message);
     }

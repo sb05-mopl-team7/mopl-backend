@@ -1,10 +1,11 @@
 package com.mopl.domain.conversation.repository;
 
+import com.mopl.domain.conversation.dto.ConversationQueryResult;
 import com.mopl.domain.conversation.entity.QDirectMessage;
 import com.mopl.domain.conversation.entity.QReadStatus;
 import com.mopl.domain.user.entity.QUser;
-import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.DateTimeExpression;
 import com.querydsl.jpa.JPAExpressions;
@@ -30,7 +31,7 @@ public class ConversationRepositoryCustomImpl implements ConversationRepositoryC
      * - 조회: 상대방 정보, 최신 메시지, 나의 읽음 상태를 동시 조회
      */
     @Override
-    public List<Tuple> findMyConversations(Long userId, String keyword, LocalDateTime cursor, Long idAfter, int limit) {
+    public List<ConversationQueryResult> findMyConversations(Long userId, String keyword, LocalDateTime cursor, Long idAfter, int limit) {
         QReadStatus myStatus = new QReadStatus("myStatus");
         QReadStatus targetStatus = new QReadStatus("targetStatus");
         QUser targetUser = new QUser("targetUser");
@@ -47,12 +48,12 @@ public class ConversationRepositoryCustomImpl implements ConversationRepositoryC
         DateTimeExpression<LocalDateTime> sortDateTime = message.createdAt.coalesce(conversation.createdAt);
 
         return queryFactory
-                .select(
+                .select(Projections.constructor(ConversationQueryResult.class,
                         conversation,
                         targetUser,
                         message,
                         myStatus
-                ).from(conversation)
+                )).from(conversation)
                 // 로그인한 유저가 참여한 방
                 .join(myStatus).on(myStatus.conversation.eq(conversation).and(myStatus.user.id.eq(userId)))
                 // 대화 상대 정보

@@ -3,9 +3,12 @@ package com.mopl.domain.conversation.controller;
 import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.conversation.dto.request.ConversationCreateRequest;
 import com.mopl.domain.conversation.dto.request.ConversationSearchCondition;
+import com.mopl.domain.conversation.dto.request.DMCursorRequest;
 import com.mopl.domain.conversation.dto.response.ConversationDto;
 import com.mopl.domain.conversation.dto.response.ConversationSimpleDto;
+import com.mopl.domain.conversation.dto.response.DirectMessageDto;
 import com.mopl.domain.conversation.service.ConversationService;
+import com.mopl.domain.conversation.service.DirectMessageService;
 import com.mopl.global.dto.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class ConversationController {
 
     private final ConversationService conversationService;
+    private final DirectMessageService directMessageService;
 
     @PostMapping
     public ResponseEntity<ConversationDto> create(@AuthenticationPrincipal UserPrincipal userPrincipal,
@@ -62,5 +66,14 @@ public class ConversationController {
         Long myId = userPrincipal.getUserId();
         ConversationDto conversationDto = conversationService.findMyConversation(myId, conversationId);
         return ResponseEntity.ok(conversationDto);
+    }
+
+    @GetMapping("{conversationId}/direct-messages")
+    public ResponseEntity<PageResponse<DirectMessageDto>> getAllDirectMessages(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                                                               @PathVariable Long conversationId,
+                                                                               @ModelAttribute @Valid DMCursorRequest cursorRequest) {
+        Long myId = userPrincipal.getUserId();
+        PageResponse<DirectMessageDto> results = directMessageService.findMessages(cursorRequest, myId, conversationId);
+        return ResponseEntity.ok(results);
     }
 }

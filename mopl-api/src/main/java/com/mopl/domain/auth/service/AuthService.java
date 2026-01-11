@@ -74,8 +74,8 @@ public class AuthService {
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user), newAccessToken);
 
-        addTokenCookie(response, "ACCESS_TOKEN", newAccessToken, accessTokenMaxAge); //1시간
-        addTokenCookie(response, "REFRESH_TOKEN", newRefreshToken, refreshTokenMaxAge); //2주
+        addTokenCookie(response, "ACCESS_TOKEN", newAccessToken, accessTokenMaxAge);
+        addTokenCookie(response, "REFRESH_TOKEN", newRefreshToken, refreshTokenMaxAge);
 
         return jwtDto;
     }

@@ -65,7 +65,11 @@ public class SecurityConfig {
                 .addFilterBefore(new JwtFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers(
-                                "/api/auth/**",
+                                "/api/auth/sign-in",
+                                "/api/auth/sign-out",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh",
+                                "/api/auth/csrf-token",
                                 "/api/users"
                         )
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())

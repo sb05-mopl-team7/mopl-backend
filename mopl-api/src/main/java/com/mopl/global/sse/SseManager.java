@@ -30,7 +30,9 @@ public class SseManager {
         emitter.onError((e) -> emitters.remove(userId));
 
         try {
-            emitter.send(SseEmitter.event().name("connect").data("connected!"));
+            assert emitter.getTimeout() != null;
+            Map<String, Long> timeoutData = Map.of("timeout", emitter.getTimeout());
+            emitter.send(SseEmitter.event().name("timeout").data(timeoutData));
         } catch (IOException e) {
             emitters.remove(userId);
         }

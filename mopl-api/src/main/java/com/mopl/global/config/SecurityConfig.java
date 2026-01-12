@@ -57,7 +57,6 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
                                 "/api/auth/csrf-token"
                         ).permitAll()
-                        .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
                         .anyRequest().authenticated()
                 )

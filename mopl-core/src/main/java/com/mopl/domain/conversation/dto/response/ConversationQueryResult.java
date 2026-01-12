@@ -1,4 +1,4 @@
-package com.mopl.domain.conversation.dto;
+package com.mopl.domain.conversation.dto.response;
 
 import com.mopl.domain.conversation.entity.Conversation;
 import com.mopl.domain.conversation.entity.DirectMessage;

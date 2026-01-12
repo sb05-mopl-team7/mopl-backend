@@ -1,6 +1,6 @@
 package com.mopl.domain.conversation.repository;
 
-import com.mopl.domain.conversation.dto.ConversationQueryResult;
+import com.mopl.domain.conversation.dto.response.ConversationQueryResult;
 
 import java.time.LocalDateTime;
 import java.util.List;

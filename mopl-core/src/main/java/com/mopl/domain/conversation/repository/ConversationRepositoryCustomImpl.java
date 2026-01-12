@@ -1,6 +1,6 @@
 package com.mopl.domain.conversation.repository;
 
-import com.mopl.domain.conversation.dto.ConversationQueryResult;
+import com.mopl.domain.conversation.dto.response.ConversationQueryResult;
 import com.mopl.domain.conversation.entity.QDirectMessage;
 import com.mopl.domain.conversation.entity.QReadStatus;
 import com.mopl.domain.user.entity.QUser;

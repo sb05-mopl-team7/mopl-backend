@@ -1,9 +1,9 @@
 package com.mopl.domain.conversation.service;
 
-import com.mopl.domain.conversation.dto.ConversationQueryResult;
 import com.mopl.domain.conversation.dto.request.ConversationCreateRequest;
 import com.mopl.domain.conversation.dto.request.ConversationSearchCondition;
 import com.mopl.domain.conversation.dto.response.ConversationDto;
+import com.mopl.domain.conversation.dto.response.ConversationQueryResult;
 import com.mopl.domain.conversation.dto.response.ConversationSimpleDto;
 import com.mopl.domain.conversation.dto.response.DirectMessageDto;
 import com.mopl.domain.conversation.entity.Conversation;

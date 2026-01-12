@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -48,7 +47,7 @@ public class ContentService {
                                 .map(Contenttag -> Contenttag.getTag().getTag()).toList();
 
         return new ContentDto(
-                newContent.getId(),
+                newContent.getId().toString(),
                 newContent.getContentType(),
                 newContent.getTitle(),
                 newContent.getDescription(),
@@ -79,7 +78,7 @@ public class ContentService {
         int watchCount = 0; // TODO: redis에서 가져오기
 
         return new ContentDto(
-                content.getId(),
+                content.getId().toString(),
                 content.getContentType(),
                 content.getTitle(),
                 content.getDescription(),
@@ -108,7 +107,7 @@ public class ContentService {
         int watchCount = 0; // TODO: redis에서 가져오기
 
         return new ContentDto(
-                content.getId(),
+                content.getId().toString(),
                 content.getContentType(),
                 content.getTitle(),
                 content.getDescription(),
@@ -141,7 +140,7 @@ public class ContentService {
                     .map(Contenttag -> Contenttag.getTag().getTag()).toList();
 
             return new ContentDto(
-                    content.getId(),
+                    content.getId().toString(),
                     content.getContentType(),
                     content.getTitle(),
                     content.getDescription(),
@@ -153,8 +152,10 @@ public class ContentService {
             );
         }).toList();
 
+        List<Object> data = response.stream().map(dto -> (Object) dto).toList();
+
         return PageResponse.builder()
-                .data(Collections.singletonList(response))
+                .data(data)
                 .nextCursor(nextCursor)
                 .nextIdAfter(nextAfter)
                 .hasNext(hasNext)

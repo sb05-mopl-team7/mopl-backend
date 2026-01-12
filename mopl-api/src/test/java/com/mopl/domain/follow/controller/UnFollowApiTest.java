@@ -111,7 +111,7 @@ class UnFollowApiTest {
                         .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value(ErrorCode.FORBIDDEN.name()));
+                .andExpect(jsonPath("$.title").value(FollowErrorCode.NOT_YOUR_FOLLOW.name()));
     }
 
     // 4. 리소스 없음 (404)

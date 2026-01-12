@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface ReadStatusRepository extends JpaRepository<ReadStatus, Long> {
 
     Optional<ReadStatus> findByConversationIdAndUserId(Long conversationId, Long userId);
+
 }

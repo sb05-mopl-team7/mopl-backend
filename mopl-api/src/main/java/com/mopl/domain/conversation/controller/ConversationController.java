@@ -50,9 +50,17 @@ public class ConversationController {
 
     @GetMapping("/with")
     public ResponseEntity<ConversationSimpleDto> getConversationWithUser(@AuthenticationPrincipal UserPrincipal userPrincipal,
-                                                                             @RequestParam("userId") Long withUserId) {
+                                                                         @RequestParam("userId") Long withUserId) {
         Long myId = userPrincipal.getUserId();
         ConversationSimpleDto simpleDto = conversationService.findConversationWithUser(myId, withUserId);
         return ResponseEntity.ok(simpleDto);
+    }
+
+    @GetMapping("/{conversationId}")
+    public ResponseEntity<ConversationDto> getConversationById(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                                @PathVariable Long conversationId) {
+        Long myId = userPrincipal.getUserId();
+        ConversationDto conversationDto = conversationService.findMyConversation(myId, conversationId);
+        return ResponseEntity.ok(conversationDto);
     }
 }

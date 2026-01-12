@@ -71,8 +71,14 @@ public class FollowService {
         followRepository.delete(follow);
     }
 
+    // 특정 유저 팔로우 확인 조회 로직
+    public boolean isFollowing(Long followerId, Long followeeId) {
+        return followRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId);
+    }
+
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
     }
+
 }

@@ -39,9 +39,9 @@ public class ConversationRepositoryCustomImpl implements ConversationRepositoryC
         QDirectMessage message = new QDirectMessage("message");
         QDirectMessage subMessage = new QDirectMessage("subMessage");
 
-        // 각 대화방의 최신 메시지 생성 시간
-        JPQLQuery<LocalDateTime> subquery = JPAExpressions
-                .select(subMessage.createdAt.max())
+        // 각 대화방의 최신 메시지 id
+        JPQLQuery<Long> lastMessageIdSubquery = JPAExpressions
+                .select(subMessage.id.max())
                 .from(subMessage)
                 .where(subMessage.conversation.eq(conversation));
 
@@ -61,7 +61,7 @@ public class ConversationRepositoryCustomImpl implements ConversationRepositoryC
                 .join(targetStatus).on(targetStatus.conversation.eq(conversation).and(targetStatus.user.id.ne(userId)))
                 .join(targetUser).on(targetStatus.user.eq(targetUser))
                 // 최신 메시지 (메시지 없는 방 고려해 left join)
-                .leftJoin(message).on(message.conversation.eq(conversation).and(message.createdAt.eq(subquery)))
+                .leftJoin(message).on(message.id.eq(lastMessageIdSubquery))
                 .where(
                         keywordSearch(keyword, targetUser), // 검색어 조건
                         cursorCondition(cursor, idAfter, sortDateTime) // 커서 조건
@@ -83,9 +83,9 @@ public class ConversationRepositoryCustomImpl implements ConversationRepositoryC
         QReadStatus targetStatus = new QReadStatus("targetStatus");
         QDirectMessage subMessage = new QDirectMessage("subMessage");
 
-        // 각 대화방 최신 메시지 생성 시간 서브쿼리
-        JPQLQuery<LocalDateTime> subquery = JPAExpressions
-                .select(subMessage.createdAt.max())
+        // 각 대화방 최신 메시지 id 서브쿼리
+        JPQLQuery<Long> lastMessageIdSubquery = JPAExpressions
+                .select(subMessage.id.max())
                 .from(subMessage)
                 .where(subMessage.conversation.eq(conversation));
 
@@ -101,7 +101,7 @@ public class ConversationRepositoryCustomImpl implements ConversationRepositoryC
                 .join(targetStatus).on(targetStatus.conversation.eq(conversation).and(targetStatus.user.id.eq(withUserId)))
                 .join(targetUser).on(targetStatus.user.eq(targetUser))
                 // 최신 메시지 (메시지 없는 방 고려해 left join)
-                .leftJoin(lastMessage).on(lastMessage.conversation.eq(conversation).and(lastMessage.createdAt.eq(subquery)))
+                .leftJoin(lastMessage).on(lastMessage.id.eq(lastMessageIdSubquery))
                 .fetchOne());
     }
 

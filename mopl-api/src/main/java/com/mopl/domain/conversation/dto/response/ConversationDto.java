@@ -5,7 +5,7 @@ import com.mopl.domain.user.dto.response.UserSummaryDto;
 public record ConversationDto(
         Long id,
         UserSummaryDto with,
-        LastMessage lastestMessage,
+        DirectMessageDto lastestMessage,
         boolean hasUnread
 ) {
 }

@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -41,5 +42,10 @@ public class AuthController {
         JwtDto jwtDto = authService.refresh(refreshToken, response);
         return ResponseEntity.ok().body(jwtDto);
     }
+    @GetMapping("/csrf-token")
+    public CsrfToken getCsrfToken(CsrfToken token) {
+        return token;
+    }
+
 
 }

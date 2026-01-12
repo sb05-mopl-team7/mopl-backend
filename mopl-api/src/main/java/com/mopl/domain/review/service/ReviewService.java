@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -91,7 +92,7 @@ public class ReviewService {
         boolean hasNext = fetched.size() > size;
         List<Review> page = hasNext ? fetched.subList(0, size) : fetched;
 
-        // N+1 방지: 현재 페이지의 userId만 모아서 한 번에 조회
+        // N+1 방지: 페이지에 있는 userId만 모아서 한 번에 조회
         Set<Long> userIds = new HashSet<>();
         for (Review r : page) userIds.add(r.getUserId());
 
@@ -158,7 +159,6 @@ public class ReviewService {
         reviewRepository.delete(review);
     }
 
-    // 검증
     private void validateAuthenticated(Long requesterId) {
         if (requesterId == null) {
             throw new MoplException(ErrorCode.UNAUTHORIZED);
@@ -214,20 +214,25 @@ public class ReviewService {
         }
     }
 
+    // 커서 정규화(중복 페이지 방지): DB createdAt 정밀도(마이크로초)에 맞춤
+    private LocalDateTime normalizeCursorTime(LocalDateTime t) {
+        return t == null ? null : t.truncatedTo(ChronoUnit.MICROS);
+    }
+
     private LocalDateTime parseCreatedAtCursor(String raw) {
         String normalized = raw.trim().replace(" ", "T");
         try {
-            return LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            LocalDateTime parsed = LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            return normalizeCursorTime(parsed);
         } catch (DateTimeParseException e) {
             throw new MoplException(ErrorCode.INVALID_REQUEST);
         }
     }
 
     private String formatCreatedAtCursor(LocalDateTime createdAt) {
-        return createdAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        return normalizeCursorTime(createdAt).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
-    // 유저 연동
     private Map<Long, ReviewAuthorDto> loadAuthorMap(Set<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) return Map.of();
 
@@ -258,6 +263,5 @@ public class ReviewService {
         );
     }
 
-    private record CursorKey(LocalDateTime cursorCreatedAt, Long idAfter) {
-    }
+    private record CursorKey(LocalDateTime cursorCreatedAt, Long idAfter) {}
 }

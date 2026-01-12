@@ -54,7 +54,8 @@ public class SecurityConfig {
                                 "/api/auth/sign-in",
                                 "/api/auth/sign-out",
                                 "/api/auth/reset-password",
-                                "/api/auth/refresh"
+                                "/api/auth/refresh",
+                                "/api/auth/csrf-token"
                         ).permitAll()
                         .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
@@ -65,9 +66,7 @@ public class SecurityConfig {
                 .addFilterBefore(new JwtFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers(
-                                "/api/auth/sign-in",
-                                "/api/auth/reset-password",
-                                "/api/auth/csrf-token",
+                                "/api/auth/**",
                                 "/api/users"
                         )
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())

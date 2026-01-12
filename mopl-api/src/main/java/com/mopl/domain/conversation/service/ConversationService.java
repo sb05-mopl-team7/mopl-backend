@@ -5,7 +5,7 @@ import com.mopl.domain.conversation.dto.request.ConversationCreateRequest;
 import com.mopl.domain.conversation.dto.request.ConversationSearchCondition;
 import com.mopl.domain.conversation.dto.response.ConversationDto;
 import com.mopl.domain.conversation.dto.response.ConversationSimpleDto;
-import com.mopl.domain.conversation.dto.response.LastMessage;
+import com.mopl.domain.conversation.dto.response.DirectMessageDto;
 import com.mopl.domain.conversation.entity.Conversation;
 import com.mopl.domain.conversation.entity.DirectMessage;
 import com.mopl.domain.conversation.entity.ReadStatus;
@@ -186,7 +186,7 @@ public class ConversationService {
         UserSummaryDto sender = isSenderMe ? mySummaryDto : with;
         UserSummaryDto receiver = isSenderMe ? with : mySummaryDto;
 
-        LastMessage lastMessageDto = new LastMessage(lastMessage.getId(), conversationId, lastMessage.getCreatedAt(),
+        DirectMessageDto lastMessageDto = new DirectMessageDto(lastMessage.getId(), conversationId, lastMessage.getCreatedAt(),
                                                      sender, receiver, lastMessage.getContent());
 
         long myLastReadMsgId = myReadStatus.getLastReadMessage() != null ? myReadStatus.getLastReadMessage().getId() : 0L;

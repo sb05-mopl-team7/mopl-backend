@@ -36,7 +36,10 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-//    @PostMapping("/refresh")
-//    public ResponseEntity<JwtDto> refresh(@Valid @RequestBody JwtDto req) {}
+    @PostMapping("/refresh")
+    public ResponseEntity<JwtDto> refresh(@CookieValue("REFRESH_TOKEN") String refreshToken, HttpServletResponse response) {
+        JwtDto jwtDto = authService.refresh(refreshToken, response);
+        return ResponseEntity.ok().body(jwtDto);
+    }
 
 }

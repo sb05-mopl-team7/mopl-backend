@@ -160,29 +160,14 @@ public class ConversationService {
                 .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
 
         return new ConversationSimpleDto(conversation.getId());
-
-/*
-        // 특정 사용자와의 대화 조회할 때 상대방 정보, 최신 메시지, 읽음 상태 등 다른 정보가 추가로 필요한 경우 아래 로직 사용
-        ConversationQueryResult queryResult = conversationRepository.findConversationQueryResult(myId, withUserId)
-                .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
-        return queryResultToDto(queryResult, myId);
-*/
     }
 
     // 특정 대화방 단건 조회
     public ConversationDto findMyConversation(Long myId, Long conversationId) {
-        ReadStatus myReadStatus = readStatusRepository.findByConversationIdAndUserId(conversationId, myId)
+        ConversationQueryResult queryResult = conversationRepository.findConversationDetailByConversationId(myId, conversationId)
                 .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
 
-        Conversation conversation = myReadStatus.getConversation();
-
-        // 해당 대화방의 읽음 상태 중에 userId가 myId가 아닌 유저 조회
-        User targetUser = readStatusRepository.findPartnerByConversationId(conversationId, myId)
-                .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
-
-        DirectMessage lastMessage = directMessageRepository.findTopByConversationIdOrderByCreatedAtDescIdDesc(conversationId)
-                .orElse(null);
-        return convertToDto(conversation, myId, targetUser, myReadStatus, lastMessage);
+        return queryResultToDto(queryResult, myId);
     }
 
     private ConversationDto convertToDto(Conversation conversation, Long myId, User targetUser,

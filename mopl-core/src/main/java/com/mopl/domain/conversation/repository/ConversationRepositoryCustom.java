@@ -9,5 +9,5 @@ import java.util.Optional;
 public interface ConversationRepositoryCustom {
     List<ConversationQueryResult> findMyConversations(Long userId, String keyword, LocalDateTime cursor, Long idAfter, int limit);
 
-    Optional<ConversationQueryResult> findConversationQueryResult(Long myId, Long withUserId);
+    Optional<ConversationQueryResult> findConversationDetailByConversationId(Long myId, Long conversationId);
 }

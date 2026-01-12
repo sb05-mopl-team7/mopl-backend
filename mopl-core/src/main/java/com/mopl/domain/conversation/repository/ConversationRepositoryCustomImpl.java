@@ -70,13 +70,8 @@ public class ConversationRepositoryCustomImpl implements ConversationRepositoryC
                 .fetch();
     }
 
-    /**
-     * 현재 미사용 메서드지만 추후 필요시 사용할 목적으로 작성
-     * 특정 사용자와의 대화방 상세 정보 조회
-     * - 조회: 상대방 정보, 최신 메시지, 나의 읽음 상태를 동시 조회
-     */
     @Override
-    public Optional<ConversationQueryResult> findConversationQueryResult(Long myId, Long withUserId) {
+    public Optional<ConversationQueryResult> findConversationDetailByConversationId(Long myId, Long conversationId) {
         QUser targetUser = new QUser("targetUser");
         QDirectMessage lastMessage = new QDirectMessage("lastMessage");
         QReadStatus myStatus = new QReadStatus("myStatus");
@@ -87,21 +82,23 @@ public class ConversationRepositoryCustomImpl implements ConversationRepositoryC
         JPQLQuery<Long> lastMessageIdSubquery = JPAExpressions
                 .select(subMessage.id.max())
                 .from(subMessage)
-                .where(subMessage.conversation.eq(conversation));
+                .where(subMessage.conversation.id.eq(conversationId));
 
-        return Optional.ofNullable(queryFactory.select(Projections.constructor(ConversationQueryResult.class,
+        return Optional.ofNullable(queryFactory
+                .select(Projections.constructor(ConversationQueryResult.class,
                         conversation,
                         targetUser,
                         lastMessage,
                         myStatus
                 )).from(conversation)
                 // 로그인한 유저가 참여한 방
-                .join(myStatus).on(myStatus.conversation.eq(conversation).and(myStatus.user.id.eq(myId)))
-                // 대화 상대 정보
-                .join(targetStatus).on(targetStatus.conversation.eq(conversation).and(targetStatus.user.id.eq(withUserId)))
+                .join(myStatus).on(myStatus.conversation.id.eq(conversationId).and(myStatus.user.id.eq(myId)))
+                // 상대방 정보 찾기
+                .join(targetStatus).on(targetStatus.conversation.id.eq(conversationId).and(targetStatus.user.id.ne(myId)))
                 .join(targetUser).on(targetStatus.user.eq(targetUser))
                 // 최신 메시지 (메시지 없는 방 고려해 left join)
                 .leftJoin(lastMessage).on(lastMessage.id.eq(lastMessageIdSubquery))
+                .where(conversation.id.eq(conversationId))
                 .fetchOne());
     }
 

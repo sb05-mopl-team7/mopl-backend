@@ -1,7 +1,7 @@
 package com.mopl.job;
 
 import com.mopl.domain.content.entity.Content;
-import com.mopl.domain.contents.dto.SportDbDto;
+import com.mopl.domain.contents.dto.sportDb.SportDbDto;
 import com.mopl.domain.contents.processor.SportProcessor;
 import com.mopl.domain.contents.reader.SportReader;
 import com.mopl.domain.contents.writer.TmdbWriter;

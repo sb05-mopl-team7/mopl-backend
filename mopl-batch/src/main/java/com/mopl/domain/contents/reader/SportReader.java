@@ -1,6 +1,6 @@
 package com.mopl.domain.contents.reader;
 
-import com.mopl.domain.contents.dto.SportDbDto;
+import com.mopl.domain.contents.dto.sportDb.SportDbDto;
 import com.mopl.domain.contents.openapi.SportDbClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

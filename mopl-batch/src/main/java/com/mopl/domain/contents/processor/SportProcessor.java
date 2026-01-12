@@ -4,7 +4,7 @@ import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.entity.Tag;
 import com.mopl.domain.content.enums.ContentType;
 import com.mopl.domain.content.repository.TagRepository;
-import com.mopl.domain.contents.dto.SportDbDto;
+import com.mopl.domain.contents.dto.sportDb.SportDbDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.annotation.BeforeStep;

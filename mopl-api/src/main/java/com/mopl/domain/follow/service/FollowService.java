@@ -3,6 +3,8 @@ package com.mopl.domain.follow.service;
 import com.mopl.domain.follow.dto.request.FollowRequest;
 import com.mopl.domain.follow.dto.response.FollowResponse;
 import com.mopl.domain.follow.entity.Follow;
+import com.mopl.domain.follow.exception.FollowErrorCode;
+import com.mopl.domain.follow.exception.FollowException;
 import com.mopl.domain.follow.repository.FollowRepository;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.repository.UserRepository;
@@ -27,13 +29,13 @@ public class FollowService {
 
         // 1. 자기 자신 팔로우 방지 (400)
         if (myId.equals(targetId)) {
-            throw new MoplException(ErrorCode.CANNOT_FOLLOW_SELF);
+            throw new FollowException(FollowErrorCode.CANNOT_FOLLOW_SELF);
         }
 
         // 2. 이미 팔로우 중인지 확인 (400)
         // // TODO: 동시성 이슈 체크할 것
         if (followRepository.existsByFollowerIdAndFolloweeId(myId, targetId)) {
-            throw new MoplException(ErrorCode.ALREADY_FOLLOWING);
+            throw new FollowException(FollowErrorCode.ALREADY_FOLLOWING);
         }
 
         // 3. 사용자 조회 (404)
@@ -58,7 +60,7 @@ public class FollowService {
     public void unfollow(Long myId, Long followId) {
         // 1. 팔로우 존재 확인 (404)
         Follow follow = followRepository.findById(followId)
-                .orElseThrow(() -> new MoplException(ErrorCode.FOLLOW_NOT_FOUND));
+                .orElseThrow(() -> new FollowException(FollowErrorCode.FOLLOW_NOT_FOUND));
 
         // 2. 언팔로우 권한 확인 (403)
         if (!follow.getFollower().getId().equals(myId)) {

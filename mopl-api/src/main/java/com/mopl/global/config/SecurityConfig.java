@@ -55,7 +55,7 @@ public class SecurityConfig {
                                 "/api/auth/sign-out",
                                 "/api/auth/reset-password",
                                 "/api/auth/refresh",
-                                "/api/auth/csrf-token"
+                                "/api/auth/csrf-token" // 로그아웃 후 호출
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
                         .anyRequest().authenticated()
@@ -66,10 +66,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers(
                                 "/api/auth/sign-in",
-                                "/api/auth/sign-out",
                                 "/api/auth/reset-password",
                                 "/api/auth/refresh",
-                                "/api/auth/csrf-token",
+                                "/api/auth/sign-out",
                                 "/api/users"
                         )
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())

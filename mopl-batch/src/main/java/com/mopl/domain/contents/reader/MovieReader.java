@@ -15,7 +15,7 @@ import java.util.List;
 @Component
 @StepScope
 @RequiredArgsConstructor
-public class TmdbReader implements ItemReader<Long> {
+public class MovieReader implements ItemReader<Long> {
 
     private final TmdbClient tmdbClient;
     private Iterator<Long> itemIterator;

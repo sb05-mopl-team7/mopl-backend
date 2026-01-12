@@ -1,4 +1,4 @@
-package com.mopl.domain.contents.dto;
+package com.mopl.domain.contents.dto.sportDb;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -13,5 +13,7 @@ public record SportDbDto(
         String description,
         @JsonAlias("strThumb")
         @JsonProperty("thumbnailUrl")
-        String thumbnailUrl
+        String thumbnailUrl,
+        String strVenue,
+        String strSport
 ) {}

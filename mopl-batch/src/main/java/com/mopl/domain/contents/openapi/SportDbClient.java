@@ -1,7 +1,7 @@
 package com.mopl.domain.contents.openapi;
 
-import com.mopl.domain.contents.dto.SportDbDto;
-import com.mopl.domain.contents.dto.SportDbResponse;
+import com.mopl.domain.contents.dto.sportDb.SportDbDto;
+import com.mopl.domain.contents.dto.sportDb.SportDbResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;

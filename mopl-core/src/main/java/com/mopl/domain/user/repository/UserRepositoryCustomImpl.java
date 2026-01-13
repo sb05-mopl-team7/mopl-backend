@@ -5,7 +5,7 @@ import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.enums.Role;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
-import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.*;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,8 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
             String keywordLike,
             Role roleEqual,
             Boolean isLocked,
-            LocalDateTime cursorCreatedAt,
+            String sortByProperty,
+            Object cursorValue,
             Long idAfter,
             Pageable pageable) {
 
@@ -38,7 +39,7 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
         BooleanBuilder filterCondition = buildFilterConditions(user, keywordLike, roleEqual, isLocked);
 
         // 커서 조건
-        BooleanExpression cursorCondition = buildCursorCondition(user, cursorCreatedAt, idAfter, pageable);
+        BooleanExpression cursorCondition = buildCursorCondition(user, sortByProperty, cursorValue,idAfter, pageable);
 
         //쿼리 실행
         JPAQuery<User> query = jpaQueryFactory
@@ -75,39 +76,158 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
     }
     private BooleanExpression buildCursorCondition(
             QUser user,
-            LocalDateTime cursorCreatedAt,
+            String sortByProperty,
+            Object cursorValue,
             Long idAfter,
             Pageable pageable
-    ){
-        if(cursorCreatedAt == null || idAfter == null){
+    ) {
+        if (cursorValue == null || idAfter == null) {
             return null;
         }
 
-        // Pageable에서 정렬 방향 추출
-        Sort.Direction direction = extractCreatedAtDirection(pageable);
+        // sortByProperty의 정렬 방향 추출
+        Sort.Direction direction = extractSortDirection(pageable, sortByProperty);
 
-        // 정렬 방향에 따라 비교 연산자 변경
-        if (direction == Sort.Direction.DESC) {
-            // DESCENDING: 작은 값
-            return user.createdAt.lt(cursorCreatedAt)
-                    .or(user.createdAt.eq(cursorCreatedAt)
-                            .and(user.id.lt(idAfter)));
-        } else {
-            // ASCENDING: 큰 값
-            return user.createdAt.gt(cursorCreatedAt)
-                    .or(user.createdAt.eq(cursorCreatedAt)
-                            .and(user.id.gt(idAfter)));
+        // sortByProperty에 따라 비교 로직 분기
+        switch (sortByProperty) {
+            case "name":
+                return buildStringCursorCondition(
+                        user.name, (String) cursorValue, user.id, idAfter, direction
+                );
+
+            case "email":
+                return buildStringCursorCondition(
+                        user.email, (String) cursorValue, user.id, idAfter, direction
+                );
+
+            case "createdAt":
+                return buildDateTimeCursorCondition(
+                        user.createdAt, (LocalDateTime) cursorValue, user.id, idAfter, direction
+                );
+
+            case "role":
+                return buildRoleCursorCondition(
+                        user.role, (Role) cursorValue, user.id, idAfter, direction
+                );
+
+            case "locked":
+                return buildBooleanCursorCondition(
+                        user.locked, (Boolean) cursorValue, user.id, idAfter, direction
+                );
+
+            default:
+                return null;
         }
     }
+    private <T extends Comparable<? super T>> BooleanExpression buildComparableCursorCondition(
+            ComparablePath<T> field,
+            T cursorValue,
+            NumberPath<Long> idField,
+            Long idAfter,
+            Sort.Direction direction
+    ) {
+        if (direction == Sort.Direction.DESC) {
+            return field.lt(cursorValue)
+                    .or(field.eq(cursorValue).and(idField.lt(idAfter)));
+        } else {
+            return field.gt(cursorValue)
+                    .or(field.eq(cursorValue).and(idField.gt(idAfter)));
+        }
+    }
+    // ✅ 추가: String 전용
+    private BooleanExpression buildStringCursorCondition(
+            StringPath field,
+            String cursorValue,
+            NumberPath<Long> idField,
+            Long idAfter,
+            Sort.Direction direction
+    ) {
+        if (direction == Sort.Direction.DESC) {
+            return field.lt(cursorValue)
+                    .or(field.eq(cursorValue).and(idField.lt(idAfter)));
+        } else {
+            return field.gt(cursorValue)
+                    .or(field.eq(cursorValue).and(idField.gt(idAfter)));
+        }
+    }
+
+    // ✅ 추가: LocalDateTime 전용
+    private BooleanExpression buildDateTimeCursorCondition(
+            DateTimePath<LocalDateTime> field,
+            LocalDateTime cursorValue,
+            NumberPath<Long> idField,
+            Long idAfter,
+            Sort.Direction direction
+    ) {
+        if (direction == Sort.Direction.DESC) {
+            return field.lt(cursorValue)
+                    .or(field.eq(cursorValue).and(idField.lt(idAfter)));
+        } else {
+            return field.gt(cursorValue)
+                    .or(field.eq(cursorValue).and(idField.gt(idAfter)));
+        }
+    }
+
+    // ✅ 추가: Enum(Role) 전용
+    private BooleanExpression buildRoleCursorCondition(
+            EnumPath<Role> field,
+            Role cursorValue,
+            NumberPath<Long> idField,
+            Long idAfter,
+            Sort.Direction direction
+    ) {
+        if (direction == Sort.Direction.DESC) {
+            return field.lt(cursorValue)
+                    .or(field.eq(cursorValue).and(idField.lt(idAfter)));
+        } else {
+            return field.gt(cursorValue)
+                    .or(field.eq(cursorValue).and(idField.gt(idAfter)));
+        }
+    }
+
+    // ✅ 추가: Boolean 전용
+    private BooleanExpression buildBooleanCursorCondition(
+            BooleanPath field,
+            Boolean cursorValue,
+            NumberPath<Long> idField,
+            Long idAfter,
+            Sort.Direction direction
+    ) {
+        BooleanExpression baseCondition;
+
+        if (direction == Sort.Direction.DESC) {
+            if (cursorValue) {
+                baseCondition = field.isFalse();
+            } else {
+                return idField.lt(idAfter);
+            }
+        } else {
+            if (!cursorValue) {
+                baseCondition = field.isTrue();
+            } else {
+                return idField.gt(idAfter);
+            }
+        }
+
+        BooleanExpression sameValueCondition = field.eq(cursorValue)
+                .and(direction == Sort.Direction.DESC
+                        ? idField.lt(idAfter)
+                        : idField.gt(idAfter));
+
+        return baseCondition.or(sameValueCondition);
+    }
+
+
     // Pageable에서 정렬 방향 추출
-    private Sort.Direction extractCreatedAtDirection(Pageable pageable) {
+    private Sort.Direction extractSortDirection(Pageable pageable, String sortByProperty) {
         for (Sort.Order order : pageable.getSort()) {
-            if (order.getProperty().equals("createdAt")) {
+            if (order.getProperty().equals(sortByProperty)) {
                 return order.getDirection();
             }
         }
         return Sort.Direction.DESC;
     }
+
     // 정렬 적용
     private void applySorting(JPAQuery<User> query, QUser user, Pageable pageable) {
         List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();

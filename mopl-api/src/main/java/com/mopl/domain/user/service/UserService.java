@@ -67,7 +67,7 @@ public class UserService {
         SortDirection sortDirection = searchCondition.sortDirection();
         SortBy sortBy = searchCondition.sortBy();
 
-        StartId key = parseStartId(cursor, idAfter);
+        StartId key = parseStartId(sortBy,cursor, idAfter);
         Sort sort = buildSort(sortBy, sortDirection);
         Pageable pageable = PageRequest.of(0, limit + 1, sort);
 
@@ -75,7 +75,8 @@ public class UserService {
                 keywordLike,
                 roleEqual,
                 isLocked,
-                key.cursorCreatedAt,
+                key.sortByProperty,
+                key.cursorValue,
                 key.idAfter,
                 pageable
         );
@@ -98,7 +99,7 @@ public class UserService {
         if (hasNext && !page.isEmpty()) {
             User last = page.get(page.size() - 1);
             nextIdAfter = String.valueOf(last.getId());
-            nextCursor = formatCreatedAtCursor(last.getCreatedAt());
+            nextCursor = formatCursorValue(sortBy, last);
         }
 
         return PageResponse.<UserDto>builder()
@@ -111,8 +112,34 @@ public class UserService {
                 .sortDirection(sortDirection)
                 .build();
     }
+    private String formatCursorValue(SortBy sortBy, User user) {
+        switch (sortBy) {
+            case name:
+                return user.getName();
 
-    private StartId parseStartId(String cursorRaw, String idAfterRaw) {
+            case email:
+                return user.getEmail();
+
+            case createdAt:
+                return user.getCreatedAt()
+                        .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+            case role:
+                return user.getRole().name();
+
+            case isLocked:
+                return String.valueOf(user.getLocked());
+
+            default:
+                throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+
+    private StartId parseStartId(
+            SortBy sortBy,
+            String cursorRaw,
+            String idAfterRaw) {
         boolean hasCursor = cursorRaw != null && !cursorRaw.isBlank();
         boolean hasIdAfter = idAfterRaw != null && !idAfterRaw.isBlank();
 
@@ -121,11 +148,40 @@ public class UserService {
         }
 
         if (!hasCursor) {
-            return new StartId(null, null);
+            return new StartId(sortBy.property(),null, null);
         }
+        // sortBy에 따라 cursor 파싱
+        Object parsedCursor = parseCursorValue(sortBy, cursorRaw);
+        Long parsedId = parseLong(idAfterRaw);
 
-        return new StartId(parseCreatedAtCursor(cursorRaw), parseLong(idAfterRaw));
+        return new StartId(sortBy.property(),parsedCursor,parsedId);
     }
+    private Object parseCursorValue(SortBy sortBy, String cursorRaw) {
+        try {
+            switch (sortBy) {
+                case name:
+                case email:
+                    return cursorRaw;  // String 그대로
+
+                case createdAt:
+                    return parseCreatedAtCursor(cursorRaw);  // LocalDateTime
+
+                case role:
+                    // Role enum 파싱
+                    return Role.valueOf(cursorRaw.toUpperCase());
+
+                case isLocked:
+                    // Boolean 파싱
+                    return Boolean.parseBoolean(cursorRaw);
+
+                default:
+                    throw new MoplException(ErrorCode.INVALID_REQUEST);
+            }
+        } catch (Exception e) {
+            throw new MoplException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
 
     private LocalDateTime parseCreatedAtCursor(String cursor) {
         String normalized = cursor.trim().replace(" ", "T");
@@ -178,7 +234,7 @@ public class UserService {
         );
     }
 
-    private record StartId(LocalDateTime cursorCreatedAt, Long idAfter) {
+    private record StartId(String sortByProperty,Object cursorValue, Long idAfter) {
 
     }
 

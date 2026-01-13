@@ -10,10 +10,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -35,5 +32,13 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.findAll(
                 cursor, idAfter, limit, sortDirection, sortBy, userId
         ));
+    }
+
+    @DeleteMapping("/{notificationId}")
+    public ResponseEntity<Void> deleteNotification(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                       @PathVariable Long notificationId) {
+        Long userId = userPrincipal.getUserId();
+        notificationService.deleteNotification(userId,notificationId);
+        return ResponseEntity.ok().build();
     }
 }

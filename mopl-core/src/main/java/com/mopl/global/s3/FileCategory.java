@@ -9,7 +9,8 @@ public enum FileCategory {
     CONTENT_THUMBNAIL("contents/thumbnails"),
     PROFILE_IMAGE("profiles"),
     CHAT_FILE("chats"),
-    BATCH_LOG("logs/batch");
+    BATCH_LOG("logs/batch"),
+    TEST("test");
 
     private final String path;
 }

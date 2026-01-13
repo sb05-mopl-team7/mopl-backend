@@ -1,6 +1,7 @@
 package com.mopl.global.s3;
 
 import com.mopl.global.dto.UploadFileRequest;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,14 +14,15 @@ import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-@SpringBootTest(
-        classes = {S3Manager.class, S3Config.class}
-)
+// Test 할 땐 @Disabled 주석 처리 후 실행
+@Disabled("이 테스트는 실제 S3에 파일을 업로드 합니다. 로컬에서 수동으로만 테스트 해주세요.")
+@SpringBootTest(classes = {S3Manager.class, S3Config.class})
 @ActiveProfiles("core-test")
 class S3ManagerTest {
 
     @Autowired
     private S3Manager s3Manager;
+
 
     @Test
     @DisplayName("S3 파일 업로드 테스트")
@@ -37,12 +39,11 @@ class S3ManagerTest {
                 "text/plain"
         );
 
-        String savedUrl = s3Manager.upload(request, FileCategory.CONTENT_THUMBNAIL);
+        String savedUrl = s3Manager.upload(request, FileCategory.TEST);
         System.out.println("저장된 URL (DB 저장용): " + savedUrl);
 
         assertThat(savedUrl).contains("test-file.txt");
-        assertThat(savedUrl).contains(FileCategory.CONTENT_THUMBNAIL.getPath());
-
+        assertThat(savedUrl).contains(FileCategory.TEST.getPath());
     }
 
     @Test
@@ -57,7 +58,7 @@ class S3ManagerTest {
                 bytes.length,
                 "text/plain"
         );
-        String publicUrl = s3Manager.upload(request, FileCategory.CONTENT_THUMBNAIL);
+        String publicUrl = s3Manager.upload(request, FileCategory.TEST);
 
         // 2. Presigned URL 생성 호출
         String presignedUrl = s3Manager.generatePresignedUrl(publicUrl);

@@ -41,9 +41,7 @@ class FollowServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    // ==========================================
-    // 🛠️ 테스트 데이터 생성 헬퍼 메서드
-    // ==========================================
+    // 테스트 유저 데이터 생성 헬퍼 메서드
     private User createUser(Long id) {
         User user = new User("user" + id, "user" + id + "@test.com", "password");
         ReflectionTestUtils.setField(user, "id", id);

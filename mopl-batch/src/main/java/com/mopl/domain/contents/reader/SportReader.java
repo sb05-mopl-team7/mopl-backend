@@ -1,6 +1,7 @@
 package com.mopl.domain.contents.reader;
 
-import com.mopl.domain.contents.openapi.TmdbClient;
+import com.mopl.domain.contents.dto.sportDb.SportDbDto;
+import com.mopl.domain.contents.openapi.SportDbClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -15,16 +16,16 @@ import java.util.List;
 @Component
 @StepScope
 @RequiredArgsConstructor
-public class TmdbReader implements ItemReader<Long> {
+public class SportReader implements ItemReader<SportDbDto> {
 
-    private final TmdbClient tmdbClient;
-    private Iterator<Long> itemIterator;
+    private final SportDbClient sportDbClient;
+    private Iterator<SportDbDto> itemIterator;
 
     private int page = 1;
     private final int maxPage = 20;
 
     @Override
-    public Long read() throws IOException {
+    public SportDbDto read() throws IOException {
         if (itemIterator == null || !itemIterator.hasNext()) {
 
             if (page > maxPage) {
@@ -33,12 +34,12 @@ public class TmdbReader implements ItemReader<Long> {
             }
 
             log.debug("TMDB API 호출 중... page: {}", page);
-            List<Long> contentList = tmdbClient.getPopularMovieIdList(page).block();
+            List<SportDbDto> tvSeriesList = sportDbClient.getSportsEventSeason().block();
 
             // 더 이상 데이터 없으면 배치 종료
-            if (contentList == null || contentList.isEmpty()) return null;
+            if (tvSeriesList == null || tvSeriesList.isEmpty()) return null;
 
-            this.itemIterator = contentList.iterator();
+            this.itemIterator = tvSeriesList.iterator();
             this.page++;
 
         }

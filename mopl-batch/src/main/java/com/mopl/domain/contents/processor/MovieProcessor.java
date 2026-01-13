@@ -13,26 +13,24 @@ import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.List;
+
+import static com.mopl.domain.contents.dto.tmdb.KeywordDto.tagCache;
 
 @Slf4j
 @Component
 @StepScope
 @RequiredArgsConstructor
-public class TmdbProcessor implements ItemProcessor<Long, Content> {
+public class MovieProcessor implements ItemProcessor<Long, Content> {
 
     private final TmdbClient tmdbClient;
     private final TagRepository tagRepository;
 
-    // 키를 미리 담아놓을 메모리 캐시 key - 장르이름, value - Tag 객체
-    private Map<String, Tag> tagCache;
-
     @BeforeStep
     public void beforeStep(StepExecution stepExecution) {
-        if (tagCache == null) {
-            tagCache = tagRepository.findAll().stream()
-                    .collect(Collectors.toMap(Tag::getTag, tag -> tag));
+        if (tagCache.isEmpty()) {
+            List<Tag> allTags = tagRepository.findAll();
+            allTags.forEach(tag -> tagCache.put(tag.getTag(), tag));
             log.info("태그 {}개를 캐시에 로드했습니다.", tagCache.size());
         }
     }

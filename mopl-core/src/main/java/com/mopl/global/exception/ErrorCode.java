@@ -17,6 +17,7 @@ public enum ErrorCode {
 
     // 데이터 및 비즈니스 로직 관련
     INVALID_INPUT_VALUE("입력 값이 유효하지 않습니다.", 400),
+    MISSING_INPUT_VALUE("필수 입력 값이 누락되었습니다.", 400),
     DATA_INTEGRITY_VIOLATION("데이터 무결성 제약 조건이 위반되었습니다.", 400),
     DUPLICATE_RESOURCE("이미 존재하는 리소스입니다.", 409),
 

@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -37,6 +38,17 @@ public class GlobalExceptionHandler {
         log.error("타입 불일치 오류 발생: {}", detail, e);
 
         return createErrorResponse(ErrorCode.INVALID_INPUT_VALUE, detail);
+    }
+
+    /** 필수 파라미터 누락 예외 (400) - ErrorCode.MISSING_INPUT_VALUE와 연결 */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<@NonNull ProblemDetail> handleMissingParams(MissingServletRequestParameterException e) {
+
+        String detail = String.format("필수 파라미터 '%s'가 누락되었습니다.", e.getParameterName());
+
+        log.error("필수 파라미터 누락: {}", detail, e);
+
+        return createErrorResponse(ErrorCode.MISSING_INPUT_VALUE, detail);
     }
 
     /** 권한 부족 예외 (403) - ErrorCode.INSUFFICIENT_PERMISSIONS과 연결 */

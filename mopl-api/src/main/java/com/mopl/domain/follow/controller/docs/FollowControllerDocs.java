@@ -47,4 +47,19 @@ public interface FollowControllerDocs {
             @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user,
             @Parameter(description = "삭제할 팔로우 ID (PK)") @PathVariable Long followId
     );
+
+    // 특정 유저 팔로우 확인 조회 명세서
+    @Operation(summary = "팔로우 여부 확인", description = "로그인한 사용자가 특정 사용자(followeeId)를 현재 팔로우하고 있는지 여부를 조회합니다. (true: 팔로우 중, false: 미팔로우)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공 (true/false 반환)"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 (파라미터 누락 또는 잘못된 형식)"),
+            @ApiResponse(responseCode = "401", description = "인증 오류 (로그인 필요)"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    @GetMapping("/followed-by-me")
+    ResponseEntity<Boolean> checkFollowStatus(
+            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user,
+            @Parameter(description = "확인할 상대방 사용자 ID (PK)", required = true) @RequestParam Long followeeId
+    );
 }
+

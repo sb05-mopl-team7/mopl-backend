@@ -45,4 +45,15 @@ public class FollowController implements FollowControllerDocs {
 
         return ResponseEntity.noContent().build();
     }
+
+    // 특정 유저 팔로우 확인 조회 API
+    @Override
+    @GetMapping("/followed-by-me")
+    public ResponseEntity<Boolean> checkFollowStatus(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestParam Long followeeId) {
+
+        boolean result = followService.isFollowing(userPrincipal.getUserId(), followeeId);
+        return ResponseEntity.ok(result);
+    }
 }

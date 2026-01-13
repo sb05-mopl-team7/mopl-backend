@@ -23,53 +23,50 @@ class S3ManagerTest {
     @Autowired
     private S3Manager s3Manager;
 
+    String content = "Hello, MOPL S3 Test!";
+    byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+    InputStream inputStream = new ByteArrayInputStream(bytes);
+
+    UploadFileRequest testFile = new UploadFileRequest(
+            inputStream,
+            "test-file.txt",
+            bytes.length,
+            "text/plain"
+    );
 
     @Test
-    @DisplayName("S3 파일 업로드 테스트")
+    @DisplayName("S3 파일 업로드 및 Presigned URL 조회")
     void testUpload() {
+        String testUrl = s3Manager.upload(testFile, FileCategory.TEST);
+        System.out.println("저장된 URL (DB 저장용): " + testUrl);
 
-        String content = "Hello, MOPL S3 Test!";
-        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
-        InputStream inputStream = new ByteArrayInputStream(bytes);
+        assertThat(testUrl).contains("test-file.txt");
+        assertThat(testUrl).contains(FileCategory.TEST.getPath());
 
-        UploadFileRequest request = new UploadFileRequest(
-                inputStream,
-                "test-file.txt",
-                bytes.length,
-                "text/plain"
-        );
+        String presignedUrl = s3Manager.generatePresignedUrl(testUrl);
 
-        String savedUrl = s3Manager.upload(request, FileCategory.TEST);
-        System.out.println("저장된 URL (DB 저장용): " + savedUrl);
-
-        assertThat(savedUrl).contains("test-file.txt");
-        assertThat(savedUrl).contains(FileCategory.TEST.getPath());
-    }
-
-    @Test
-    @DisplayName("Presigned URL 생성 테스트")
-    void testGeneratePresignedUrl() {
-        // 1. 테스트용 파일 먼저 업로드
-        String content = "Presigned URL Test Content";
-        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
-        UploadFileRequest request = new UploadFileRequest(
-                new ByteArrayInputStream(bytes),
-                "presigned-test.txt",
-                bytes.length,
-                "text/plain"
-        );
-        String publicUrl = s3Manager.upload(request, FileCategory.TEST);
-
-        // 2. Presigned URL 생성 호출
-        String presignedUrl = s3Manager.generatePresignedUrl(publicUrl);
-
-        // 3. 검증
-        System.out.println("원본 URL: " + publicUrl);
+        System.out.println("원본 URL: " + testUrl);
         System.out.println("생성된 Presigned URL: " + presignedUrl);
 
         assertThat(presignedUrl).isNotNull();
         assertThat(presignedUrl).contains("X-Amz-Algorithm"); // AWS 서명 알고리즘 포함 여부
         assertThat(presignedUrl).contains("X-Amz-Signature"); // 서명 값 포함 여부
-        assertThat(presignedUrl).contains("presigned-test.txt"); // 파일명 포함 여부
+        assertThat(presignedUrl).contains("test-file.txt"); // 파일명 포함 여부
+
+        s3Manager.delete(testUrl);
     }
+
+
+    @Test
+    @DisplayName("삭제 테스트")
+    void testDelete() {
+        String testUrl = s3Manager.upload(testFile, FileCategory.TEST);
+        System.out.println("저장된 URL (DB 저장용): " + testUrl);
+
+        assertThat(testUrl).contains("test-file.txt");
+        assertThat(testUrl).contains(FileCategory.TEST.getPath());
+
+        s3Manager.delete(testUrl);
+    }
+
 }

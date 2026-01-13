@@ -1,9 +1,6 @@
 package com.mopl.domain.user.controller;
 
-import com.mopl.domain.user.dto.UserCreateRequest;
-import com.mopl.domain.user.dto.UserDto;
-import com.mopl.domain.user.dto.UserRoleUpdateRequest;
-import com.mopl.domain.user.dto.UserSearchCondition;
+import com.mopl.domain.user.dto.*;
 import com.mopl.domain.user.service.UserService;
 import com.mopl.global.dto.PageResponse;
 import jakarta.validation.Valid;
@@ -30,6 +27,13 @@ public class UserController {
     @PatchMapping("/{userId}/role")
     public ResponseEntity<Void> updateRole(@PathVariable Long userId, @Valid @RequestBody UserRoleUpdateRequest request){
         userService.updateRole(userId, request.role());
+        return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{userId}/locked")
+    public ResponseEntity<Void> updateLocked(@PathVariable Long userId, @Valid @RequestBody UserLockUpdateRequest request){
+        userService.updateLocked(userId, request.locked());
         return ResponseEntity.ok().build();
     }
 

@@ -35,7 +35,7 @@ public class AuthService {
     private String cookieSameSite;
 
     public JwtDto login(String username, String password, HttpServletResponse response) {
-        User user = userRepository.findByEmail(username)
+        User user = userRepository.findByEmailAndLockedFalse(username)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
 
         if (!passwordEncoder.matches(password, user.getPassword()))

@@ -73,7 +73,7 @@ public class EmailService {
     /** 이메일 검증 */
     private void emailValid(String email) {
         userRepository.findByEmail(email)
-        .orElseThrow(() -> new UserException(UserErrorCode.EMAIL_NOT_EXIST));
+        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
     }
 
 

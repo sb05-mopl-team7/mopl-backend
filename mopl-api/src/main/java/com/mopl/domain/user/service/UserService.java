@@ -57,6 +57,13 @@ public class UserService {
         user.updateRole(newRole);
     }
 
+    @Transactional
+    public void updateLocked(Long userId, boolean newLocked) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+        user.updateLocked(newLocked);
+    }
+
     public PageResponse<UserDto> findAllUsers(UserSearchCondition searchCondition) {
         String keywordLike = searchCondition.emailLike();
         Role roleEqual = searchCondition.roleEqual();

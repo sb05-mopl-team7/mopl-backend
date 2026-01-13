@@ -1,17 +1,12 @@
 spring:
   config:
     import: optional:file:.env[.properties], optional:file:../.env[.properties]
-  jpa:
-    open-in-view: false
-    properties:
-      hibernate:
-        default_batch_fetch_size: 100
-  data:
-    redis:
-      repositories:
-        enabled: true
+
 cloud:
   aws:
+    credentials:
+      access-key: ${AWS_ACCESS_KEY_ID}
+      secret-key: ${AWS_SECRET_ACCESS_KEY}
     s3:
       bucket: ${AWS_S3_BUCKET}
     region:

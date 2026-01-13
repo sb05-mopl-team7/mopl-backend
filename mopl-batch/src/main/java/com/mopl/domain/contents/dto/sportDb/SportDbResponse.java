@@ -1,4 +1,4 @@
-package com.mopl.domain.contents.dto;
+package com.mopl.domain.contents.dto.sportDb;
 
 import java.util.List;
 

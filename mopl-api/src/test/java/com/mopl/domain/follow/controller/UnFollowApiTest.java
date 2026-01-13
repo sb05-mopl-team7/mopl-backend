@@ -12,15 +12,23 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import com.mopl.domain.auth.dto.UserPrincipal;
+import com.mopl.domain.user.enums.Role;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import java.util.Collections;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -46,6 +54,20 @@ class UnFollowApiTest {
         user2 = userRepository.save(new User("you", "user2@test.com", "password"));
     }
 
+    // UserPrincipal을 포함한 인증 토큰 생성 헬퍼 메서드
+    private UsernamePasswordAuthenticationToken createAuthToken(User user) {
+
+        // 실제 컨트롤러가 사용하는 UserPrincipal 객체 생성
+        UserPrincipal principal = new UserPrincipal(user.getId(), user.getEmail(), Role.USER);
+
+        // SecurityContext에 들어갈 토큰 생성
+        return new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+    }
+
     // 1. 성공 케이스 (204)
     @Test
     @DisplayName("[204] 본인이 생성한 팔로우를 취소하면 성공한다")
@@ -56,7 +78,8 @@ class UnFollowApiTest {
 
         // When & Then
         mockMvc.perform(delete("/api/follows/{followId}", savedFollow.getId())
-                        .with(user(String.valueOf(user1.getId())))) // 작성자(user1)로 로그인
+                        .with(authentication(createAuthToken(user1))) // 작성자(user1)로 로그인
+                        .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isNoContent());
     }
@@ -67,7 +90,8 @@ class UnFollowApiTest {
     void unfollowUser_TypeMismatch_Fail() throws Exception {
         // When: 숫자가 들어가야 할 자리에 문자("abc") 입력
         mockMvc.perform(delete("/api/follows/abc")
-                        .with(user(String.valueOf(user1.getId()))))
+                        .with(authentication(createAuthToken(user1)))
+                        .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value(ErrorCode.INVALID_INPUT_VALUE.name()));
@@ -83,10 +107,11 @@ class UnFollowApiTest {
 
         // When: user2가 user1의 팔로우를 삭제 시도
         mockMvc.perform(delete("/api/follows/{followId}", savedFollow.getId())
-                        .with(user(String.valueOf(user2.getId()))))
+                        .with(authentication(createAuthToken(user2)))
+                        .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value(ErrorCode.FORBIDDEN.name()));
+                .andExpect(jsonPath("$.title").value(FollowErrorCode.NOT_YOUR_FOLLOW.name()));
     }
 
     // 4. 리소스 없음 (404)
@@ -98,10 +123,10 @@ class UnFollowApiTest {
 
         // When & Then
         mockMvc.perform(delete("/api/follows/{followId}", invalidFollowId)
-                        .with(user(String.valueOf(user1.getId()))))
+                        .with(authentication(createAuthToken(user1)))
+                        .with(csrf()))
                 .andDo(print())
-                .andExpect(status().isNotFound()) // 404
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value(FollowErrorCode.FOLLOW_NOT_FOUND.name()));
     }
-
 }

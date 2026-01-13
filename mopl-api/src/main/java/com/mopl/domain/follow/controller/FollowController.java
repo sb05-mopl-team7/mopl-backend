@@ -3,6 +3,7 @@ package com.mopl.domain.follow.controller;
 import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.follow.controller.docs.FollowControllerDocs;
 import com.mopl.domain.follow.dto.request.FollowRequest;
+import com.mopl.domain.follow.dto.response.FollowCountResponse;
 import com.mopl.domain.follow.dto.response.FollowResponse;
 import com.mopl.domain.follow.service.FollowService;
 import lombok.RequiredArgsConstructor;
@@ -55,5 +56,15 @@ public class FollowController implements FollowControllerDocs {
 
         boolean result = followService.isFollowing(userPrincipal.getUserId(), followeeId);
         return ResponseEntity.ok(result);
+    }
+
+    // 팔로워/팔로잉 수 카운트 조회 API
+    @Override
+    @GetMapping("/count")
+    public ResponseEntity<FollowCountResponse> getFollowCounts(@RequestParam Long targetId) {
+
+        FollowCountResponse response = followService.getFollowCounts(targetId);
+
+        return ResponseEntity.ok(response);
     }
 }

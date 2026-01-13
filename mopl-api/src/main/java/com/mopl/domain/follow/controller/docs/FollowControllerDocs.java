@@ -2,6 +2,7 @@ package com.mopl.domain.follow.controller.docs;
 
 import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.follow.dto.request.FollowRequest;
+import com.mopl.domain.follow.dto.response.FollowCountResponse;
 import com.mopl.domain.follow.dto.response.FollowResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -61,5 +62,22 @@ public interface FollowControllerDocs {
             @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user,
             @Parameter(description = "확인할 상대방 사용자 ID (PK)", required = true) @RequestParam Long followeeId
     );
+
+    // 팔로워/팔로잉 수 조회 명세서
+    @Operation(summary = "팔로워/팔로잉 수 조회", description = "특정 사용자(targetId)의 팔로워 수(나를 구독)와 팔로잉 수(내가 구독)를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 (파라미터 누락 등)"),
+            @ApiResponse(responseCode = "401", description = "인증 오류(로그인 필요)"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    @GetMapping("/count")
+    ResponseEntity<FollowCountResponse> getFollowCounts(
+            @Parameter(description = "조회할 대상 사용자 ID (PK)", required = true) @RequestParam Long targetId
+    );
+
+
+
 }
 

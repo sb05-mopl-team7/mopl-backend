@@ -32,7 +32,7 @@ public class UserController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{userId}/locked")
-    public ResponseEntity<Void> updateLocked(@PathVariable Long userId, @RequestBody UserLockUpdateRequest request){
+    public ResponseEntity<Void> updateLocked(@PathVariable Long userId, @Valid @RequestBody UserLockUpdateRequest request){
         userService.updateLocked(userId, request.locked());
         return ResponseEntity.ok().build();
     }

@@ -39,4 +39,10 @@ public class UserController {
         PageResponse<UserDto> results = userService.findAllUsers(searchCondition);
         return ResponseEntity.ok(results);
     }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<UserDto> findById(@PathVariable Long userId) {
+        UserDto userDto = userService.detail(userId);
+        return ResponseEntity.ok().body(userDto);
+    }
 }

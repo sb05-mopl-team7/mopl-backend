@@ -237,5 +237,13 @@ public class UserService {
     private record StartId(String sortByProperty,Object cursorValue, Long idAfter) {
 
     }
+    @Transactional(readOnly = true)
+    public UserDto detail(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
+        return  userMapper.toDto(user);
+    }
+
+
 
 }

@@ -15,6 +15,19 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  # Email
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GOOGLE_MAIL_USERNAME}
+    password: ${GOOGLE_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+         auth: true
+         starttls:
+          enable: true
+
 # swagger
 springdoc:
   api-docs:

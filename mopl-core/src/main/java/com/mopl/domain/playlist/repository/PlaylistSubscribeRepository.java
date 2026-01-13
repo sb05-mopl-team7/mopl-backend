@@ -13,13 +13,13 @@ public interface PlaylistSubscribeRepository extends JpaRepository<PlaylistSubsc
 
     Optional<PlaylistSubscribe> findByUserIdAndPlaylistId(Long userId, Long playlistId);
 
-    void deleteByUserIdAndPlaylistId(Long userId, Long playlistId);
+    long deleteByUserIdAndPlaylistId(Long userId, Long playlistId);
 
     List<PlaylistSubscribe> findAllByUserId(Long userId);
 
-    List<PlaylistSubscribe> findAllByUserIdAndPlaylistIdIn(Long userId, Collection<Long> playlistIds);
+    List<PlaylistSubscribe> findAllByUserIdAndPlaylistIdIn(Long userId, List<Long> playlistIds);
 
-    void deleteAllByPlaylistId(Long playlistId);
+    long deleteAllByPlaylistId(Long playlistId);
 
     long countByPlaylistId(Long playlistId);
 }

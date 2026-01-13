@@ -16,6 +16,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -43,17 +44,35 @@ public class SecurityConfig {
                                 "/swagger.html",
                                 "/favicon.ico",
                                 "/index.html",
+                                "/vite.svg",
                                 "/actuator/**",
-                                "/h2-console/**"
+                                "/h2-console/**",
+                                "/",
+                                "/assets/**"
                         ).permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/sign-in",
+                                "/api/auth/sign-out",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh",
+                                "/api/auth/csrf-token" // 로그아웃 후 호출
+                        ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .addFilterBefore(new JwtFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
-                .csrf(AbstractHttpConfigurer::disable) // TODO : 나중/#78에 변경예정
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(
+                                "/api/auth/sign-in",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh",
+                                "/api/auth/sign-out",
+                                "/api/users"
+                        )
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint));
 

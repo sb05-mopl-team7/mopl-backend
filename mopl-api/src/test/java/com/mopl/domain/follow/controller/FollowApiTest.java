@@ -1,5 +1,11 @@
 package com.mopl.domain.follow.controller;
 
+import com.mopl.domain.auth.dto.UserPrincipal;
+import com.mopl.domain.follow.exception.FollowErrorCode;
+import com.mopl.domain.user.enums.Role;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.ObjectMapper;
 import com.mopl.domain.follow.dto.request.FollowRequest;
 import com.mopl.domain.follow.entity.Follow;
@@ -17,12 +23,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import java.util.Collections;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -51,6 +60,20 @@ class FollowApiTest {
         user2 = userRepository.save(new User("you", "user2@test.com", "password"));
     }
 
+    // UserPrincipal을 포함한 인증 토큰 생성 헬퍼 메서드
+    private UsernamePasswordAuthenticationToken createAuthToken(User user) {
+
+        // 실제 컨트롤러가 사용하는 UserPrincipal 객체 생성
+        UserPrincipal principal = new UserPrincipal(user.getId(), user.getEmail(), Role.USER);
+
+        // SecurityContext에 들어갈 토큰 생성
+        return new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+    }
+
     // 1. 성공 케이스 (201)
     @Test
     @DisplayName("[201] 정상적인 팔로우 요청 시 성공한다")
@@ -62,7 +85,8 @@ class FollowApiTest {
         mockMvc.perform(post("/api/follows")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
-                        .with(user(String.valueOf(user1.getId())))) // 로그인
+                        .with(authentication(createAuthToken(user1)))
+                        .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.followerId").value(user1.getId()))
@@ -80,11 +104,12 @@ class FollowApiTest {
         mockMvc.perform(post("/api/follows")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
-                        .with(user(String.valueOf(user1.getId()))))
+                        .with(authentication(createAuthToken(user1)))
+                        .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(ErrorCode.CANNOT_FOLLOW_SELF.name()))
-                .andExpect(jsonPath("$.detail").value(ErrorCode.CANNOT_FOLLOW_SELF.getMessage()));
+                .andExpect(jsonPath("$.title").value(FollowErrorCode.CANNOT_FOLLOW_SELF.name()))
+                .andExpect(jsonPath("$.detail").value(FollowErrorCode.CANNOT_FOLLOW_SELF.getMessage()));
     }
 
     @Test
@@ -99,11 +124,12 @@ class FollowApiTest {
         mockMvc.perform(post("/api/follows")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
-                        .with(user(String.valueOf(user1.getId()))))
+                        .with(authentication(createAuthToken(user1)))
+                        .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(ErrorCode.ALREADY_FOLLOWING.name()))
-                .andExpect(jsonPath("$.detail").value(ErrorCode.ALREADY_FOLLOWING.getMessage()));
+                .andExpect(jsonPath("$.title").value(FollowErrorCode.ALREADY_FOLLOWING.name()))
+                .andExpect(jsonPath("$.detail").value(FollowErrorCode.ALREADY_FOLLOWING.getMessage()));
     }
 
     // 3. 인증 실패 (401)
@@ -116,7 +142,8 @@ class FollowApiTest {
         // When & Then
         mockMvc.perform(post("/api/follows")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.title").value(ErrorCode.UNAUTHORIZED.name()));
@@ -135,7 +162,8 @@ class FollowApiTest {
         mockMvc.perform(post("/api/follows")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
-                        .with(user(String.valueOf(user1.getId()))))
+                        .with(authentication(createAuthToken(user1)))
+                        .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value(ErrorCode.NOT_FOUND.name()));

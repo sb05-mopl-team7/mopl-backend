@@ -17,6 +17,7 @@ public enum ErrorCode {
 
     // 데이터 및 비즈니스 로직 관련
     INVALID_INPUT_VALUE("입력 값이 유효하지 않습니다.", 400),
+    MISSING_INPUT_VALUE("필수 입력 값이 누락되었습니다.", 400),
     DATA_INTEGRITY_VIOLATION("데이터 무결성 제약 조건이 위반되었습니다.", 400),
     DUPLICATE_RESOURCE("이미 존재하는 리소스입니다.", 409),
 
@@ -32,12 +33,7 @@ public enum ErrorCode {
 
     // 인가
     FORBIDDEN("접근 권한이 없습니다.", 403),
-    INSUFFICIENT_PERMISSIONS("해당 리소스에 대한 권한이 부족합니다.", 403),
-
-    // 팔로우
-    CANNOT_FOLLOW_SELF("자기 자신을 팔로우할 수 없습니다.", 400),
-    ALREADY_FOLLOWING("이미 팔로우 중인 사용자입니다.", 400),
-    FOLLOW_NOT_FOUND("팔로우 관계가 존재하지 않습니다.", 404)
+    INSUFFICIENT_PERMISSIONS("해당 리소스에 대한 권한이 부족합니다.", 403)
     ;
 
   private final String message;

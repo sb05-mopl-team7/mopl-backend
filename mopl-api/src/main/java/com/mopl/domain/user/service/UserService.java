@@ -36,7 +36,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserDto findById(Long userId) {
+    public UserDto detail(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
         return  userMapper.toDto(user);

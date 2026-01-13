@@ -1,25 +1,18 @@
 spring:
   datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:mopldb;MODE=MySQL;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-  sql:
-    init:
-      mode: always # 자동 실행하려면 always. 수동으로 제어하려면 never
-      schema-locations: classpath:db/schema.sql
-      data-locations: classpath:db/testdata.sql
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://mopl-mysql-dev.cd8oe2q2qsl0.ap-northeast-2.rds.amazonaws.com:3306/mopl_dev?useSSL=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${MYSQL_DEV_USER}
+    password: ${MYSQL_DEV_PASSWORD}
+
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
         format_sql: true
+
   data:
     redis:
       host: localhost

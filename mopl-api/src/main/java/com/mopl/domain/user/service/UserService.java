@@ -2,6 +2,7 @@ package com.mopl.domain.user.service;
 
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
+import com.mopl.domain.user.dto.UserSearchCondition;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.enums.Role;
 import com.mopl.domain.user.exception.UserErrorCode;

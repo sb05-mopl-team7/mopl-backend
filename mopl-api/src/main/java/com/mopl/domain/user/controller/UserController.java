@@ -1,9 +1,6 @@
 package com.mopl.domain.user.controller;
 
-import com.mopl.domain.user.dto.UserCreateRequest;
-import com.mopl.domain.user.dto.UserDto;
-import com.mopl.domain.user.dto.UserRoleUpdateRequest;
-import com.mopl.domain.user.entity.User;
+import com.mopl.domain.user.dto.*;
 import com.mopl.domain.user.service.UserService;
 import com.mopl.global.dto.PageResponse;
 import jakarta.validation.Valid;

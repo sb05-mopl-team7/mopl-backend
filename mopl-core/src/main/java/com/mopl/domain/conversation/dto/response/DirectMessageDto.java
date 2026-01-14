@@ -7,9 +7,13 @@ import tools.jackson.databind.ser.std.ToStringSerializer;
 import java.time.LocalDateTime;
 
 public record DirectMessageDto(
+
         @JsonSerialize(using = ToStringSerializer.class)
         Long id,
+
+        @JsonSerialize(using = ToStringSerializer.class)
         Long conversationId,
+
         LocalDateTime createdAt,
         UserSummaryDto sender,
         UserSummaryDto receiver,

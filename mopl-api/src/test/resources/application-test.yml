@@ -49,3 +49,14 @@ jwt:
 logging:
   level:
     root: INFO
+
+# S3 설정
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2 # 직접 값 입력
+    credentials:
+      access-key: test-access-key
+      secret-key: test-secret-key
+    s3:
+      bucket: test-mopl-bucket # S3Manager에서 사용하는 설정값

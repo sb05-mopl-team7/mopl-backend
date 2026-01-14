@@ -17,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -25,10 +26,12 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final JwtAuthenticationEntryPoint  jwtAuthenticationEntryPoint;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) {
+        CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
+        requestHandler.setCsrfRequestAttributeName(null);
 
         http
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -37,18 +40,33 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .csrf(csrf -> csrf
+                                .ignoringRequestMatchers(
+                                        "/api/auth/sign-in",
+                                        "/api/auth/reset-password",
+                                        "/api/auth/refresh",
+                                        "/api/auth/sign-out",
+                                        "/api/users"
+                                )
+                                .ignoringRequestMatchers(
+                                        "/h2-console/**"
+                                )
+                                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                                .csrfTokenRequestHandler(requestHandler)
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger.html",
-                                "/favicon.ico",
+                                "/favicon.svg",
                                 "/index.html",
                                 "/vite.svg",
                                 "/actuator/**",
                                 "/h2-console/**",
                                 "/",
-                                "/assets/**"
+                                "/assets/**",
+                                "/error"
                         ).permitAll()
                         .requestMatchers(
                                 "/api/auth/sign-in",
@@ -63,16 +81,6 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .addFilterBefore(new JwtFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
-                .csrf(csrf -> csrf
-                        .ignoringRequestMatchers(
-                                "/api/auth/sign-in",
-                                "/api/auth/reset-password",
-                                "/api/auth/refresh",
-                                "/api/auth/sign-out",
-                                "/api/users"
-                        )
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint));
 

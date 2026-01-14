@@ -11,6 +11,9 @@ import com.mopl.domain.content.exception.ContentException;
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.global.dto.PageResponse;
+import com.mopl.global.dto.UploadFileRequest;
+import com.mopl.global.s3.FileCategory;
+import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @Slf4j
@@ -27,21 +31,17 @@ public class ContentService {
 
     private final ContentRepository contentRepository;
     private final TagRepository tagRepository;
-    // private final S3Service s3Service; // TODO: S3 업로드 서비스 주입 필요
+    private final S3Manager s3Manager;
 
-    @PreAuthorize("hasRole('ADMIN')")
+
     @Transactional
     public ContentDto create(CreateContentDto req, MultipartFile thumbnail) {
         log.info("콘텐츠 생성 요청: {}", req.title());
 
-        // 썸네일 업로드
-        String thumbnailUrl = uploadThumbnail(thumbnail);
-        // 콘텐츠 생성
-        Content content = new Content(req.type(), req.title(), req.description(), thumbnailUrl);
-        // 콘텐츠에 태그 매핑
-        addTagsToContent(req.tags(), content);
-        // 저장
-        Content newContent = contentRepository.save(content);
+        String thumbnailUrl = uploadThumbnail(thumbnail); // 썸네일 업로드
+        Content content = new Content(req.type(), req.title(), req.description(), thumbnailUrl); // 콘텐츠 생성
+        addTagsToContent(req.tags(), content); // 콘텐츠에 태그 매핑
+        Content newContent = contentRepository.save(content); // 저장
 
         List<String> tagNames = content.getContentTags().stream()
                                 .map(Contenttag -> Contenttag.getTag().getTag()).toList();
@@ -105,13 +105,14 @@ public class ContentService {
         List<String> tagNames = content.getContentTags().stream()
                 .map(Contenttag -> Contenttag.getTag().getTag()).toList();
         int watchCount = 0; // TODO: redis에서 가져오기
+        String thumbnailUrl = s3Manager.generatePresignedUrl(content.getThumbnailUrl());
 
         return new ContentDto(
                 content.getId().toString(),
                 content.getContentType(),
                 content.getTitle(),
                 content.getDescription(),
-                content.getThumbnailUrl(),
+                thumbnailUrl,
                 tagNames,
                 content.getAverageRating(),
                 content.getReviewCount(),
@@ -144,7 +145,7 @@ public class ContentService {
                     content.getContentType(),
                     content.getTitle(),
                     content.getDescription(),
-                    content.getThumbnailUrl(),
+                    s3Manager.generatePresignedUrl(content.getThumbnailUrl()),
                     tagNames,
                     content.getAverageRating(),
                     content.getReviewCount(),
@@ -166,17 +167,24 @@ public class ContentService {
     }
 
     private Content getContentOrThrow(Long contentId) {
-        return contentRepository.findById(contentId)
+        return contentRepository.findByIdWithTags(contentId)
             .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND));
     }
 
     private String uploadThumbnail(MultipartFile thumbnail) {
-        // TODO: 실제 S3Service.upload(thumbnail) 호출 로직으로 교체 필요
-        // 지금은 임시 URL을 반환하도록 구성했음
-        if (thumbnail == null || thumbnail.isEmpty()) {
-            return null;
+        try {
+            UploadFileRequest fileRequest = new UploadFileRequest(
+                    thumbnail.getInputStream(),
+                    thumbnail.getOriginalFilename(),
+                    thumbnail.getSize(),
+                    thumbnail.getContentType()
+            );
+
+            return s3Manager.upload(fileRequest, FileCategory.CONTENT_THUMBNAIL);
+        } catch (IOException e) {
+            log.error("썸네일 업로드 실패", e);
+            throw new ContentException(ContentErrorCode.INVALID_THUMBNAIL);
         }
-        return "https://example.com/thumbnail.jpg"; // TODO: 임시 URL, S3 업로드 로직으로 교체 필요
     }
 
     private void addTagsToContent(List<String> tagNames, Content content) {

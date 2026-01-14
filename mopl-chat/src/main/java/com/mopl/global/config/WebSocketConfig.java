@@ -1,5 +1,6 @@
 package com.mopl.global.config;
 
+import com.mopl.domain.auth.jwt.AuthChannelInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.context.annotation.Configuration;
@@ -7,18 +8,21 @@ import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    // TODO: JWT 인증 인터셉터 구현 - private final StompHandler stompHandler;
+    private final AuthChannelInterceptor authChannelInterceptor;
 
     @Override
     public void registerStompEndpoints(org.springframework.web.socket.config.annotation.StompEndpointRegistry registry) {
         registry.addEndpoint("/ws") // 클라이언트가 웹소켓 연결을 시작할 엔드포인트
-            .setAllowedOrigins("http://localhost:3000") // 운영 시 실제 도메인 넣어야 함
+            .setAllowedOrigins(
+                    "http://localhost:3000",
+                    "http://localhost:8080") // 운영 시 실제 도메인 넣어야 함
             .withSockJS(); // SockJS 지원 (웹소켓 미지원 브라우저 대응)
     }
 
@@ -31,7 +35,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(@NonNull ChannelRegistration registration) {
-        // TODO: 메시지가 들어오는 통로에 인터셉터를 등록하여 JWT 인증 등을 처리
-        // registration.interceptors(stompHandler);
+         registration.interceptors(authChannelInterceptor);
+    }
+
+    // STOMP WebSocket 전송 속성 지정
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registry) {
+        registry.setMessageSizeLimit(4 * 8192); // 웹소켓 메시지 하나의 최대 크기
+        registry.setTimeToFirstMessage(30000); // 웹소켓 연결 후 클라이언트가 첫번째 메시지(STOMP CONNECT)를 보내기 전까지 기다리는 시간 (ms)
     }
 }

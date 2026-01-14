@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ReadStatusRepository extends JpaRepository<ReadStatus, Long> {
@@ -18,4 +19,13 @@ public interface ReadStatusRepository extends JpaRepository<ReadStatus, Long> {
         WHERE rs.conversation.id = :conversationId AND rs.user.id != :userId
     """)
     Optional<User> findPartnerByConversationId(@Param("conversationId") Long conversationId, @Param("userId") Long userId);
+
+    @Query("""
+        SELECT rs
+        FROM ReadStatus rs
+        JOIN FETCH rs.user
+        JOIN FETCH rs.conversation
+        WHERE rs.conversation.id = :conversationId
+    """)
+    List<ReadStatus> findAllWithUser(@Param("conversationId") Long conversationId);
 }

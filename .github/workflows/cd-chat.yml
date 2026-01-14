@@ -1,17 +1,17 @@
-name: CD mopl-api to AWS ECR
+name: CD mopl-chat to AWS ECR
 on:
   push:
     branches:
       - develop
     # 아래 작업 경로에서 변경이 감지될 시 해당 CD 작업을 실행
     paths:
-    - "mopl-core/**"
-    - "mopl-api/**"
-    - "build.gradle"
-    - "settings.gradle"
-    - "gradle/**"
-    - "gradlew"
-    - ".github/workflows/cd-mopl-api.yml"
+      - "mopl-core/**"
+      - "mopl-chat/**"
+      - "build.gradle"
+      - "settings.gradle"
+      - "gradle/**"
+      - "gradlew"
+      - ".github/workflows/cd-mopl-chat.yml"
 
 jobs:
   build-and-push:
@@ -38,13 +38,13 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: mopl-api
+          ECR_REPOSITORY: mopl-chat
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # 핵심: 프로젝트 루트(.)에서 Dockerfile(-f) 위치를 지정하여 빌드
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
                        -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
-                       -f mopl-api/Dockerfile .
+                       -f mopl-chat/Dockerfile .
           
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest

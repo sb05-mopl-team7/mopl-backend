@@ -42,7 +42,7 @@ public class FollowController implements FollowControllerDocs {
         Long myId = user.getUserId();
 
         // 서비스에 내 ID와 언팔로우할 ID를 넘긴다.
-        followService.unfollow(myId, followId);
+        followService.unFollow(myId, followId);
 
         return ResponseEntity.noContent().build();
     }

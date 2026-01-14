@@ -58,7 +58,7 @@ public class FollowService {
 
     // 언팔로우 로직
     @Transactional
-    public void unfollow(Long myId, Long followId) {
+    public void unFollow(Long myId, Long followId) {
         // 1. 팔로우 존재 확인 (404)
         Follow follow = followRepository.findById(followId)
                 .orElseThrow(() -> new FollowException(FollowErrorCode.FOLLOW_NOT_FOUND));

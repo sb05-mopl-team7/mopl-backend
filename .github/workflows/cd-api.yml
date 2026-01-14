@@ -1,0 +1,50 @@
+name: CD mopl-api to AWS ECR
+on:
+  push:
+    branches:
+      - release
+    # 아래 작업 경로에서 변경이 감지될 시 해당 CD 작업을 실행
+    paths:
+    - "mopl-core/**"
+    - "mopl-api/**"
+    - "build.gradle"
+    - "settings.gradle"
+    - "gradle/**"
+    - "gradlew"
+    - ".github/workflows/cd-mopl-api.yml"
+
+jobs:
+  build-and-push:
+    # 이 레포의 코드를 읽을 수 있는 권한만 가진 Ubuntu 서버에서 Docker 이미지를 빌드하고 ECR로 푸시
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: mopl-api
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # 핵심: 프로젝트 루트(.)에서 Dockerfile(-f) 위치를 지정하여 빌드
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+                       -f mopl-api/Dockerfile .
+          
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest

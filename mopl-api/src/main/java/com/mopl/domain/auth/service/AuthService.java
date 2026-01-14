@@ -9,6 +9,7 @@ import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
+import com.mopl.global.s3.S3Manager;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
+    private final S3Manager s3Manager;
 
     @Value("${jwt.cookie.secure}")
     private boolean cookieSecure;
@@ -64,7 +66,9 @@ public class AuthService {
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
         String newAccessToken = jwtTokenProvider.createAccessToken(user);
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
-        JwtDto jwtDto = new JwtDto(userMapper.toDto(user), newAccessToken);
+
+        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        JwtDto jwtDto = new JwtDto(userMapper.toDto(user,thumbnailUrl), newAccessToken);
 
         addTokenCookie(response, "REFRESH_TOKEN", newRefreshToken, 60 * 60 * 24 * 14);
 

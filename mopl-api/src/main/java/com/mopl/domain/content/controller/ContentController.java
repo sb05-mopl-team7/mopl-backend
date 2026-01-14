@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,7 @@ public class ContentController {
 
     private final ContentService contentService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "콘텐츠 생성")
     @PostMapping(consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<ContentDto> create(
@@ -36,6 +38,7 @@ public class ContentController {
         return ResponseEntity.ok(contentService.create(request, thumbnail));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "콘텐츠 수정")
     @PatchMapping(value = "/{contentId}", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<ContentDto> update(
@@ -46,6 +49,7 @@ public class ContentController {
         return ResponseEntity.ok(contentService.update(contentId, request, thumbnail));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "콘텐츠 삭제")
     @DeleteMapping(value = "/{contentId}")
     public ResponseEntity<Void> delete(@PathVariable Long contentId) {

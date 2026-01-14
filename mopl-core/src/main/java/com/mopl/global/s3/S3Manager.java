@@ -15,6 +15,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.UUID;
 
@@ -62,8 +63,8 @@ public class S3Manager {
      */
     public void delete(String fileUrl) {
         try {
-            // URL에서 S3 Key 추출 (.com/ 이후의 문자열)
-            String key = fileUrl.substring(fileUrl.lastIndexOf(".com/") + 5);
+            // URL에서 안전한 S3 Key 추출 메서드 사용
+            String key = extractKey(fileUrl);
 
             DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
                     .bucket(bucket)
@@ -86,10 +87,8 @@ public class S3Manager {
         if (fileUrl == null || fileUrl.isEmpty()) return null;
 
         try {
-            // URL에서 Key 추출 (기존 delete에서 쓴 로직 활용)
-            String key = fileUrl.contains(".com/")
-                    ? fileUrl.substring(fileUrl.lastIndexOf(".com/") + 5)
-                    : fileUrl;
+            // URL에서 안전한 S3 Key 추출 메서드 사용
+            String key = extractKey(fileUrl);
 
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucket)
@@ -115,5 +114,28 @@ public class S3Manager {
                 .bucket(bucket)
                 .key(fileName)
                 .build()).toString();
+    }
+
+    /** URL에서 S3 Key(파일 경로)를 안전하게 추출하는 메서드 */
+    private String extractKey(String fileUrl) {
+        try {
+            // 1. URL 형식이 아니면(이미 Key라면) 그대로 반환
+            if (!fileUrl.startsWith("http")) {
+                return fileUrl;
+            }
+
+            // 2. URI 파싱을 통해 Path만 추출 (/profile/abc.jpg)
+            URI uri = new URI(fileUrl);
+            String path = uri.getPath();
+
+            // 3. 맨 앞의 슬래시(/) 제거
+            if (path.startsWith("/")) {
+                return path.substring(1);
+            }
+            return path;
+        } catch (Exception e) {
+            log.error("S3 Key 추출 실패: url={}", fileUrl);
+            throw new RuntimeException("잘못된 파일 URL 형식입니다.");
+        }
     }
 }

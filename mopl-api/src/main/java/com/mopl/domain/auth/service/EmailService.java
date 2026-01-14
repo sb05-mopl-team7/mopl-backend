@@ -30,6 +30,7 @@ public class EmailService {
     public void resetPassword(String email) {
         emailValid(email);
         String temporaryPassword = createTemporaryPassword(10);
+        System.out.println(temporaryPassword);
         // TODO: Redis에 저장
         sendEmail(email, temporaryPassword);
     }

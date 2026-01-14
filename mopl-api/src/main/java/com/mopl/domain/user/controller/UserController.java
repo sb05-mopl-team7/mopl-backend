@@ -49,4 +49,12 @@ public class UserController {
         UserDto userDto = userService.detail(userId);
         return ResponseEntity.ok().body(userDto);
     }
+
+    @PreAuthorize("principal.userId == #userId")
+    @PatchMapping("/{userId}/password")
+    public ResponseEntity<Void> updatePassword(@PathVariable Long userId,
+                                               @Valid @RequestBody ChangePasswordRequest request){
+        userService.updatePassword(userId, request.password());
+        return ResponseEntity.ok().build();
+    }
 }

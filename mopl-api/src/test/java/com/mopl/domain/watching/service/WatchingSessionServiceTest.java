@@ -40,7 +40,7 @@ class WatchingSessionServiceTest {
     @Mock
     private ContentRepository contentRepository;
 
-    // 테스트 데이터 생성 헬퍼 메서드 (FollowServiceTest 스타일)
+    // 테스트 데이터 생성 헬퍼 메서드
     private User createUser(Long id) {
         User user = new User("user" + id, "user" + id + "@test.com", "password");
         ReflectionTestUtils.setField(user, "id", id);

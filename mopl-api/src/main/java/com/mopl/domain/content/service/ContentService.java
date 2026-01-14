@@ -64,9 +64,10 @@ public class ContentService {
     public ContentDto update(Long contentId, UpdateContentDto req, MultipartFile thumbnail) {
         Content content = getContentOrThrow(contentId);
 
-        if (thumbnail != null && !thumbnail.isEmpty()) {
-            String newThumbnailUrl = uploadThumbnail(thumbnail);
-            content.update(req.title(), req.description(), newThumbnailUrl);
+        if (thumbnail != null && !thumbnail.isEmpty()) {                        // 썸네일 변경사항이 있다면
+            s3Manager.delete(content.getThumbnailUrl());                        // 기존 이미지 삭제
+            String newThumbnailUrl = uploadThumbnail(thumbnail);                // S3에 새로운 썸네일 저장
+            content.update(req.title(), req.description(), newThumbnailUrl);    // 새로운 썸네일로 업데이트
         } else {
             content.update(req.title(), req.description(), content.getThumbnailUrl());
         }
@@ -93,10 +94,9 @@ public class ContentService {
     @PreAuthorize("hasRole('ADMIN')")
     public void delete(Long contentId) {
         log.debug("콘텐츠 삭제 시작: id={}", contentId);
-        if(!contentRepository.existsById(contentId)) {
-            throw new ContentException(ContentErrorCode.CONTENT_NOT_FOUND);
-        }
-        contentRepository.deleteById(contentId);
+        Content content = getContentOrThrow(contentId); // 콘텐츠 조회
+        s3Manager.delete(content.getThumbnailUrl());    // S3에서 썸네일 삭제
+        contentRepository.deleteById(contentId);        // 콘텐츠 삭제
         log.info("콘텐츠 삭제 완료: id={}", contentId);
     }
 
@@ -120,15 +120,19 @@ public class ContentService {
         );
     }
 
+    /**
+     * 콘텐츠 목록 조회
+     * @param params 콘텐츠 조회 조건
+     */
     @Transactional(readOnly = true)
-    public PageResponse<Object> list(ContentQueryParams params) {
-        List<Content> contentList = contentRepository.list(params);
+    public PageResponse<ContentDto> list(ContentQueryParams params) {
+        List<Content> contentList = contentRepository.list(params); // params 조건에 해당하는 콘텐츠 목록 조회
 
         boolean hasNext = contentList.size() > params.limit();
         String nextCursor = null;
         String nextAfter = null;
 
-        if(hasNext) {
+        if(hasNext) { // 다음 페이지가 존재하면
             Content lastContent = contentList.get(contentList.size() - 1);
             contentList.remove(lastContent);
             nextCursor = contentList.get(contentList.size()-1).getId().toString();
@@ -153,10 +157,8 @@ public class ContentService {
             );
         }).toList();
 
-        List<Object> data = response.stream().map(dto -> (Object) dto).toList();
-
-        return PageResponse.builder()
-                .data(data)
+        return PageResponse.<ContentDto> builder()
+                .data(response)
                 .nextCursor(nextCursor)
                 .nextIdAfter(nextAfter)
                 .hasNext(hasNext)

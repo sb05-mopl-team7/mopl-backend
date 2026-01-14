@@ -57,6 +57,31 @@ public class S3Manager {
         }
     }
 
+    public String uploadByte(byte[] imageBytes, String imageName, FileCategory dirName) {
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new RuntimeException("업로드할 이미지 데이터가 비어있습니다.");
+        }
+
+        String fileName = dirName.getPath() + "/" + UUID.randomUUID() + imageName;
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(fileName)
+                    .contentType("image/jpeg")
+                    .contentLength((long) imageBytes.length)
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(imageBytes));
+
+            log.info("이미지 S3 업로드 완료: {}", fileName);
+            return fileName;
+        } catch (Exception e) {
+            log.error("이미지 S3 업로드 실패: {}", e.getMessage());
+            throw new RuntimeException("이미지 S3 업로드 중 오류가 발생했습니다.", e);
+        }
+    }
+
     /**
      * 파일 삭제
      * @param fileUrl 삭제할 파일의 전체 URL

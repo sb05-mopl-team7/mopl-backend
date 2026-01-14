@@ -6,6 +6,9 @@ import com.mopl.domain.content.enums.ContentType;
 import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.domain.contents.dto.tmdb.TvSeriesDto;
 import com.mopl.domain.contents.openapi.TmdbClient;
+import com.mopl.global.s3.FileCategory;
+import com.mopl.global.s3.S3Manager;
+import com.mopl.global.util.ImageDownloadUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.annotation.BeforeStep;
@@ -25,6 +28,8 @@ public class TvSeriesProcessor implements ItemProcessor<TvSeriesDto, Content> {
 
     private final TmdbClient tmdbClient;
     private final TagRepository tagRepository;
+    private final ImageDownloadUtil imageDownloadUtil;
+    private final S3Manager s3Manager;
 
     @BeforeStep
     public void beforeStep() {
@@ -38,11 +43,18 @@ public class TvSeriesProcessor implements ItemProcessor<TvSeriesDto, Content> {
     @Override
     public Content process(TvSeriesDto item) throws Exception {
         try {
+            // 웹에서 받은 이미지를 byte[]로 변환
+            byte[] imageBytes = imageDownloadUtil
+                .downloadImage("https://image.tmdb.org/t/p/w200" + item.thumbnailUrl());
+            String imageName = item.thumbnailUrl();
+            // S3에 썸네일 저장
+            String thumbnailUrl = s3Manager.uploadByte(imageBytes, imageName, FileCategory.CONTENT_THUMBNAIL);
+
             Content content = new Content(
                     ContentType.tvSeries,
                     item.title(),
                     item.description(),
-                    "https://image.tmdb.org/t/p/w200" + item.thumbnailUrl()
+                    thumbnailUrl
             );
 
             // 2. 키워드(장르) 정보 가져오기 및 태그 매핑

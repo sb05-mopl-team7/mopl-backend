@@ -5,6 +5,9 @@ import com.mopl.domain.content.entity.Tag;
 import com.mopl.domain.content.enums.ContentType;
 import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.domain.contents.dto.sportDb.SportDbDto;
+import com.mopl.global.s3.FileCategory;
+import com.mopl.global.s3.S3Manager;
+import com.mopl.global.util.ImageDownloadUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.annotation.BeforeStep;
@@ -24,6 +27,8 @@ import static com.mopl.domain.contents.dto.tmdb.KeywordDto.tagCache;
 public class SportProcessor implements ItemProcessor<SportDbDto, Content> {
 
     private final TagRepository tagRepository;
+    private final ImageDownloadUtil imageDownloadUtil;
+    private final S3Manager s3Manager;
 
     @BeforeStep
     public void beforeStep() {
@@ -37,11 +42,19 @@ public class SportProcessor implements ItemProcessor<SportDbDto, Content> {
     @Override
     public Content process(SportDbDto item) {
         try{
+            // 웹에서 받은 이미지를 byte[]로 변환
+            byte[] imageBytes = imageDownloadUtil.downloadImage(item.thumbnailUrl());
+            String imageName = item.thumbnailUrl()
+                .substring(item.thumbnailUrl().lastIndexOf("/") + 1);
+
+            // S3에 썸네일 저장
+            String thumbnailUrl = s3Manager.uploadByte(imageBytes, imageName, FileCategory.CONTENT_THUMBNAIL);
+
             Content content = new Content(
                 ContentType.sport,
                 item.title(),
                 item.description(),
-                item.thumbnailUrl()
+                    thumbnailUrl
             );
 
             // 1. SportDbDto에서 명시한 세 개의 필드만 추출

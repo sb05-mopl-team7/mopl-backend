@@ -5,6 +5,9 @@ import com.mopl.domain.content.entity.Tag;
 import com.mopl.domain.content.enums.ContentType;
 import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.domain.contents.openapi.TmdbClient;
+import com.mopl.global.s3.FileCategory;
+import com.mopl.global.s3.S3Manager;
+import com.mopl.global.util.ImageDownloadUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.annotation.BeforeStep;
@@ -25,6 +28,8 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
 
     private final TmdbClient tmdbClient;
     private final TagRepository tagRepository;
+    private final ImageDownloadUtil imageDownloadUtil;
+    private final S3Manager s3Manager;
 
     @BeforeStep
     public void beforeStep(StepExecution stepExecution) {
@@ -41,11 +46,18 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
             return tmdbClient.getMovieDetails(movieId)
                     .filter(movie -> movie.description() != null && !movie.description().isBlank())
                     .map(movie -> {
+
+                        // 웹에서 받은 이미지를 byte[]로 변환
+                        byte[] imageBytes = imageDownloadUtil
+                            .downloadImage("https://image.tmdb.org/t/p/w200" + movie.thumbnailUrl());
+                        String imageName = movie.thumbnailUrl();
+                        String thumbnailUrl = s3Manager.uploadByte(imageBytes, imageName, FileCategory.CONTENT_THUMBNAIL);
+
                         Content content = new Content(
                                 ContentType.movie,
                                 movie.title(),
                                 movie.description(),
-                                "https://image.tmdb.org/t/p/w200" + movie.thumbnailUrl()
+                                thumbnailUrl
                         );
 
                         // 태그 추가

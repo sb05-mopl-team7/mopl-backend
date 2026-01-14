@@ -15,12 +15,14 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
                 // 세션을 사용하지 않고 Stateless(JWT 등) 방식을 지향합니다.
                 .sessionManagement(session -> session
-                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 요청 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/sse/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         // 그 외 모든 요청은 인증이 필요합니다. (추후 JWT 필터 적용 시 수정)
                         .anyRequest().authenticated()
                 );

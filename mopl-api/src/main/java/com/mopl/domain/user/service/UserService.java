@@ -66,18 +66,23 @@ public class UserService {
 
         if (image != null && !image.isEmpty()) {
             try {
-                if (user.getProfileImageUrl() != null) {
-                    s3Manager.delete(user.getProfileImageUrl());
-                }
+                //기존 이미지 백업
+                String oldImageUrl = user.getProfileImageUrl();
+                //새 이미지 저장
                 UploadFileRequest profileImage = toUploadFileRequest(image);
                 String newAvatar = s3Manager.upload(profileImage, FileCategory.PROFILE_IMAGE);
+                //db 업데이트
                 user.updateProfileImageUrl(newAvatar);
-
+                //기존 이미지 삭제
+                if (user.getProfileImageUrl() != null) {
+                    s3Manager.delete(oldImageUrl);
+                }
             } catch (IOException e) {
                 throw new RuntimeException("프로필 이미지 업로드 실패", e);
             }
         }
-        return userMapper.toDto(user);
+        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        return userMapper.toDto(user, thumbnailUrl);
     }
 
     private UploadFileRequest toUploadFileRequest(MultipartFile image) throws IOException {
@@ -287,7 +292,8 @@ public class UserService {
     public UserDto detail(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
-        return  userMapper.toDto(user);
+        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        return userMapper.toDto(user, thumbnailUrl);
     }
 
 

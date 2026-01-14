@@ -109,7 +109,20 @@ class WatchingSessionControllerTest {
                 .andExpect(jsonPath("$").doesNotExist());
     }
 
-    // 2. 리소스 없음 케이스 (404)
+    // 2. 비즈니스 예외 케이스 (400)
+    @Test
+    @DisplayName("[400] 잘못된 요청 파라미터(음수 ID) 시 INVALID_WATCHING_REQUEST 에러 발생")
+    void getWatchingSession_InvalidRequest_Fail() throws Exception {
+        mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", -1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(authentication(createAuthToken(savedUser))))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value(WatchingErrorCode.INVALID_WATCHING_REQUEST.name()))
+                .andExpect(jsonPath("$.detail").value(WatchingErrorCode.INVALID_WATCHING_REQUEST.getMessage()));
+    }
+
+    // 3. 리소스 없음 케이스 (404)
     @Test
     @DisplayName("[404] 존재하지 않는 유저 조회 시 USER_NOT_FOUND 에러 발생")
     void getWatchingSession_UserNotFound_Fail() throws Exception {
@@ -138,18 +151,5 @@ class WatchingSessionControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value(WatchingErrorCode.CONTENT_NOT_FOUND.name()))
                 .andExpect(jsonPath("$.detail").value(WatchingErrorCode.CONTENT_NOT_FOUND.getMessage()));
-    }
-
-    // 3. 비즈니스 예외 케이스 (400)
-    @Test
-    @DisplayName("[400] 잘못된 요청 파라미터(음수 ID) 시 INVALID_WATCHING_REQUEST 에러 발생")
-    void getWatchingSession_InvalidRequest_Fail() throws Exception {
-        mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", -1L)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .with(authentication(createAuthToken(savedUser))))
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(WatchingErrorCode.INVALID_WATCHING_REQUEST.name()))
-                .andExpect(jsonPath("$.detail").value(WatchingErrorCode.INVALID_WATCHING_REQUEST.getMessage()));
     }
 }

@@ -3,14 +3,11 @@ package com.mopl.domain.auth.jwt;
 import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.enums.Role;
-import com.mopl.global.exception.ErrorCode;
-import com.mopl.global.exception.MoplException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -61,7 +59,6 @@ public class JwtTokenProvider {
         return createToken(user, refreshTokenValidity, refreshSecretKey);
     }
 
-
     public boolean validateAccessToken(String token) {
         return validateToken(token, accessSecretKey);
     }
@@ -71,9 +68,11 @@ public class JwtTokenProvider {
     }
 
     public Authentication getAuthentication(String token) {
-        Long userId = getUserId(token);
-        String email = getEmail(token);
-        Role role = getRole(token);
+        Claims claims = getClaims(token, accessSecretKey);
+
+        Long userId = claims.get("userId", Long.class);
+        String email = claims.getSubject();
+        Role role = Role.valueOf(claims.get("role", String.class));
 
         UserPrincipal principal = new UserPrincipal(userId, email, role);
 
@@ -85,14 +84,11 @@ public class JwtTokenProvider {
     }
 
     public String resolveToken(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) return null;
-
-        for (Cookie cookie : cookies) {
-            if ("ACCESS_TOKEN".equals(cookie.getName())) {
-                return cookie.getValue();
-            }
+        String bearerToken = request.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
         }
+
         return null;
     }
 
@@ -125,37 +121,19 @@ public class JwtTokenProvider {
         }
     }
 
-    private Claims getClaims(String token) {
-        try {
+    private Claims getClaims(String token, Key key) {
             return Jwts.parserBuilder()
-                    .setSigningKey(accessSecretKey)
+                    .setSigningKey(key)
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
-        } catch (Exception e) {
-            log.warn("AccessToken 서명 검증 실패 → RefreshToken key 재시도", e);
-            try {
-                return Jwts.parserBuilder()
-                        .setSigningKey(refreshSecretKey)
-                        .build()
-                        .parseClaimsJws(token)
-                        .getBody();
-            } catch (Exception ex) {
-                log.error("RefreshToken 서명 검증도 실패했습니다.", ex);
-                throw new MoplException(ErrorCode.FAILED_JWT_TOKEN_PARSE);
-            }
-        }
     }
 
-    private String getEmail(String token) {
-        return getClaims(token).getSubject();
+    public Long getUserId(String accessToken) {
+        return getClaims(accessToken, accessSecretKey).get("userId", Long.class);
     }
 
-    public Role getRole(String token) {
-        String role = getClaims(token).get("role", String.class);
-        return Role.valueOf(role);
-    }
-    public Long getUserId(String token) {
-        return getClaims(token).get("userId", Long.class);
+    public Long getUserIdFromRefreshToken(String refreshToken) {
+        return getClaims(refreshToken, refreshSecretKey).get("userId", Long.class);
     }
 }

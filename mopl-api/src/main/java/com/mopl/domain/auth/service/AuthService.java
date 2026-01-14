@@ -46,14 +46,12 @@ public class AuthService {
 
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user), accessToken);
 
-        addTokenCookie(response, "ACCESS_TOKEN", accessToken, 60 * 60); //1시간
         addTokenCookie(response, "REFRESH_TOKEN", refreshToken, 60 * 60 * 24 * 14); //2주
 
         return jwtDto;
     }
 
     public void logout(HttpServletResponse response) {
-        deleteCookie(response, "ACCESS_TOKEN");
         deleteCookie(response, "REFRESH_TOKEN");
     }
 
@@ -61,14 +59,13 @@ public class AuthService {
         if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
             throw new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
-        Long userId = jwtTokenProvider.getUserId(refreshToken);
+        Long userId = jwtTokenProvider.getUserIdFromRefreshToken(refreshToken);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
         String newAccessToken = jwtTokenProvider.createAccessToken(user);
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user), newAccessToken);
 
-        addTokenCookie(response, "ACCESS_TOKEN", newAccessToken, 60 * 60);
         addTokenCookie(response, "REFRESH_TOKEN", newRefreshToken, 60 * 60 * 24 * 14);
 
         return jwtDto;

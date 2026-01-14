@@ -6,3 +6,13 @@ spring:
     name: mopl-chat
   profiles:
     active: dev
+    include: core
+    group:
+      dev: core-dev
+      prod: core-prod
+      test: core-test
+      local: core-local
+
+#jwt
+jwt:
+  access-secret: ${JWT_ACCESS_SECRET}

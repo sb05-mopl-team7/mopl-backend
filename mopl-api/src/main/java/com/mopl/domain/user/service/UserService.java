@@ -17,7 +17,6 @@ import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
 import com.mopl.global.s3.FileCategory;
 import com.mopl.global.s3.S3Manager;
-import com.mopl.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -41,7 +40,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
-    private final FileStorage fileStorage;
     private final S3Manager s3Manager;
 
     @Transactional(readOnly = true)

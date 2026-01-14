@@ -3,6 +3,8 @@ package com.mopl.domain.auth.service;
 import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.repository.UserRepository;
+import com.mopl.global.redis.RedisManager;
+import com.mopl.global.redis.RedisNameSpace;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +25,7 @@ public class EmailService {
     private final SecureRandom random = new SecureRandom();
     private final SpringTemplateEngine templateEngine;
     private final UserRepository userRepository;
+    private final RedisManager redisManager;
 
     @Value("${spring.mail.username}")
     private String moplEmail;
@@ -30,7 +33,8 @@ public class EmailService {
     public void resetPassword(String email) {
         emailValid(email);
         String temporaryPassword = createTemporaryPassword(10);
-        // TODO: Redis에 저장
+        System.out.println(temporaryPassword);
+        redisManager.save(RedisNameSpace.TEMP_PASSWORD, email, temporaryPassword);
         sendEmail(email, temporaryPassword);
     }
 

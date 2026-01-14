@@ -60,4 +60,12 @@ public class UserController {
         UserDto updatedImage = userService.updateImage(userId, request.name(), image);
         return ResponseEntity.ok().body(updatedImage);
     }
+
+    @PreAuthorize("principal.userId == #userId")
+    @PatchMapping("/{userId}/password")
+    public ResponseEntity<Void> updatePassword(@PathVariable Long userId,
+                                               @Valid @RequestBody ChangePasswordRequest request){
+        userService.updatePassword(userId, request.password());
+        return ResponseEntity.ok().build();
+    }
 }

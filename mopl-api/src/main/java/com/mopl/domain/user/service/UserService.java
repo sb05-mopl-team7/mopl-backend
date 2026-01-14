@@ -10,10 +10,13 @@ import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.dto.PageResponse;
+import com.mopl.global.dto.UploadFileRequest;
 import com.mopl.global.enums.SortBy;
 import com.mopl.global.enums.SortDirection;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
+import com.mopl.global.s3.FileCategory;
+import com.mopl.global.s3.S3Manager;
 import com.mopl.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -38,6 +42,7 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final FileStorage fileStorage;
+    private final S3Manager s3Manager;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String email) {
@@ -54,31 +59,36 @@ public class UserService {
         return userMapper.toDto(createdUser);
     }
 
-    @PreAuthorize("principal.userId == #id")
+    @PreAuthorize("principal.userId == #userId")
     @Transactional
-    public UserDto updateImage(long userId, String name, MultipartFile image) {
+    public UserDto updateImage(long userId, String name, MultipartFile image){
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
         if (name != null && !name.isBlank()) user.updateName(name);
 
         if (image != null && !image.isEmpty()) {
-            if (user.getProfileImageUrl() != null) {
-                String oldFileName = extractFileName(user.getProfileImageUrl());
-                fileStorage.deleteFile(oldFileName);
-            }
+            try {
+                if (user.getProfileImageUrl() != null) {
+                    s3Manager.delete(user.getProfileImageUrl());
+                }
+                UploadFileRequest profileImage = toUploadFileRequest(image);
+                String newAvatar = s3Manager.upload(profileImage, FileCategory.PROFILE_IMAGE);
+                user.updateProfileImageUrl(newAvatar);
 
-            String newAvatarUrl = fileStorage.saveFile(image, userId);
-            user.updateProfileImageUrl(newAvatarUrl);
+            } catch (IOException e) {
+                throw new RuntimeException("프로필 이미지 업로드 실패", e);
+            }
         }
         return userMapper.toDto(user);
     }
 
-    private String extractFileName(String url) {
-        if (url == null || url.isEmpty()) return null;
-
-        int lastSlash = url.lastIndexOf("/");
-        if (lastSlash == -1) return url;
-        return url.substring(lastSlash + 1);
+    private UploadFileRequest toUploadFileRequest(MultipartFile image) throws IOException {
+        return new UploadFileRequest(
+                image.getInputStream(),
+                image.getOriginalFilename(),
+                image.getSize(),
+                image.getContentType()
+        );
     }
 
     @Transactional

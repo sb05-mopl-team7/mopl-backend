@@ -4,12 +4,12 @@ import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.playlist.dto.response.PlaylistContentDto;
 import com.mopl.domain.playlist.dto.response.PlaylistDto;
-import com.mopl.domain.playlist.dto.response.PlaylistOwnerDto;
 import com.mopl.domain.playlist.entity.Playlist;
 import com.mopl.domain.playlist.entity.PlaylistContent;
 import com.mopl.domain.playlist.entity.PlaylistSubscribe;
 import com.mopl.domain.playlist.repository.PlaylistContentRepository;
 import com.mopl.domain.playlist.repository.PlaylistSubscribeRepository;
+import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.s3.S3Manager;
@@ -22,16 +22,19 @@ import java.util.*;
 @RequiredArgsConstructor
 public class PlaylistDtoAssembler {
 
+    private static final int LIST_CONTENT_PREVIEW_LIMIT = 3;
+
     private final UserRepository userRepository;
     private final PlaylistSubscribeRepository playlistSubscribeRepository;
     private final PlaylistContentRepository playlistContentRepository;
     private final ContentRepository contentRepository;
     private final S3Manager s3Manager;
 
+    //단건 조회: 콘텐츠 전체 내려줌
     public PlaylistDto toDto(Long requesterId, Playlist playlist) {
-        PlaylistOwnerDto owner = loadOwner(playlist.getUserId());
+        UserSummaryDto owner = loadOwner(playlist.getUserId());
         boolean subscribedByMe = isSubscribedByMe(requesterId, playlist);
-        List<PlaylistContentDto> contents = loadContentsByPlaylistId(playlist.getId());
+        List<PlaylistContentDto> contents = loadContentsByPlaylistId(playlist.getId()); // 전체
 
         return new PlaylistDto(
                 playlist.getId(),
@@ -45,6 +48,7 @@ public class PlaylistDtoAssembler {
         );
     }
 
+    //목록 조회: playlist당 콘텐츠 미리보기 3개만 내려줌(설명(description) 제외)
     public List<PlaylistDto> toDtoList(Long requesterId, List<Playlist> playlists) {
         if (playlists == null || playlists.isEmpty()) return List.of();
 
@@ -53,15 +57,18 @@ public class PlaylistDtoAssembler {
         Set<Long> ownerIds = new HashSet<>();
         for (Playlist p : playlists) ownerIds.add(p.getUserId());
 
-        Map<Long, PlaylistOwnerDto> ownerMap = loadOwnerMap(ownerIds);
+        Map<Long, UserSummaryDto> ownerMap = loadOwnerMap(ownerIds);
         Set<Long> subscribedPlaylistIds = loadSubscribedPlaylistIds(requesterId, playlistIds);
-        Map<Long, List<PlaylistContentDto>> contentsMap = loadContentsByPlaylistIds(playlistIds);
+
+        // 목록에서는 preview만: playlist당 최대 3개 + description 제외
+        Map<Long, List<PlaylistContentDto>> contentsMap =
+                loadContentPreviewsByPlaylistIds(playlistIds, LIST_CONTENT_PREVIEW_LIMIT);
 
         List<PlaylistDto> result = new ArrayList<>();
         for (Playlist p : playlists) {
-            PlaylistOwnerDto owner = ownerMap.getOrDefault(
+            UserSummaryDto owner = ownerMap.getOrDefault(
                     p.getUserId(),
-                    new PlaylistOwnerDto(p.getUserId(), null, null)
+                    new UserSummaryDto(p.getUserId(), null, null)
             );
 
             boolean subscribedByMe = requesterId != null
@@ -83,23 +90,23 @@ public class PlaylistDtoAssembler {
         return result;
     }
 
-    private PlaylistOwnerDto loadOwner(Long ownerId) {
+    private UserSummaryDto loadOwner(Long ownerId) {
         User owner = userRepository.findById(ownerId).orElse(null);
-        if (owner == null) return new PlaylistOwnerDto(ownerId, null, null);
+        if (owner == null) return new UserSummaryDto(ownerId, null, null);
 
         String profileUrl = presignIfS3(owner.getProfileImageUrl());
-        return new PlaylistOwnerDto(owner.getId(), owner.getName(), profileUrl);
+        return new UserSummaryDto(owner.getId(), owner.getName(), profileUrl);
     }
 
-    private Map<Long, PlaylistOwnerDto> loadOwnerMap(Set<Long> ownerIds) {
+    private Map<Long, UserSummaryDto> loadOwnerMap(Set<Long> ownerIds) {
         if (ownerIds == null || ownerIds.isEmpty()) return Map.of();
 
         List<User> owners = userRepository.findAllById(ownerIds);
 
-        Map<Long, PlaylistOwnerDto> map = new HashMap<>();
+        Map<Long, UserSummaryDto> map = new HashMap<>();
         for (User u : owners) {
             String profileUrl = presignIfS3(u.getProfileImageUrl());
-            map.put(u.getId(), new PlaylistOwnerDto(u.getId(), u.getName(), profileUrl));
+            map.put(u.getId(), new UserSummaryDto(u.getId(), u.getName(), profileUrl));
         }
         return map;
     }
@@ -121,6 +128,7 @@ public class PlaylistDtoAssembler {
         return set;
     }
 
+    //단건 조회용(전체)
     private List<PlaylistContentDto> loadContentsByPlaylistId(Long playlistId) {
         List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistId(playlistId);
         if (pcs.isEmpty()) return List.of();
@@ -134,12 +142,13 @@ public class PlaylistDtoAssembler {
         for (Long contentId : contentIds) {
             Content content = contentMap.get(contentId);
             if (content == null) continue;
-            result.add(toContentDto(content));
+            result.add(toContentDto(content, true)); // description 포함
         }
         return result;
     }
 
-    private Map<Long, List<PlaylistContentDto>> loadContentsByPlaylistIds(List<Long> playlistIds) {
+    //목록 조회용(playlist당 N개 preview)
+    private Map<Long, List<PlaylistContentDto>> loadContentPreviewsByPlaylistIds(List<Long> playlistIds, int limitPerPlaylist) {
         if (playlistIds == null || playlistIds.isEmpty()) return Map.of();
 
         List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistIdIn(playlistIds);
@@ -154,9 +163,12 @@ public class PlaylistDtoAssembler {
         Map<Long, List<Long>> playlistToContentIds = new HashMap<>();
         Set<Long> allContentIds = new LinkedHashSet<>();
 
+        // playlist당 limitPerPlaylist까지만 contentId 수집(그 이상은 무시)
         for (PlaylistContent pc : pcs) {
-            playlistToContentIds.computeIfAbsent(pc.getPlaylistId(), k -> new ArrayList<>())
-                    .add(pc.getContentId());
+            List<Long> ids = playlistToContentIds.computeIfAbsent(pc.getPlaylistId(), k -> new ArrayList<>());
+            if (ids.size() >= limitPerPlaylist) continue;
+
+            ids.add(pc.getContentId());
             allContentIds.add(pc.getContentId());
         }
 
@@ -174,7 +186,7 @@ public class PlaylistDtoAssembler {
             for (Long contentId : contentIds) {
                 Content content = contentMap.get(contentId);
                 if (content == null) continue;
-                dtos.add(toContentDto(content));
+                dtos.add(toContentDto(content, false));
             }
             result.put(playlistId, dtos);
         }
@@ -191,7 +203,7 @@ public class PlaylistDtoAssembler {
         return map;
     }
 
-    private PlaylistContentDto toContentDto(Content content) {
+    private PlaylistContentDto toContentDto(Content content, boolean includeDescription) {
         List<String> tags = content.getContentTags().stream()
                 .map(ct -> ct.getTag().getTag())
                 .distinct()
@@ -203,7 +215,7 @@ public class PlaylistDtoAssembler {
                 content.getId(),
                 content.getContentType() == null ? null : content.getContentType().name(),
                 content.getTitle(),
-                content.getDescription(),
+                includeDescription ? content.getDescription() : null,
                 thumbnailUrl,
                 tags,
                 content.getAverageRating(),
@@ -211,20 +223,16 @@ public class PlaylistDtoAssembler {
         );
     }
 
+    // DB에는 S3 key 또는 외부 URL만 저장
     private String presignIfS3(String keyOrUrl) {
         if (keyOrUrl == null || keyOrUrl.isBlank()) return null;
 
-        if (keyOrUrl.contains("X-Amz-Signature=")) {
+        // URL이면 그대로 반환(외부 이미지 포함)
+        if (keyOrUrl.startsWith("http")) {
             return keyOrUrl;
         }
 
-        if (keyOrUrl.startsWith("http")
-                && !(keyOrUrl.contains("amazonaws.com")
-                || keyOrUrl.contains(".s3.")
-                || keyOrUrl.contains("s3.ap-"))) {
-            return keyOrUrl;
-        }
-
+        // 그 외는 S3 key로 보고 무조건 presigned 생성
         return s3Manager.generatePresignedUrl(keyOrUrl);
     }
 }

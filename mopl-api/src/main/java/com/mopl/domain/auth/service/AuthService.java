@@ -72,7 +72,8 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(user);
         String refreshToken = jwtTokenProvider.createRefreshToken(user);
 
-        JwtDto jwtDto = new JwtDto(userMapper.toDto(user), accessToken);
+        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), accessToken);
 
         addTokenCookie(response, "REFRESH_TOKEN", refreshToken, 60 * 60 * 24 * 14); //2주
 

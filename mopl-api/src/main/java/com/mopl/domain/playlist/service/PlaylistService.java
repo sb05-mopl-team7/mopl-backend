@@ -2,6 +2,7 @@ package com.mopl.domain.playlist.service;
 
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.mopl.domain.playlist.dto.request.PlaylistSearchCondition;
 import com.mopl.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.mopl.domain.playlist.dto.response.PlaylistDto;
 import com.mopl.domain.playlist.entity.Playlist;
@@ -10,7 +11,6 @@ import com.mopl.domain.playlist.entity.PlaylistSubscribe;
 import com.mopl.domain.playlist.repository.PlaylistContentRepository;
 import com.mopl.domain.playlist.repository.PlaylistRepository;
 import com.mopl.domain.playlist.repository.PlaylistSubscribeRepository;
-import com.mopl.domain.playlist.support.PlaylistCursorSupport;
 import com.mopl.domain.playlist.support.PlaylistDtoAssembler;
 import com.mopl.global.dto.PageResponse;
 import com.mopl.global.enums.SortDirection;
@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 
@@ -37,7 +38,7 @@ public class PlaylistService {
     // 플레이리스트 생성
     @Transactional
     public PlaylistDto create(Long requesterId, PlaylistCreateRequest request) {
-        validateAuthenticated(requesterId);
+        requireAuthenticated(requesterId);
 
         Playlist playlist = new Playlist(requesterId, request.title(), request.description());
         Playlist saved = playlistRepository.save(playlist);
@@ -48,7 +49,7 @@ public class PlaylistService {
     // 플레이리스트 단건 조회
     @Transactional(readOnly = true)
     public PlaylistDto find(Long requesterId, Long playlistId) {
-        validateAuthenticated(requesterId);
+        requireAuthenticated(requesterId);
 
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
@@ -59,7 +60,7 @@ public class PlaylistService {
     // 플레이리스트 수정
     @Transactional
     public PlaylistDto update(Long requesterId, Long playlistId, PlaylistUpdateRequest request) {
-        validateAuthenticated(requesterId);
+        requireAuthenticated(requesterId);
 
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
@@ -76,7 +77,7 @@ public class PlaylistService {
     // 플레이리스트 삭제
     @Transactional
     public void delete(Long requesterId, Long playlistId) {
-        validateAuthenticated(requesterId);
+        requireAuthenticated(requesterId);
 
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
@@ -88,7 +89,7 @@ public class PlaylistService {
     // 플레이리스트 구독
     @Transactional
     public void subscribe(Long requesterId, Long playlistId) {
-        validateAuthenticated(requesterId);
+        requireAuthenticated(requesterId);
 
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
@@ -103,7 +104,7 @@ public class PlaylistService {
     // 플레이리스트 구독 취소
     @Transactional
     public void unsubscribe(Long requesterId, Long playlistId) {
-        validateAuthenticated(requesterId);
+        requireAuthenticated(requesterId);
 
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
@@ -119,7 +120,7 @@ public class PlaylistService {
     // 플레이리스트 콘텐츠 추가
     @Transactional
     public void addContent(Long requesterId, Long playlistId, Long contentId) {
-        validateAuthenticated(requesterId);
+        requireAuthenticated(requesterId);
 
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
@@ -138,7 +139,7 @@ public class PlaylistService {
     // 플레이리스트에서 콘텐츠 삭제
     @Transactional
     public void removeContent(Long requesterId, Long playlistId, Long contentId) {
-        validateAuthenticated(requesterId);
+        requireAuthenticated(requesterId);
 
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
@@ -153,35 +154,25 @@ public class PlaylistService {
 
     // 플레이리스트 목록 조회 (커서 페이지네이션)
     @Transactional(readOnly = true)
-    public PageResponse<PlaylistDto> findAll(
-            Long requesterId,
-            String keywordLike,
-            Long ownerIdEqual,
-            Long subscriberIdEqual,
-            String cursor,
-            String idAfter,
-            Integer limit,
-            String sortBy,
-            SortDirection sortDirection
-    ) {
-        int size = PlaylistCursorSupport.normalizeLimit(limit);
+    public PageResponse<PlaylistDto> findAll(Long requesterId, PlaylistSearchCondition condition) {
+        requireAuthenticated(requesterId);
 
-        String normalizedSortBy = PlaylistCursorSupport.normalizeSortBy(sortBy);
-        SortDirection normalizedDirection = PlaylistCursorSupport.normalizeDirection(sortDirection);
+        int size = condition.normalizedLimit();
+        String sortBy = condition.normalizedSortBy();
+        SortDirection direction = condition.normalizedDirection();
 
-        PlaylistCursorSupport.CursorKey key =
-                PlaylistCursorSupport.parseCursorKey(cursor, idAfter, normalizedSortBy);
+        PlaylistSearchCondition.CursorKey key = condition.toCursorKey();
 
         List<Playlist> fetched = playlistRepository.cursorFindAll(
-                keywordLike,
-                ownerIdEqual,
-                subscriberIdEqual,
+                condition.keywordLike(),
+                condition.ownerIdEqual(),
+                condition.subscriberIdEqual(),
                 key.cursorUpdatedAt(),
                 key.cursorSubscriberCount(),
                 key.idAfter(),
                 size + 1,
-                normalizedSortBy,
-                normalizedDirection
+                sortBy,
+                direction
         );
 
         boolean hasNext = fetched.size() > size;
@@ -195,7 +186,11 @@ public class PlaylistService {
         if (hasNext && !page.isEmpty()) {
             Playlist last = page.get(page.size() - 1);
             nextIdAfter = last.getId();
-            nextCursor = PlaylistCursorSupport.nextCursor(normalizedSortBy, last);
+
+            // sortBy가 updatedAt이면 날짜 커서, 아니면 subscriberCount 커서
+            nextCursor = "updatedAt".equalsIgnoreCase(sortBy)
+                    ? last.getUpdatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                    : String.valueOf(last.getSubscriberCount());
         }
 
         return PageResponse.<PlaylistDto>builder()
@@ -204,13 +199,13 @@ public class PlaylistService {
                 .nextIdAfter(nextIdAfter)
                 .hasNext(hasNext)
                 .totalCount(0L)
-                .sortBy(normalizedSortBy)
-                .sortDirection(normalizedDirection)
+                .sortBy(sortBy)
+                .sortDirection(direction)
                 .build();
     }
 
     // 인증/인가
-    private void validateAuthenticated(Long requesterId) {
+    private void requireAuthenticated(Long requesterId) {
         if (requesterId == null) {
             throw new MoplException(ErrorCode.UNAUTHORIZED);
         }

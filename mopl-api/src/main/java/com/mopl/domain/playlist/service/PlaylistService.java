@@ -40,7 +40,7 @@ public class PlaylistService {
     private final PlaylistContentRepository playlistContentRepository;
     private final ContentRepository contentRepository;
 
-    // ✅ 추가: S3 presigned 변환용 (ContentService처럼 응답에서만 변환)
+    // S3 presigned 변환용 (ContentService처럼 응답에서만 변환)
     private final S3Manager s3Manager;
 
     // 플레이리스트 생성
@@ -365,7 +365,7 @@ public class PlaylistService {
                 .distinct()
                 .toList();
 
-        // ✅ 썸네일도 응답에서 presigned로 변환 (ContentService와 동일 패턴)
+        // 썸네일도 응답에서 presigned로 변환 (ContentService와 동일 패턴)
         String thumbnailUrl = presignIfS3(content.getThumbnailUrl());
 
         return new PlaylistDto.Content(
@@ -380,7 +380,7 @@ public class PlaylistService {
         );
     }
 
-    // ✅ owner
+    // owner
     private Map<Long, PlaylistDto.Owner> loadOwnerMap(Set<Long> ownerIds) {
         if (ownerIds == null || ownerIds.isEmpty()) return Map.of();
 

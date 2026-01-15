@@ -50,10 +50,36 @@ public class S3Manager {
             s3Client.putObject(putObjectRequest,
                     RequestBody.fromInputStream(inputStream, file.fileSize()));
 
+
             return getPublicUrl(fileName);
         } catch (Exception e) {
             log.error("S3 파일 업로드 실패: {}", e.getMessage());
             throw new RuntimeException("S3 파일 업로드 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    public String uploadByte(byte[] imageBytes, String imageName, FileCategory dirName) {
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new RuntimeException("업로드할 이미지 데이터가 비어있습니다.");
+        }
+
+        String fileName = dirName.getPath() + "/" + UUID.randomUUID() + imageName;
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(fileName)
+                    .contentType("image/jpeg")
+                    .contentLength((long) imageBytes.length)
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(imageBytes));
+
+
+            return getPublicUrl(fileName);
+        } catch (Exception e) {
+            log.error("이미지 S3 업로드 실패: {}", e.getMessage());
+            throw new RuntimeException("이미지 S3 업로드 중 오류가 발생했습니다.", e);
         }
     }
 
@@ -110,6 +136,7 @@ public class S3Manager {
 
     /** 고정 URL 생성 로직 (DB 저장용) */
     private String getPublicUrl(String fileName) {
+        log.info("이미지 S3 업로드 완료: {}", fileName);
         return s3Client.utilities().getUrl(GetUrlRequest.builder()
                 .bucket(bucket)
                 .key(fileName)

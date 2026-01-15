@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
@@ -31,4 +32,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             @Param("idAfter") Long idAfter,
             Pageable pageable
     );
+
+    Optional<Review> findByIdAndUserId(Long id, Long userId);
+    List<Review> findAllByContentId(Long contentId);
 }

@@ -1,5 +1,8 @@
 package com.mopl.domain.review.service;
 
+import com.mopl.domain.content.entity.Content;
+import com.mopl.domain.content.exception.ContentErrorCode;
+import com.mopl.domain.content.exception.ContentException;
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.review.dto.request.ReviewCreateRequest;
 import com.mopl.domain.review.dto.request.ReviewUpdateRequest;
@@ -8,6 +11,8 @@ import com.mopl.domain.review.dto.response.ReviewDto;
 import com.mopl.domain.review.entity.Review;
 import com.mopl.domain.review.repository.ReviewRepository;
 import com.mopl.domain.user.entity.User;
+import com.mopl.domain.user.exception.UserErrorCode;
+import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.dto.PageResponse;
 import com.mopl.global.enums.SortDirection;
@@ -37,23 +42,42 @@ public class ReviewService {
     private final ContentRepository contentRepository;
 
     @Transactional
-    public ReviewDto create(Long requesterId, ReviewCreateRequest request) {
-        validateAuthenticated(requesterId);
+    public ReviewDto create(Long userId, ReviewCreateRequest request) {
 
-        Long contentId = request.contentId();
-        validateContentExists(contentId);
+        User user = validateUser(userId);
+        Content content = validateContentExists(request.contentId());
 
         Review review = new Review(
-                requesterId,
-                contentId,
+                user.getId(),
+                content.getId(),
                 request.text(),
                 request.rating()
         );
 
         Review saved = reviewRepository.save(review);
+        updateContentReview(content);
 
         ReviewAuthorDto author = loadAuthor(saved.getUserId());
         return toDto(saved, author);
+    }
+
+    @Transactional
+    public ReviewDto update(Long userId, Long reviewId, ReviewUpdateRequest request) {
+
+        Review review = getReviewByUser(userId, reviewId);
+        review.update(request.text(), request.rating());
+
+        Content content = validateContentExists(review.getContentId());
+        updateContentReview(content);
+
+        ReviewAuthorDto author = loadAuthor(review.getUserId());
+        return toDto(review, author);
+    }
+
+    @Transactional
+    public void delete(Long reviewId) {
+        validateReviewExists(reviewId);
+        reviewRepository.deleteById(reviewId);
     }
 
     @Transactional(readOnly = true)
@@ -128,49 +152,40 @@ public class ReviewService {
                 .build();
     }
 
-    @Transactional
-    public ReviewDto update(Long requesterId, Long reviewId, ReviewUpdateRequest request) {
-        validateAuthenticated(requesterId);
 
-        Review review = reviewRepository.findById(reviewId)
+
+
+    /** 사용자 검증 */
+    private User validateUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+    }
+
+    /** 콘텐츠 검증 */
+    private Content validateContentExists(Long contentId) {
+        return contentRepository.findById(contentId)
+                .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND));
+    }
+
+    private Review validateReviewExists(Long reviewId) {
+        return reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
-
-        if (!review.isAuthor(requesterId)) {
-            throw new MoplException(ErrorCode.FORBIDDEN);
-        }
-
-        review.update(request.text(), request.rating());
-
-        ReviewAuthorDto author = loadAuthor(review.getUserId());
-        return toDto(review, author);
     }
 
-    @Transactional
-    public void delete(Long requesterId, Long reviewId) {
-        validateAuthenticated(requesterId);
-
-        Review review = reviewRepository.findById(reviewId)
+    /** 사용자가 작성한 리뷰 조회 */
+    private Review getReviewByUser(Long userId, Long reviewId) {
+        validateUser(userId);
+        return reviewRepository.findByIdAndUserId(reviewId, userId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
-
-        if (!review.isAuthor(requesterId)) {
-            throw new MoplException(ErrorCode.FORBIDDEN);
-        }
-
-        reviewRepository.delete(review);
     }
 
-    private void validateAuthenticated(Long requesterId) {
-        if (requesterId == null) {
-            throw new MoplException(ErrorCode.UNAUTHORIZED);
-        }
-    }
-
-    private void validateContentExists(Long contentId) {
-        if (contentId == null) {
-            throw new MoplException(ErrorCode.INVALID_REQUEST);
-        }
-        if (!contentRepository.existsById(contentId)) {
-            throw new MoplException(ErrorCode.NOT_FOUND);
+    /** 콘텐츠의 리뷰수와 평점 업데이트 및 저장 */
+    private void updateContentReview(Content content) {
+        List<Review> reviews = reviewRepository.findAllByContentId(content.getId());
+        if(!reviews.isEmpty()) {
+            int reviewCount = reviews.size();
+            double averageRating = reviews.stream().mapToDouble(Review::getRating).average().orElse(0.0);
+            content.updateReview(reviewCount, averageRating);
         }
     }
 
@@ -245,11 +260,10 @@ public class ReviewService {
         return map;
     }
 
+    /** 작성자 정보를 ReviewAuthorDto 로 변환 */
     private ReviewAuthorDto loadAuthor(Long userId) {
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null) {
-            return new ReviewAuthorDto(userId, null, null);
-        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
         return new ReviewAuthorDto(user.getId(), user.getName(), user.getProfileImageUrl());
     }
 

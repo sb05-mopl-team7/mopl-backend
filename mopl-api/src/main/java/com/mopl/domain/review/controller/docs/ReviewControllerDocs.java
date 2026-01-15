@@ -83,7 +83,6 @@ public interface ReviewControllerDocs {
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     ResponseEntity<Void> delete(
-            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "리뷰 ID") Long reviewId
     );
 }

@@ -70,6 +70,7 @@ public class AuthService {
         //TODO http는 controller로 분리 작업 필요
         String accessToken = jwtTokenProvider.createAccessToken(user);
         String refreshToken = jwtTokenProvider.createRefreshToken(user);
+        redisManager.save(RedisNameSpace.AUTH_TOKEN,user.getId().toString(),refreshToken);
 
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), accessToken);
@@ -84,15 +85,28 @@ public class AuthService {
     }
 
     public JwtDto refresh(String refreshToken, HttpServletResponse response) {
-        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
+        //jwt 유효 검증
+        if (!jwtTokenProvider.validateRefreshToken(refreshToken) ) {
             throw new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
         Long userId = jwtTokenProvider.getUserIdFromRefreshToken(refreshToken);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+
+        Optional<String> token = redisManager.findByKey(
+                RedisNameSpace.AUTH_TOKEN,
+                userId.toString(),
+                String.class);
+        System.out.println(token);
+
+        //refresh 값 불일치
+        if(token.isEmpty() ||  !token.get().equals(refreshToken)){
+            throw new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID);
+        }
         String newAccessToken = jwtTokenProvider.createAccessToken(user);
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
-
+        //새로운 refresh 토큰 redis에 저장
+        redisManager.save(RedisNameSpace.AUTH_TOKEN,userId.toString() ,newRefreshToken);
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), newAccessToken);
 

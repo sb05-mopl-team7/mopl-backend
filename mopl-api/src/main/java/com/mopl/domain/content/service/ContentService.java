@@ -65,9 +65,9 @@ public class ContentService {
         Content content = getContentOrThrow(contentId);
 
         if (thumbnail != null && !thumbnail.isEmpty()) {                        // 썸네일 변경사항이 있다면
-            s3Manager.delete(content.getThumbnailUrl());                        // 기존 이미지 삭제
-            String newThumbnailUrl = uploadThumbnail(thumbnail);                // S3에 새로운 썸네일 저장
-            content.update(req.title(), req.description(), newThumbnailUrl);    // 새로운 썸네일로 업데이트
+            String newThumbnailUrl = uploadThumbnail(thumbnail);                // 1. S3에 새로운 썸네일 저장
+            content.update(req.title(), req.description(), newThumbnailUrl);    // 2. 새로운 썸네일로 업데이트
+            s3Manager.delete(content.getThumbnailUrl());                        // 3. 기존 이미지 삭제
         } else {
             content.update(req.title(), req.description(), content.getThumbnailUrl());
         }

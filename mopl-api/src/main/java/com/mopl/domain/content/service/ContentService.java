@@ -16,6 +16,7 @@ import com.mopl.global.redis.RedisManager;
 import com.mopl.global.redis.RedisNameSpace;
 import com.mopl.global.s3.FileCategory;
 import com.mopl.global.s3.S3Manager;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,6 +36,7 @@ public class ContentService {
     private final TagRepository tagRepository;
     private final S3Manager s3Manager;
     private final RedisManager redisManager;
+    private final EntityManager entityManager;
 
     @Transactional
     public ContentDto create(CreateContentDto req, MultipartFile thumbnail) {
@@ -43,13 +45,9 @@ public class ContentService {
         String thumbnailUrl = uploadThumbnail(thumbnail);                                           // S3에 썸네일 업로드
         Content content = new Content(req.type(), req.title(), req.description(), thumbnailUrl);    // 콘텐츠 생성
         addTagsToContent(req.tags(), content);                                                      // 태그 추가 및 저장
+
         Content newContent = contentRepository.save(content);
-
-        // 태그 이름만 추출
-        List<String> tagNames = newContent.getContentTags().stream()
-                                .map(Contenttag -> Contenttag.getTag().getTag()).toList();
-
-        // 썸네일 URL의 서명된 URL 생성
+        List<String> tagNames = getTagNames(newContent);
         String presignedUrl = s3Manager.generatePresignedUrl(newContent.getThumbnailUrl());
 
         return toDto(newContent, presignedUrl, tagNames, 0);
@@ -68,14 +66,13 @@ public class ContentService {
             content.update(req.title(), req.description(), content.getThumbnailUrl());
         }
 
-        updateTags(req.tags(), content);
+        content.getContentTags().clear();       // 메모리에서 태그 삭제
+        entityManager.flush();                  // 실제 DB에서도 삭제
+        addTagsToContent(req.tags(), content);  // 새로운 태그로 업데이트
 
-        // 썸네일 URL의 서명된 URL 생성
         String presignedUrl = s3Manager.generatePresignedUrl(content.getThumbnailUrl());
-        List<String> tagNames = content.getContentTags().stream()
-                .map(Contenttag -> Contenttag.getTag().getTag()).toList();
-        int watchCount = redisManager.findByKey(RedisNameSpace.WATCHER_COUNT, contentId.toString(), Integer.class)
-                .orElse(0);
+        List<String> tagNames = getTagNames(content);
+        int watchCount = getWatchCount(contentId);
 
         return toDto(content, presignedUrl, tagNames, watchCount);
     }
@@ -92,19 +89,13 @@ public class ContentService {
 
     public ContentDto detail(Long contentId) {
         Content content = validateContent(contentId);
-        List<String> tagNames = content.getContentTags().stream()
-                .map(Contenttag -> Contenttag.getTag().getTag()).toList();
-        int watchCount = redisManager.findByKey(RedisNameSpace.WATCHER_COUNT, contentId.toString(), Integer.class)
-                .orElse(0);
         String thumbnailUrl = s3Manager.generatePresignedUrl(content.getThumbnailUrl());
+        List<String> tagNames = getTagNames(content);
+        int watchCount = getWatchCount(contentId);
 
-        return toDto(content, thumbnailUrl, tagNames,watchCount);
+        return toDto(content, thumbnailUrl, tagNames, watchCount);
     }
 
-    /**
-     * 콘텐츠 목록 조회
-     * @param params 콘텐츠 조회 조건
-     */
     @Transactional(readOnly = true)
     public PageResponse<ContentDto> list(ContentQueryParams params) {
         List<Content> contentList = contentRepository.list(params); // params 조건에 해당하는 콘텐츠 목록 조회
@@ -122,14 +113,12 @@ public class ContentService {
 
         List<ContentDto> response = contentList.stream().map(content -> {
             String presignedUrl = s3Manager.generatePresignedUrl(content.getThumbnailUrl());
-            int watchCount = redisManager
-                    .findByKey(RedisNameSpace.WATCHER_COUNT, content.getId().toString(), Integer.class)
-                    .orElse(0);
-            List<String> tagNames = content.getContentTags().stream()
-                    .map(Contenttag -> Contenttag.getTag().getTag()).toList();
+            List<String> tagNames = getTagNames(content);
+            int watchCount = getWatchCount(content.getId());
 
             return toDto(content, presignedUrl, tagNames, watchCount);
-        }).toList();
+        })
+        .toList();
 
         return PageResponse.<ContentDto> builder()
                 .data(response)
@@ -179,31 +168,17 @@ public class ContentService {
         });
     }
 
-    /** 새로운 태그와 기존 태그를 비교하여 선택적으로 업데이트 */
-    private void updateTags(List<String> newTagNames, Content content) {
-        if (newTagNames == null || newTagNames.isEmpty()) {
-            content.getContentTags().clear();
-            return;
-        }
-
-        // 현재 콘텐츠의 기존 태그 이름들
-        List<String> existingTagNames = content.getContentTags().stream()
-                .map(ct -> ct.getTag().getTag())
+    /** 콘텐츠에서 태그 이름만 추출 */
+    private List<String> getTagNames(Content content) {
+        return content.getContentTags().stream()
+                .map(Contenttag -> Contenttag.getTag().getTag())
                 .toList();
+    }
 
-        // 삭제할 태그: 기존에는 있지만 새 요청에 없는 것
-        existingTagNames.stream()
-                .filter(tagName -> !newTagNames.contains(tagName))
-                .forEach(tagName -> content.getContentTags().removeIf(ct -> ct.getTag().getTag().equals(tagName)));
-
-        // 추가할 태그: 새 요청에는 있지만 기존에 없는 것
-        newTagNames.stream()
-                .filter(tagName -> !existingTagNames.contains(tagName))
-                .forEach(tagName -> {
-                    Tag tag = tagRepository.findByTag(tagName)
-                            .orElseGet(() -> tagRepository.save(new Tag(tagName)));
-                    content.addTag(tag);
-                });
+    private int getWatchCount(Long contentId) {
+        return redisManager
+                .findByKey(RedisNameSpace.WATCHER_COUNT, contentId.toString(), Integer.class)
+                .orElse(0);
     }
 
     /** Dto 변환 */

@@ -50,6 +50,7 @@ public class S3Manager {
             s3Client.putObject(putObjectRequest,
                     RequestBody.fromInputStream(inputStream, file.fileSize()));
 
+
             return getPublicUrl(fileName);
         } catch (Exception e) {
             log.error("S3 파일 업로드 실패: {}", e.getMessage());
@@ -74,8 +75,8 @@ public class S3Manager {
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(imageBytes));
 
-            log.info("이미지 S3 업로드 완료: {}", fileName);
-            return fileName;
+
+            return getPublicUrl(fileName);
         } catch (Exception e) {
             log.error("이미지 S3 업로드 실패: {}", e.getMessage());
             throw new RuntimeException("이미지 S3 업로드 중 오류가 발생했습니다.", e);
@@ -135,6 +136,7 @@ public class S3Manager {
 
     /** 고정 URL 생성 로직 (DB 저장용) */
     private String getPublicUrl(String fileName) {
+        log.info("이미지 S3 업로드 완료: {}", fileName);
         return s3Client.utilities().getUrl(GetUrlRequest.builder()
                 .bucket(bucket)
                 .key(fileName)

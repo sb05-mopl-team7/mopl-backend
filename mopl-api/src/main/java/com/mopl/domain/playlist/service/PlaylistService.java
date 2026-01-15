@@ -4,7 +4,9 @@ import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.mopl.domain.playlist.dto.request.PlaylistUpdateRequest;
+import com.mopl.domain.playlist.dto.response.PlaylistContentDto;
 import com.mopl.domain.playlist.dto.response.PlaylistDto;
+import com.mopl.domain.playlist.dto.response.PlaylistOwnerDto;
 import com.mopl.domain.playlist.entity.Playlist;
 import com.mopl.domain.playlist.entity.PlaylistContent;
 import com.mopl.domain.playlist.entity.PlaylistSubscribe;
@@ -40,7 +42,7 @@ public class PlaylistService {
     private final PlaylistContentRepository playlistContentRepository;
     private final ContentRepository contentRepository;
 
-    // S3 presigned 변환용 (ContentService처럼 응답에서만 변환)
+    // S3 presigned 변환용 (응답에서만 변환)
     private final S3Manager s3Manager;
 
     // 플레이리스트 생성
@@ -51,7 +53,7 @@ public class PlaylistService {
         Playlist playlist = new Playlist(requesterId, request.title(), request.description());
         Playlist saved = playlistRepository.save(playlist);
 
-        PlaylistDto.Owner owner = loadOwner(saved.getUserId());
+        PlaylistOwnerDto owner = loadOwner(saved.getUserId());
 
         return new PlaylistDto(
                 saved.getId(),
@@ -73,9 +75,9 @@ public class PlaylistService {
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
-        PlaylistDto.Owner owner = loadOwner(playlist.getUserId());
+        PlaylistOwnerDto owner = loadOwner(playlist.getUserId());
         boolean subscribedByMe = isSubscribedByMe(requesterId, playlist);
-        List<PlaylistDto.Content> contents = loadContentsByPlaylistId(playlist.getId());
+        List<PlaylistContentDto> contents = loadContentsByPlaylistId(playlist.getId());
 
         return new PlaylistDto(
                 playlist.getId(),
@@ -226,24 +228,24 @@ public class PlaylistService {
 
         List<Long> playlistIds = page.stream().map(Playlist::getId).toList();
 
-        Map<Long, PlaylistDto.Owner> ownerMap = loadOwnerMap(
+        Map<Long, PlaylistOwnerDto> ownerMap = loadOwnerMap(
                 page.stream().map(Playlist::getUserId).collect(java.util.stream.Collectors.toSet())
         );
 
         Set<Long> subscribedPlaylistIds = loadSubscribedPlaylistIds(requesterId, playlistIds);
 
-        Map<Long, List<PlaylistDto.Content>> contentsMap = loadContentsByPlaylistIds(playlistIds);
+        Map<Long, List<PlaylistContentDto>> contentsMap = loadContentsByPlaylistIds(playlistIds);
 
         List<PlaylistDto> data = page.stream().map(p -> {
-            PlaylistDto.Owner owner = ownerMap.getOrDefault(
+            PlaylistOwnerDto owner = ownerMap.getOrDefault(
                     p.getUserId(),
-                    new PlaylistDto.Owner(p.getUserId(), null, null)
+                    new PlaylistOwnerDto(p.getUserId(), null, null)
             );
 
             boolean subscribedByMe = requesterId != null
                     && (Objects.equals(p.getUserId(), requesterId) || subscribedPlaylistIds.contains(p.getId()));
 
-            List<PlaylistDto.Content> contents = contentsMap.getOrDefault(p.getId(), List.of());
+            List<PlaylistContentDto> contents = contentsMap.getOrDefault(p.getId(), List.of());
 
             return new PlaylistDto(
                     p.getId(),
@@ -283,7 +285,7 @@ public class PlaylistService {
     }
 
     // contents 로딩/매핑
-    private List<PlaylistDto.Content> loadContentsByPlaylistId(Long playlistId) {
+    private List<PlaylistContentDto> loadContentsByPlaylistId(Long playlistId) {
         List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistId(playlistId);
         if (pcs.isEmpty()) return List.of();
 
@@ -295,7 +297,7 @@ public class PlaylistService {
 
         Map<Long, Content> contentMap = loadContentMap(contentIds);
 
-        List<PlaylistDto.Content> result = new ArrayList<>();
+        List<PlaylistContentDto> result = new ArrayList<>();
         for (Long contentId : contentIds) {
             Content content = contentMap.get(contentId);
             if (content == null) continue;
@@ -305,12 +307,12 @@ public class PlaylistService {
     }
 
     // 목록 조회용
-    private Map<Long, List<PlaylistDto.Content>> loadContentsByPlaylistIds(List<Long> playlistIds) {
+    private Map<Long, List<PlaylistContentDto>> loadContentsByPlaylistIds(List<Long> playlistIds) {
         if (playlistIds == null || playlistIds.isEmpty()) return Map.of();
 
         List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistIdIn(playlistIds);
         if (pcs.isEmpty()) {
-            Map<Long, List<PlaylistDto.Content>> empty = new HashMap<>();
+            Map<Long, List<PlaylistContentDto>> empty = new HashMap<>();
             for (Long pid : playlistIds) empty.put(pid, List.of());
             return empty;
         }
@@ -328,7 +330,7 @@ public class PlaylistService {
 
         Map<Long, Content> contentMap = loadContentMap(allContentIds);
 
-        Map<Long, List<PlaylistDto.Content>> result = new HashMap<>();
+        Map<Long, List<PlaylistContentDto>> result = new HashMap<>();
         for (Long playlistId : playlistIds) {
             List<Long> contentIds = playlistToContentIds.getOrDefault(playlistId, List.of());
             if (contentIds.isEmpty()) {
@@ -336,7 +338,7 @@ public class PlaylistService {
                 continue;
             }
 
-            List<PlaylistDto.Content> dtos = new ArrayList<>();
+            List<PlaylistContentDto> dtos = new ArrayList<>();
             for (Long contentId : contentIds) {
                 Content content = contentMap.get(contentId);
                 if (content == null) continue;
@@ -359,16 +361,16 @@ public class PlaylistService {
         return map;
     }
 
-    private PlaylistDto.Content toPlaylistContentDto(Content content) {
+    private PlaylistContentDto toPlaylistContentDto(Content content) {
         List<String> tags = content.getContentTags().stream()
                 .map(ct -> ct.getTag().getTag())
                 .distinct()
                 .toList();
 
-        // 썸네일도 응답에서 presigned로 변환 (ContentService와 동일 패턴)
+        // 썸네일도 응답에서 presigned로 변환
         String thumbnailUrl = presignIfS3(content.getThumbnailUrl());
 
-        return new PlaylistDto.Content(
+        return new PlaylistContentDto(
                 content.getId(),
                 content.getContentType() == null ? null : content.getContentType().name(),
                 content.getTitle(),
@@ -381,15 +383,15 @@ public class PlaylistService {
     }
 
     // owner
-    private Map<Long, PlaylistDto.Owner> loadOwnerMap(Set<Long> ownerIds) {
+    private Map<Long, PlaylistOwnerDto> loadOwnerMap(Set<Long> ownerIds) {
         if (ownerIds == null || ownerIds.isEmpty()) return Map.of();
 
         List<User> owners = userRepository.findAllById(ownerIds);
 
-        Map<Long, PlaylistDto.Owner> map = new HashMap<>();
+        Map<Long, PlaylistOwnerDto> map = new HashMap<>();
         for (User u : owners) {
-            String profileUrl = presignProfileImage(u.getProfileImageUrl());
-            map.put(u.getId(), new PlaylistDto.Owner(u.getId(), u.getName(), profileUrl));
+            String profileUrl = presignIfS3(u.getProfileImageUrl());
+            map.put(u.getId(), new PlaylistOwnerDto(u.getId(), u.getName(), profileUrl));
         }
         return map;
     }
@@ -397,7 +399,8 @@ public class PlaylistService {
     private Set<Long> loadSubscribedPlaylistIds(Long requesterId, List<Long> playlistIds) {
         if (requesterId == null || playlistIds == null || playlistIds.isEmpty()) return Set.of();
 
-        List<PlaylistSubscribe> subs = playlistSubscribeRepository.findAllByUserIdAndPlaylistIdIn(requesterId, playlistIds);
+        List<PlaylistSubscribe> subs =
+                playlistSubscribeRepository.findAllByUserIdAndPlaylistIdIn(requesterId, playlistIds);
 
         Set<Long> set = new HashSet<>();
         for (PlaylistSubscribe s : subs) {
@@ -490,13 +493,13 @@ public class PlaylistService {
         }
     }
 
-    private PlaylistDto.Owner loadOwner(Long ownerId) {
+    private PlaylistOwnerDto loadOwner(Long ownerId) {
         User owner = userRepository.findById(ownerId).orElse(null);
         if (owner == null) {
-            return new PlaylistDto.Owner(ownerId, null, null);
+            return new PlaylistOwnerDto(ownerId, null, null);
         }
-        String profileUrl = presignProfileImage(owner.getProfileImageUrl());
-        return new PlaylistDto.Owner(owner.getId(), owner.getName(), profileUrl);
+        String profileUrl = presignIfS3(owner.getProfileImageUrl());
+        return new PlaylistOwnerDto(owner.getId(), owner.getName(), profileUrl);
     }
 
     private boolean isSubscribedByMe(Long requesterId, Playlist playlist) {
@@ -506,33 +509,18 @@ public class PlaylistService {
         return playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlist.getId());
     }
 
-    //프로필 이미지 presigned
-    private String presignProfileImage(String keyOrUrl) {
-        if (keyOrUrl == null || keyOrUrl.isBlank()) return null;
-
-        if (keyOrUrl.contains("X-Amz-Signature=")) {
-            return keyOrUrl;
-        }
-
-        if (keyOrUrl.startsWith("http")
-                && !(keyOrUrl.contains("amazonaws.com")
-                || keyOrUrl.contains(".s3.")
-                || keyOrUrl.contains("s3.ap-"))) {
-            return keyOrUrl;
-        }
-
-        return s3Manager.generatePresignedUrl(keyOrUrl);
-    }
-
-    // content thumbnail presigned
-
+    /**
+     * [P3] 프로필/썸네일 공통 presigned 처리: S3 리소스면 presigned URL로 변환한다.
+     */
     private String presignIfS3(String keyOrUrl) {
         if (keyOrUrl == null || keyOrUrl.isBlank()) return null;
 
+        // 이미 presigned면 그대로 반환
         if (keyOrUrl.contains("X-Amz-Signature=")) {
             return keyOrUrl;
         }
 
+        // http인데 S3 도메인이 아니면(외부 URL) 그대로 반환
         if (keyOrUrl.startsWith("http")
                 && !(keyOrUrl.contains("amazonaws.com")
                 || keyOrUrl.contains(".s3.")

@@ -54,7 +54,7 @@ public class UserController {
 
     @PreAuthorize("principal.userId == #userId")
     @PatchMapping(value = "/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<UserDto> updateImage(@PathVariable long userId,
+    public ResponseEntity<UserDto> updateImage(@PathVariable Long userId,
                                                @RequestPart(value = "request", required = true) UserUpdateRequest request,
                                                @RequestPart(value = "image", required = false) MultipartFile image){
         UserDto updatedImage = userService.updateImage(userId, request.name(), image);

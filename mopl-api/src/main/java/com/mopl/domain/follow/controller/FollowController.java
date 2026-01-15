@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
@@ -61,9 +63,9 @@ public class FollowController implements FollowControllerDocs {
     // 팔로워/팔로잉 수 카운트 조회 API
     @Override
     @GetMapping("/count")
-    public ResponseEntity<FollowCountResponse> getFollowCounts(@RequestParam Long targetId) {
+    public ResponseEntity<FollowCountResponse> getFollowCounts(@RequestParam Long followeeId) {
 
-        FollowCountResponse response = followService.getFollowCounts(targetId);
+        FollowCountResponse response = followService.getFollowCounts(followeeId);
 
         return ResponseEntity.ok(response);
     }

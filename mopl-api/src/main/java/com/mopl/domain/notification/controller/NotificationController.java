@@ -39,6 +39,6 @@ public class NotificationController {
                                        @PathVariable Long notificationId) {
         Long userId = userPrincipal.getUserId();
         notificationService.deleteNotification(userId,notificationId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }

@@ -80,7 +80,9 @@ public class AuthService {
         return jwtDto;
     }
 
-    public void logout(HttpServletResponse response) {
+    public void logout(Long myId, HttpServletResponse response) {
+        //TODO http 관련은 controller 까지로 변경 예정
+        redisManager.delete(RedisNameSpace.AUTH_TOKEN, myId.toString());
         deleteCookie(response, "REFRESH_TOKEN");
     }
 
@@ -97,7 +99,6 @@ public class AuthService {
                 RedisNameSpace.AUTH_TOKEN,
                 userId.toString(),
                 String.class);
-        System.out.println(token);
 
         //refresh 값 불일치
         if(token.isEmpty() ||  !token.get().equals(refreshToken)){

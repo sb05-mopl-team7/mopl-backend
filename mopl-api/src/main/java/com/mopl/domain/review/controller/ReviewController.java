@@ -70,8 +70,12 @@ public class ReviewController implements ReviewControllerDocs {
 
     @Override
     @DeleteMapping("/{reviewId}")
-    public ResponseEntity<Void> delete(@PathVariable Long reviewId) {
-        reviewService.delete(reviewId);
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long reviewId
+    ) {
+        Long userId = userPrincipal.getUserId();
+        reviewService.delete(userId, reviewId);
         return ResponseEntity.ok().build();
     }
 }

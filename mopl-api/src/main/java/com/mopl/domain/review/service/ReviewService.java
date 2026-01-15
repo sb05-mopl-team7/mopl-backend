@@ -9,6 +9,8 @@ import com.mopl.domain.review.dto.request.ReviewUpdateRequest;
 import com.mopl.domain.review.dto.response.ReviewAuthorDto;
 import com.mopl.domain.review.dto.response.ReviewDto;
 import com.mopl.domain.review.entity.Review;
+import com.mopl.domain.review.exception.ReviewErrorCode;
+import com.mopl.domain.review.exception.ReviewException;
 import com.mopl.domain.review.repository.ReviewRepository;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.exception.UserErrorCode;
@@ -75,8 +77,13 @@ public class ReviewService {
     }
 
     @Transactional
-    public void delete(Long reviewId) {
-        validateReviewExists(reviewId);
+    public void delete(Long userId, Long reviewId) {
+        Review review = getReviewByUser(userId, reviewId);
+
+        if(!userId.equals(review.getUserId())){
+            throw new ReviewException(ReviewErrorCode.NOT_REVIEW_OWNER);
+        }
+
         reviewRepository.deleteById(reviewId);
     }
 

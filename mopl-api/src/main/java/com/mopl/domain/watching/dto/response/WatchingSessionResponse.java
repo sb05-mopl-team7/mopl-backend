@@ -5,12 +5,15 @@ import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.watching.entity.WatchingSession;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.ser.std.ToStringSerializer;
 
 import java.time.LocalDateTime;
 
 @Builder
 @Schema(description = "시청 세션 응답")
 public record WatchingSessionResponse(
+        @JsonSerialize(using = ToStringSerializer.class)
         @Schema(description = "세션 ID (watcherId와 동일)")
         String id,
 

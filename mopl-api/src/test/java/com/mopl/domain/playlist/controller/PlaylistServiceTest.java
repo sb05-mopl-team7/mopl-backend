@@ -4,6 +4,7 @@ import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.enums.ContentType;
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.mopl.domain.playlist.dto.request.PlaylistSearchCondition;
 import com.mopl.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.mopl.domain.playlist.dto.response.PlaylistDto;
 import com.mopl.domain.playlist.service.PlaylistService;
@@ -171,22 +172,24 @@ class PlaylistServiceTest {
         createPlaylistAs(owner.getId(), "목록2");
         createPlaylistAs(user2.getId(), "목록3");
 
-        PageResponse<PlaylistDto> page = playlistService.findAll(
-                owner.getId(),
+        PlaylistSearchCondition condition = new PlaylistSearchCondition(
                 null,   // keywordLike
                 null,   // ownerIdEqual
                 null,   // subscriberIdEqual
                 null,   // cursor
                 null,   // idAfter
-                10,     // limit
-                null,   // sortBy (default updatedAt)
-                SortDirection.DESCENDING
+                10,     // limit (원하면 null로 두면 DEFAULT_LIMIT 적용됨)
+                SortDirection.DESCENDING,
+                null    // sortBy (null이면 default updatedAt)
         );
+
+        PageResponse<PlaylistDto> page = playlistService.findAll(owner.getId(), condition);
 
         List<PlaylistDto> data = extractData(page);
         assertNotNull(data);
         assertTrue(data.size() >= 3);
     }
+
 
     // PageResponse가 record(data())든 class(getData())든 둘 다 대응 (컴파일 안전 + 런타임 안전)
     @SuppressWarnings("unchecked")

@@ -65,7 +65,7 @@ public class ContentController {
 
     @Operation(summary = "콘텐츠 목록 조회")
     @GetMapping
-    public ResponseEntity<PageResponse<Object>> list(ContentQueryParams params) {
+    public ResponseEntity<PageResponse<ContentDto>> list(ContentQueryParams params) {
         return ResponseEntity.ok(contentService.list(params));
     }
 }

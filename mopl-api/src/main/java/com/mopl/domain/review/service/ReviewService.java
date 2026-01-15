@@ -57,7 +57,7 @@ public class ReviewService {
         );
 
         Review saved = reviewRepository.save(review);
-        reviewRepository.refreshReviewStats(content.getId());
+        contentRepository.increaseReview(content.getId(), request.rating());
 
         ReviewAuthorDto author = loadAuthor(saved.getUserId());
         return toDto(saved, author);
@@ -69,8 +69,11 @@ public class ReviewService {
         Review review = getReviewByUser(userId, reviewId);
         review.update(request.text(), request.rating());
 
+        double oldRating = review.getRating();
+        double newRating = request.rating();
+
         Content content = validateContentExists(review.getContentId());
-        reviewRepository.refreshReviewStats(content.getId());
+        contentRepository.updateReviewRating(content.getId(), oldRating, newRating);
 
         ReviewAuthorDto author = loadAuthor(review.getUserId());
         return toDto(review, author);
@@ -85,8 +88,7 @@ public class ReviewService {
         reviewRepository.delete(review);
 
         Content content = validateContentExists(review.getContentId());
-        reviewRepository.refreshReviewStats(content.getId());
-
+        contentRepository.decreaseReview(content.getId(), review.getRating());
     }
 
     @Transactional(readOnly = true)
@@ -160,9 +162,6 @@ public class ReviewService {
                 .sortDirection(SortDirection.DESCENDING)
                 .build();
     }
-
-
-
 
     /** 사용자 검증 */
     private User validateUser(Long userId) {

@@ -3,7 +3,6 @@ package com.mopl.domain.review.repository;
 import com.mopl.domain.review.entity.Review;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -34,17 +33,4 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
 
     Optional<Review> findByIdAndUserId(Long id, Long userId);
-
-    @Modifying
-    @Query("""
-    update Content c
-    set c.reviewCount = (
-        select count(r) from Review r where r.contentId = c.id
-    ),
-    c.averageRating = (
-        select coalesce(avg(r.rating), 0.0) from Review r where r.contentId = c.id
-    )
-    where c.id = :contentId
-""")
-    void refreshReviewStats(@Param("contentId") Long contentId);
 }

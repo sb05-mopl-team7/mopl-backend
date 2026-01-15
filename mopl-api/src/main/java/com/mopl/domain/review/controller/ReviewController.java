@@ -74,8 +74,8 @@ public class ReviewController implements ReviewControllerDocs {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long reviewId
     ) {
-        long requesterId = userPrincipal.getUserId();
-        reviewService.delete(requesterId, reviewId);
+        Long userId = userPrincipal.getUserId();
+        reviewService.delete(userId, reviewId);
         return ResponseEntity.ok().build();
     }
 }

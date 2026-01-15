@@ -61,4 +61,9 @@ public class Content extends BaseCreatedEntity {
         this.description = description;
         this.thumbnailUrl = thumbnailUrl;
     }
+
+    public void updateReview(int reviewCount, double averageRating){
+        this.reviewCount = reviewCount;
+        this.averageRating = averageRating;
+    }
 }

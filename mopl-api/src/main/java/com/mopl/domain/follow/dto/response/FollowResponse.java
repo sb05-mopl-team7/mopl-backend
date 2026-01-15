@@ -7,7 +7,11 @@ import tools.jackson.databind.ser.std.ToStringSerializer;
 public record FollowResponse(
         @JsonSerialize(using = ToStringSerializer.class)
         Long id,
+
+        @JsonSerialize(using = ToStringSerializer.class)
         Long followerId,
+
+        @JsonSerialize(using = ToStringSerializer.class)
         Long followeeId
 ) {
     public static FollowResponse from(Follow follow) {

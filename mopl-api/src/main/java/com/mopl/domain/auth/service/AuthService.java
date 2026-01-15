@@ -56,7 +56,6 @@ public class AuthService {
                     RedisNameSpace.TEMP_PASSWORD,
                     username,
                     String.class);
-            System.out.println(tempPassword);
 
             if (tempPassword.isPresent() && tempPassword.get().equals(password)) {
                 redisManager.delete(RedisNameSpace.TEMP_PASSWORD, username);

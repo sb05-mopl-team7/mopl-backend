@@ -83,6 +83,10 @@ public class PlaylistService {
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
         validateOwner(requesterId, playlist);
+
+        playlistSubscribeRepository.deleteAllByPlaylistId(playlistId);
+        playlistContentRepository.deleteAllByPlaylistId(playlistId);
+
         playlistRepository.delete(playlist);
     }
 

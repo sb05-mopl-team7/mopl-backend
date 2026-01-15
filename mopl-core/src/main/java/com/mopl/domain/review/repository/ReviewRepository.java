@@ -33,6 +33,13 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             Pageable pageable
     );
 
+    @Query("""
+    select coalesce(avg(r.rating), 0.0)
+    from Review r
+    where r.contentId = :contentId
+    """)
+    double getAverageRatingByContentId(@Param("contentId") Long contentId);
+
     Optional<Review> findByIdAndUserId(Long id, Long userId);
     List<Review> findAllByContentId(Long contentId);
 }

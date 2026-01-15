@@ -79,12 +79,14 @@ public class ReviewService {
     @Transactional
     public void delete(Long userId, Long reviewId) {
         Review review = getReviewByUser(userId, reviewId);
-
         if(!userId.equals(review.getUserId())){
             throw new ReviewException(ReviewErrorCode.NOT_REVIEW_OWNER);
         }
+        reviewRepository.delete(review);
 
-        reviewRepository.deleteById(reviewId);
+        Content content = validateContentExists(review.getContentId());
+        updateContentReview(content);
+
     }
 
     @Transactional(readOnly = true)
@@ -188,12 +190,9 @@ public class ReviewService {
 
     /** 콘텐츠의 리뷰수와 평점 업데이트 및 저장 */
     private void updateContentReview(Content content) {
-        List<Review> reviews = reviewRepository.findAllByContentId(content.getId());
-        if(!reviews.isEmpty()) {
-            int reviewCount = reviews.size();
-            double averageRating = reviews.stream().mapToDouble(Review::getRating).average().orElse(0.0);
-            content.updateReview(reviewCount, averageRating);
-        }
+        int reviewCount = (int) reviewRepository.countByContentId(content.getId());
+        double averageRating = reviewRepository.getAverageRatingByContentId(content.getId());
+        content.updateReview(reviewCount, averageRating);
     }
 
     private void validateOnlyLatestSort(String sortBy, String sortDirection) {

@@ -9,6 +9,8 @@ import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
+import com.mopl.global.redis.RedisManager;
+import com.mopl.global.redis.RedisNameSpace;
 import com.mopl.global.s3.S3Manager;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -29,6 +33,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserMapper userMapper;
     private final S3Manager s3Manager;
+    private final RedisManager redisManager;
 
     @Value("${jwt.cookie.secure}")
     private boolean cookieSecure;
@@ -40,13 +45,34 @@ public class AuthService {
         User user = userRepository.findByEmailAndLockedFalse(username)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
 
-        if (!passwordEncoder.matches(password, user.getPassword()))
-            throw new UserException(UserErrorCode.PASSWORD_NOT_CORRECT);
+        //DB 비밀번호 일치
+        if (passwordEncoder.matches(password, user.getPassword())) {
+            return generateToken(user, response);
+        }
 
+        //임시 비밀번호 일치
+        if (redisManager.hasKey(RedisNameSpace.TEMP_PASSWORD, username)) {
+            Optional<String> tempPassword = redisManager.findByKey(
+                    RedisNameSpace.TEMP_PASSWORD,
+                    username,
+                    String.class);
+
+            if (tempPassword.isPresent() && tempPassword.get().equals(password)) {
+                redisManager.delete(RedisNameSpace.TEMP_PASSWORD, username);
+                return generateToken(user, response);
+            }
+        }
+        //둘다 틀린 경우
+        throw new UserException(UserErrorCode.PASSWORD_NOT_CORRECT);
+    }
+
+    private JwtDto generateToken(User user, HttpServletResponse response) {
+        //TODO http는 controller로 분리 작업 필요
         String accessToken = jwtTokenProvider.createAccessToken(user);
         String refreshToken = jwtTokenProvider.createRefreshToken(user);
 
-        JwtDto jwtDto = new JwtDto(userMapper.toDto(user), accessToken);
+        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), accessToken);
 
         addTokenCookie(response, "REFRESH_TOKEN", refreshToken, 60 * 60 * 24 * 14); //2주
 
@@ -68,7 +94,7 @@ public class AuthService {
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
 
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
-        JwtDto jwtDto = new JwtDto(userMapper.toDto(user,thumbnailUrl), newAccessToken);
+        JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), newAccessToken);
 
         addTokenCookie(response, "REFRESH_TOKEN", newRefreshToken, 60 * 60 * 24 * 14);
 

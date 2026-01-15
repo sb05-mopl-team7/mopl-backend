@@ -1,5 +1,7 @@
 package com.mopl.domain.user.service;
 
+import com.mopl.domain.notification.enums.Level;
+import com.mopl.domain.notification.service.NotificationService;
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
 import com.mopl.domain.user.dto.UserSearchCondition;
@@ -41,6 +43,7 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final S3Manager s3Manager;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String email) {
@@ -98,6 +101,18 @@ public class UserService {
     public void updateRole(Long userId, Role newRole) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+
+        //권한 변경 알림
+        String content = String.format("내 권한이 [%s]에서 [%s]으로 변경되었어요.",
+                user.getRole(),
+                newRole
+        );
+        notificationService.createAndSendNotification(
+                userId,
+                "내 권한이 변경되었어요.",
+                content,
+                Level.INFO);
+
         user.updateRole(newRole);
     }
 

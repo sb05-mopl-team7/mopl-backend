@@ -57,7 +57,7 @@ public class ReviewService {
         );
 
         Review saved = reviewRepository.save(review);
-        updateContentReview(content);
+        reviewRepository.refreshReviewStats(content.getId());
 
         ReviewAuthorDto author = loadAuthor(saved.getUserId());
         return toDto(saved, author);
@@ -70,7 +70,7 @@ public class ReviewService {
         review.update(request.text(), request.rating());
 
         Content content = validateContentExists(review.getContentId());
-        updateContentReview(content);
+        reviewRepository.refreshReviewStats(content.getId());
 
         ReviewAuthorDto author = loadAuthor(review.getUserId());
         return toDto(review, author);
@@ -85,7 +85,7 @@ public class ReviewService {
         reviewRepository.delete(review);
 
         Content content = validateContentExists(review.getContentId());
-        updateContentReview(content);
+        reviewRepository.refreshReviewStats(content.getId());
 
     }
 
@@ -186,13 +186,6 @@ public class ReviewService {
         validateUser(userId);
         return reviewRepository.findByIdAndUserId(reviewId, userId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
-    }
-
-    /** 콘텐츠의 리뷰수와 평점 업데이트 및 저장 */
-    private void updateContentReview(Content content) {
-        int reviewCount = (int) reviewRepository.countByContentId(content.getId());
-        double averageRating = reviewRepository.getAverageRatingByContentId(content.getId());
-        content.updateReview(reviewCount, averageRating);
     }
 
     private void validateOnlyLatestSort(String sortBy, String sortDirection) {

@@ -33,7 +33,6 @@ public class EmailService {
     public void resetPassword(String email) {
         emailValid(email);
         String temporaryPassword = createTemporaryPassword(10);
-        System.out.println(temporaryPassword);
         redisManager.save(RedisNameSpace.TEMP_PASSWORD, email, temporaryPassword);
         sendEmail(email, temporaryPassword);
     }

@@ -38,8 +38,6 @@ public class PlaylistService {
     // 플레이리스트 생성
     @Transactional
     public PlaylistDto create(Long requesterId, PlaylistCreateRequest request) {
-        requireAuthenticated(requesterId);
-
         Playlist playlist = new Playlist(requesterId, request.title(), request.description());
         Playlist saved = playlistRepository.save(playlist);
 
@@ -49,8 +47,6 @@ public class PlaylistService {
     // 플레이리스트 단건 조회
     @Transactional(readOnly = true)
     public PlaylistDto find(Long requesterId, Long playlistId) {
-        requireAuthenticated(requesterId);
-
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
@@ -60,8 +56,6 @@ public class PlaylistService {
     // 플레이리스트 수정
     @Transactional
     public PlaylistDto update(Long requesterId, Long playlistId, PlaylistUpdateRequest request) {
-        requireAuthenticated(requesterId);
-
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
@@ -77,13 +71,12 @@ public class PlaylistService {
     // 플레이리스트 삭제
     @Transactional
     public void delete(Long requesterId, Long playlistId) {
-        requireAuthenticated(requesterId);
-
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
         validateOwner(requesterId, playlist);
 
+        // 잔여 데이터 정리 (FK 없거나 cascade 없을 때 안전)
         playlistSubscribeRepository.deleteAllByPlaylistId(playlistId);
         playlistContentRepository.deleteAllByPlaylistId(playlistId);
 
@@ -93,8 +86,6 @@ public class PlaylistService {
     // 플레이리스트 구독
     @Transactional
     public void subscribe(Long requesterId, Long playlistId) {
-        requireAuthenticated(requesterId);
-
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
@@ -108,8 +99,6 @@ public class PlaylistService {
     // 플레이리스트 구독 취소
     @Transactional
     public void unsubscribe(Long requesterId, Long playlistId) {
-        requireAuthenticated(requesterId);
-
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
@@ -124,8 +113,6 @@ public class PlaylistService {
     // 플레이리스트 콘텐츠 추가
     @Transactional
     public void addContent(Long requesterId, Long playlistId, Long contentId) {
-        requireAuthenticated(requesterId);
-
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
@@ -143,8 +130,6 @@ public class PlaylistService {
     // 플레이리스트에서 콘텐츠 삭제
     @Transactional
     public void removeContent(Long requesterId, Long playlistId, Long contentId) {
-        requireAuthenticated(requesterId);
-
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new MoplException(ErrorCode.NOT_FOUND));
 
@@ -159,8 +144,6 @@ public class PlaylistService {
     // 플레이리스트 목록 조회 (커서 페이지네이션)
     @Transactional(readOnly = true)
     public PageResponse<PlaylistDto> findAll(Long requesterId, PlaylistSearchCondition condition) {
-        requireAuthenticated(requesterId);
-
         int size = condition.normalizedLimit();
         String sortBy = condition.normalizedSortBy();
         SortDirection direction = condition.normalizedDirection();
@@ -208,13 +191,7 @@ public class PlaylistService {
                 .build();
     }
 
-    // 인증/인가
-    private void requireAuthenticated(Long requesterId) {
-        if (requesterId == null) {
-            throw new MoplException(ErrorCode.UNAUTHORIZED);
-        }
-    }
-
+    // 인가(Owner 체크)
     private void validateOwner(Long requesterId, Playlist playlist) {
         if (!Objects.equals(playlist.getUserId(), requesterId)) {
             throw new MoplException(ErrorCode.FORBIDDEN);

@@ -54,7 +54,8 @@ CREATE TABLE reviews
     rating     DOUBLE       NOT NULL,
     updated_at DATETIME     NOT NULL,
     created_at DATETIME     NOT NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    UNIQUE KEY  uk_reviews_user_content  (user_id, content_id)
 );
 
 CREATE TABLE playlists

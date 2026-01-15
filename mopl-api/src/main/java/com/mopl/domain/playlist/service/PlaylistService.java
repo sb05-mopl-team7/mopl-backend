@@ -17,6 +17,7 @@ import com.mopl.global.dto.PageResponse;
 import com.mopl.global.enums.SortDirection;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
+import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,9 @@ public class PlaylistService {
     private final UserRepository userRepository;
     private final PlaylistContentRepository playlistContentRepository;
     private final ContentRepository contentRepository;
+
+    // ✅ 추가: S3 presigned 변환용 (ContentService처럼 응답에서만 변환)
+    private final S3Manager s3Manager;
 
     // 플레이리스트 생성
     @Transactional
@@ -361,19 +365,22 @@ public class PlaylistService {
                 .distinct()
                 .toList();
 
+        // ✅ 썸네일도 응답에서 presigned로 변환 (ContentService와 동일 패턴)
+        String thumbnailUrl = presignIfS3(content.getThumbnailUrl());
+
         return new PlaylistDto.Content(
                 content.getId(),
                 content.getContentType() == null ? null : content.getContentType().name(),
                 content.getTitle(),
                 content.getDescription(),
-                content.getThumbnailUrl(),
+                thumbnailUrl,
                 tags,
                 content.getAverageRating(),
                 content.getReviewCount()
         );
     }
 
-    // owner
+    // ✅ owner
     private Map<Long, PlaylistDto.Owner> loadOwnerMap(Set<Long> ownerIds) {
         if (ownerIds == null || ownerIds.isEmpty()) return Map.of();
 
@@ -381,7 +388,8 @@ public class PlaylistService {
 
         Map<Long, PlaylistDto.Owner> map = new HashMap<>();
         for (User u : owners) {
-            map.put(u.getId(), new PlaylistDto.Owner(u.getId(), u.getName(), u.getProfileImageUrl()));
+            String profileUrl = presignProfileImage(u.getProfileImageUrl());
+            map.put(u.getId(), new PlaylistDto.Owner(u.getId(), u.getName(), profileUrl));
         }
         return map;
     }
@@ -487,7 +495,8 @@ public class PlaylistService {
         if (owner == null) {
             return new PlaylistDto.Owner(ownerId, null, null);
         }
-        return new PlaylistDto.Owner(owner.getId(), owner.getName(), owner.getProfileImageUrl());
+        String profileUrl = presignProfileImage(owner.getProfileImageUrl());
+        return new PlaylistDto.Owner(owner.getId(), owner.getName(), profileUrl);
     }
 
     private boolean isSubscribedByMe(Long requesterId, Playlist playlist) {
@@ -495,5 +504,42 @@ public class PlaylistService {
             return true;
         }
         return playlistSubscribeRepository.existsByUserIdAndPlaylistId(requesterId, playlist.getId());
+    }
+
+    //프로필 이미지 presigned
+    private String presignProfileImage(String keyOrUrl) {
+        if (keyOrUrl == null || keyOrUrl.isBlank()) return null;
+
+        if (keyOrUrl.contains("X-Amz-Signature=")) {
+            return keyOrUrl;
+        }
+
+        if (keyOrUrl.startsWith("http")
+                && !(keyOrUrl.contains("amazonaws.com")
+                || keyOrUrl.contains(".s3.")
+                || keyOrUrl.contains("s3.ap-"))) {
+            return keyOrUrl;
+        }
+
+        return s3Manager.generatePresignedUrl(keyOrUrl);
+    }
+
+    // content thumbnail presigned
+
+    private String presignIfS3(String keyOrUrl) {
+        if (keyOrUrl == null || keyOrUrl.isBlank()) return null;
+
+        if (keyOrUrl.contains("X-Amz-Signature=")) {
+            return keyOrUrl;
+        }
+
+        if (keyOrUrl.startsWith("http")
+                && !(keyOrUrl.contains("amazonaws.com")
+                || keyOrUrl.contains(".s3.")
+                || keyOrUrl.contains("s3.ap-"))) {
+            return keyOrUrl;
+        }
+
+        return s3Manager.generatePresignedUrl(keyOrUrl);
     }
 }

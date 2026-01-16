@@ -51,6 +51,7 @@ public interface ReviewControllerDocs {
     @Operation(summary = "리뷰 단건 조회")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "404", description = "대상 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")

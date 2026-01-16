@@ -3,11 +3,11 @@ package com.mopl.domain.playlist.controller;
 import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.playlist.controller.docs.PlaylistControllerDocs;
 import com.mopl.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.mopl.domain.playlist.dto.request.PlaylistSearchCondition;
 import com.mopl.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.mopl.domain.playlist.dto.response.PlaylistDto;
 import com.mopl.domain.playlist.service.PlaylistService;
 import com.mopl.global.dto.PageResponse;
-import com.mopl.global.enums.SortDirection;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,30 +25,10 @@ public class PlaylistController implements PlaylistControllerDocs {
     @GetMapping
     public ResponseEntity<PageResponse<PlaylistDto>> findAll(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestParam(required = false) String keywordLike,
-            @RequestParam(required = false) Long ownerIdEqual,
-            @RequestParam(required = false) Long subscriberIdEqual,
-            @RequestParam(required = false) String cursor,
-            @RequestParam(required = false) String idAfter,
-            @RequestParam(required = false) Integer limit,
-            @RequestParam(required = false) SortDirection sortDirection,
-            @RequestParam(required = false) String sortBy
+            @Valid @ModelAttribute PlaylistSearchCondition condition
     ) {
         Long requesterId = userPrincipal.getUserId();
-
-        return ResponseEntity.ok(
-                playlistService.findAll(
-                        requesterId,
-                        keywordLike,
-                        ownerIdEqual,
-                        subscriberIdEqual,
-                        cursor,
-                        idAfter,
-                        limit,
-                        sortBy,
-                        sortDirection
-                )
-        );
+        return ResponseEntity.ok(playlistService.findAll(requesterId, condition));
     }
 
     @Override

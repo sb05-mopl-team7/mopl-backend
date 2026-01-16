@@ -8,10 +8,9 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
-
-    long countByContentId(Long contentId);
 
     // 최신순(createdAt DESC) 커서 페이지네이션
     @Query("""
@@ -31,4 +30,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             @Param("idAfter") Long idAfter,
             Pageable pageable
     );
+
+
+    Optional<Review> findByIdAndUserId(Long id, Long userId);
 }

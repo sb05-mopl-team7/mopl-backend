@@ -10,18 +10,24 @@ import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.mapper.UserMapper;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.dto.PageResponse;
+import com.mopl.global.dto.UploadFileRequest;
 import com.mopl.global.enums.SortBy;
 import com.mopl.global.enums.SortDirection;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
+import com.mopl.global.s3.FileCategory;
+import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -34,6 +40,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final S3Manager s3Manager;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String email) {
@@ -50,6 +57,43 @@ public class UserService {
         return userMapper.toDto(createdUser);
     }
 
+    @PreAuthorize("principal.userId == #userId")
+    @Transactional
+    public UserDto updateImage(long userId, String name, MultipartFile image){
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+        if (name != null && !name.isBlank()) user.updateName(name);
+
+        if (image != null && !image.isEmpty()) {
+            try {
+                //기존 이미지 백업
+                String oldImageUrl = user.getProfileImageUrl();
+                //새 이미지 저장
+                UploadFileRequest profileImage = toUploadFileRequest(image);
+                String newAvatar = s3Manager.upload(profileImage, FileCategory.PROFILE_IMAGE);
+                //db 업데이트
+                user.updateProfileImageUrl(newAvatar);
+                //기존 이미지 삭제
+                if (user.getProfileImageUrl() != null) {
+                    s3Manager.delete(oldImageUrl);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("프로필 이미지 업로드 실패", e);
+            }
+        }
+        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        return userMapper.toDto(user, thumbnailUrl);
+    }
+
+    private UploadFileRequest toUploadFileRequest(MultipartFile image) throws IOException {
+        return new UploadFileRequest(
+                image.getInputStream(),
+                image.getOriginalFilename(),
+                image.getSize(),
+                image.getContentType()
+        );
+    }
+
     @Transactional
     public void updateRole(Long userId, Role newRole) {
         User user = userRepository.findById(userId)
@@ -62,6 +106,15 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
         user.updateLocked(newLocked);
+    }
+
+    @Transactional
+    public void updatePassword(Long userId, String Password) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+        String newPassword = passwordEncoder.encode(Password);
+        user.updatePassword(newPassword);
+
     }
 
     public PageResponse<UserDto> findAllUsers(UserSearchCondition searchCondition) {
@@ -248,7 +301,8 @@ public class UserService {
     public UserDto detail(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
-        return  userMapper.toDto(user);
+        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        return userMapper.toDto(user, thumbnailUrl);
     }
 
 

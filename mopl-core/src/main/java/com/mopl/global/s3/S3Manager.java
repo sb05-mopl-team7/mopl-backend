@@ -15,6 +15,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.UUID;
 
@@ -49,10 +50,36 @@ public class S3Manager {
             s3Client.putObject(putObjectRequest,
                     RequestBody.fromInputStream(inputStream, file.fileSize()));
 
+
             return getPublicUrl(fileName);
         } catch (Exception e) {
             log.error("S3 파일 업로드 실패: {}", e.getMessage());
             throw new RuntimeException("S3 파일 업로드 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    public String uploadByte(byte[] imageBytes, String imageName, FileCategory dirName) {
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new RuntimeException("업로드할 이미지 데이터가 비어있습니다.");
+        }
+
+        String fileName = dirName.getPath() + "/" + UUID.randomUUID() + imageName;
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(fileName)
+                    .contentType("image/jpeg")
+                    .contentLength((long) imageBytes.length)
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(imageBytes));
+
+
+            return getPublicUrl(fileName);
+        } catch (Exception e) {
+            log.error("이미지 S3 업로드 실패: {}", e.getMessage());
+            throw new RuntimeException("이미지 S3 업로드 중 오류가 발생했습니다.", e);
         }
     }
 
@@ -62,8 +89,8 @@ public class S3Manager {
      */
     public void delete(String fileUrl) {
         try {
-            // URL에서 S3 Key 추출 (.com/ 이후의 문자열)
-            String key = fileUrl.substring(fileUrl.lastIndexOf(".com/") + 5);
+            // URL에서 안전한 S3 Key 추출 메서드 사용
+            String key = extractKey(fileUrl);
 
             DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
                     .bucket(bucket)
@@ -86,10 +113,8 @@ public class S3Manager {
         if (fileUrl == null || fileUrl.isEmpty()) return null;
 
         try {
-            // URL에서 Key 추출 (기존 delete에서 쓴 로직 활용)
-            String key = fileUrl.contains(".com/")
-                    ? fileUrl.substring(fileUrl.lastIndexOf(".com/") + 5)
-                    : fileUrl;
+            // URL에서 안전한 S3 Key 추출 메서드 사용
+            String key = extractKey(fileUrl);
 
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucket)
@@ -111,9 +136,33 @@ public class S3Manager {
 
     /** 고정 URL 생성 로직 (DB 저장용) */
     private String getPublicUrl(String fileName) {
+        log.info("이미지 S3 업로드 완료: {}", fileName);
         return s3Client.utilities().getUrl(GetUrlRequest.builder()
                 .bucket(bucket)
                 .key(fileName)
                 .build()).toString();
+    }
+
+    /** URL에서 S3 Key(파일 경로)를 안전하게 추출하는 메서드 */
+    private String extractKey(String fileUrl) {
+        try {
+            // 1. URL 형식이 아니면(이미 Key라면) 그대로 반환
+            if (!fileUrl.startsWith("http")) {
+                return fileUrl;
+            }
+
+            // 2. URI 파싱을 통해 Path만 추출 (/profile/abc.jpg)
+            URI uri = new URI(fileUrl);
+            String path = uri.getPath();
+
+            // 3. 맨 앞의 슬래시(/) 제거
+            if (path.startsWith("/")) {
+                return path.substring(1);
+            }
+            return path;
+        } catch (Exception e) {
+            log.error("S3 Key 추출 실패: url={}", fileUrl);
+            throw new RuntimeException("잘못된 파일 URL 형식입니다.");
+        }
     }
 }

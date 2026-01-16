@@ -6,9 +6,11 @@ import com.mopl.global.dto.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -48,5 +50,22 @@ public class UserController {
     public ResponseEntity<UserDto> findById(@PathVariable Long userId) {
         UserDto userDto = userService.detail(userId);
         return ResponseEntity.ok().body(userDto);
+    }
+
+    @PreAuthorize("principal.userId == #userId")
+    @PatchMapping(value = "/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserDto> updateImage(@PathVariable Long userId,
+                                               @RequestPart(value = "request", required = true) UserUpdateRequest request,
+                                               @RequestPart(value = "image", required = false) MultipartFile image){
+        UserDto updatedImage = userService.updateImage(userId, request.name(), image);
+        return ResponseEntity.ok().body(updatedImage);
+    }
+
+    @PreAuthorize("principal.userId == #userId")
+    @PatchMapping("/{userId}/password")
+    public ResponseEntity<Void> updatePassword(@PathVariable Long userId,
+                                               @Valid @RequestBody ChangePasswordRequest request){
+        userService.updatePassword(userId, request.password());
+        return ResponseEntity.ok().build();
     }
 }

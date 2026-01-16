@@ -42,13 +42,14 @@ public class Content extends BaseCreatedEntity {
         this.title = title;
         this.description = description;
         this.thumbnailUrl = thumbnailUrl;
-        this.averageRating = 0;
+        this.averageRating = 0.0;
         this.reviewCount = 0;
     }
 
     public void addTag(Tag tag) {
         boolean isDuplicate = this.contentTags.stream()
-                .anyMatch(ct -> ct.getTag().equals(tag));
+                .anyMatch(ct -> ct.getTag().getId() != null &&
+                        ct.getTag().getId().equals(tag.getId()));
 
         if (!isDuplicate) {
             ContentTag contentTag = new ContentTag(this, tag);
@@ -60,5 +61,10 @@ public class Content extends BaseCreatedEntity {
         this.title = title;
         this.description = description;
         this.thumbnailUrl = thumbnailUrl;
+    }
+
+    public void updateReview(int reviewCount, double averageRating){
+        this.reviewCount = reviewCount;
+        this.averageRating = averageRating;
     }
 }

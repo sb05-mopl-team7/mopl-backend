@@ -16,6 +16,10 @@ import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Component
@@ -223,16 +227,55 @@ public class PlaylistDtoAssembler {
         );
     }
 
-    // DB에는 S3 key 또는 외부 URL만 저장
-    private String presignIfS3(String keyOrUrl) {
-        if (keyOrUrl == null || keyOrUrl.isBlank()) return null;
+    private String presignIfS3(String value) {
+        if (value == null || value.isBlank()) return null;
 
-        // URL이면 그대로 반환(외부 이미지 포함)
-        if (keyOrUrl.startsWith("http")) {
-            return keyOrUrl;
+        if (value.contains("X-Amz-Signature=")) return value;
+
+        if (value.startsWith("http")) {
+            if (isS3Url(value)) {
+                String key = extractS3Key(value);
+                return s3Manager.generatePresignedUrl(key);
+            }
+            return value;
         }
 
-        // 그 외는 S3 key로 보고 무조건 presigned 생성
-        return s3Manager.generatePresignedUrl(keyOrUrl);
+        return s3Manager.generatePresignedUrl(value);
+    }
+
+    private boolean isS3Url(String url) {
+        try {
+            URI uri = URI.create(url);
+            String host = (uri.getHost() == null) ? "" : uri.getHost().toLowerCase();
+            return host.contains("amazonaws.com") && (host.contains(".s3.") || host.startsWith("s3."));
+        } catch (Exception e) {
+            // 파싱 실패 시 보수적으로 문자열 기준 체크
+            String lower = url.toLowerCase();
+            return lower.contains("amazonaws.com") && (lower.contains(".s3.") || lower.contains("s3."));
+        }
+    }
+
+    private String extractS3Key(String s3Url) {
+        try {
+            URI uri = URI.create(s3Url);
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
+            String path = uri.getPath();
+
+            if (path == null || path.isBlank()) return s3Url;
+
+            String decoded = URLDecoder.decode(path, StandardCharsets.UTF_8);
+            String key = decoded.startsWith("/") ? decoded.substring(1) : decoded;
+
+            if (host.startsWith("s3.") || host.startsWith("s3-") || host.equals("s3.amazonaws.com")) {
+                int firstSlash = key.indexOf('/');
+                if (firstSlash > 0 && firstSlash < key.length() - 1) {
+                    key = key.substring(firstSlash + 1);
+                }
+            }
+
+            return key.isBlank() ? s3Url : key;
+        } catch (Exception e) {
+            return s3Url;
+        }
     }
 }

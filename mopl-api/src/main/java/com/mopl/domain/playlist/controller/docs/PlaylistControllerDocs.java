@@ -25,6 +25,7 @@ public interface PlaylistControllerDocs {
     @Operation(summary = "플레이리스트 목록 조회 (커서 페이지네이션)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
@@ -36,6 +37,7 @@ public interface PlaylistControllerDocs {
     @Operation(summary = "플레이리스트 생성")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "201", description = "성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
@@ -47,7 +49,9 @@ public interface PlaylistControllerDocs {
 
     @Operation(summary = "플레이리스트 구독")
     @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "204", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
@@ -58,6 +62,7 @@ public interface PlaylistControllerDocs {
 
     @Operation(summary = "플레이리스트 구독 취소")
     @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "204", description = "성공"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
@@ -69,7 +74,9 @@ public interface PlaylistControllerDocs {
 
     @Operation(summary = "플레이리스트에 콘텐츠 추가")
     @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "204", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "403", description = "권한 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
@@ -82,7 +89,9 @@ public interface PlaylistControllerDocs {
 
     @Operation(summary = "플레이리스트에서 콘텐츠 삭제")
     @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "204", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "403", description = "권한 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
@@ -96,6 +105,7 @@ public interface PlaylistControllerDocs {
     @Operation(summary = "플레이리스트 단건 조회")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
@@ -106,7 +116,8 @@ public interface PlaylistControllerDocs {
 
     @Operation(summary = "플레이리스트 삭제")
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "성공"),
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 오류"),
             @ApiResponse(responseCode = "403", description = "권한 오류"),
             @ApiResponse(responseCode = "500", description = "서버 오류")

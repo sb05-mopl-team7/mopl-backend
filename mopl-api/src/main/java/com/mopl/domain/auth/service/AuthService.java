@@ -32,14 +32,17 @@ public class AuthService {
     private final S3Manager s3Manager;
     private final RedisManager redisManager;
 
+    /**
+     * 로그인
+     * DB 비밀번호 또는 임시 비밀번호(Redis)로 인증합니다.
+     */
     public TokenResultDto login(String username, String password) {
         User user = userRepository.findByEmailAndLockedFalse(username)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
-        //DB 비밀번호 일치
         if (passwordEncoder.matches(password, user.getPassword())) {
             return generateToken(user);
         }
-        //임시 비밀번호 일치
+
         if (redisManager.hasKey(RedisNameSpace.TEMP_PASSWORD, username)) {
             Optional<String> tempPassword = redisManager.findByKey(
                     RedisNameSpace.TEMP_PASSWORD,
@@ -50,16 +53,15 @@ public class AuthService {
                 return generateToken(user);
             }
         }
-        //둘다 틀린 경우
         throw new UserException(UserErrorCode.PASSWORD_NOT_CORRECT);
     }
 
+    //로그인 성공 후 토큰 생성
     private TokenResultDto generateToken(User user) {
-        String accessToken = jwtTokenProvider.createAccessToken(user);
-
         String refreshToken = jwtTokenProvider.createRefreshToken(user);
         redisManager.save(RedisNameSpace.AUTH_TOKEN, user.getId().toString(), refreshToken);
 
+        String accessToken = jwtTokenProvider.createAccessToken(user);
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), accessToken);
 
@@ -70,30 +72,30 @@ public class AuthService {
         redisManager.delete(RedisNameSpace.AUTH_TOKEN, myId.toString());
     }
 
+    /**
+     * Refresh Token을 검증하고 새로운 Access/Refresh Token을 발급합니다.
+     * Redis에 저장된 토큰과 비교하여 탈취된 토큰 사용을 방지합니다.
+     */
     public TokenResultDto refresh(String refreshToken) {
-        //jwt 유효 검증
         if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
             throw new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         Long userId = jwtTokenProvider.getUserIdFromRefreshToken(refreshToken);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
-
         Optional<String> token = redisManager.findByKey(
                 RedisNameSpace.AUTH_TOKEN,
                 userId.toString(),
                 String.class);
-        //refresh 값 불일치
         if (token.isEmpty() || !token.get().equals(refreshToken)) {
             throw new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
 
-        String newAccessToken = jwtTokenProvider.createAccessToken(user);
-        //새로운 refresh 토큰 redis에 저장
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
         redisManager.save(RedisNameSpace.AUTH_TOKEN, userId.toString(), newRefreshToken);
 
+        String newAccessToken = jwtTokenProvider.createAccessToken(user);
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), newAccessToken);
 

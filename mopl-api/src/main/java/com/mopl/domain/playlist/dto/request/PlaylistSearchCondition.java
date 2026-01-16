@@ -1,5 +1,6 @@
 package com.mopl.domain.playlist.dto.request;
 
+import com.mopl.domain.playlist.entity.Playlist;
 import com.mopl.global.enums.SortDirection;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
@@ -38,7 +39,7 @@ public record PlaylistSearchCondition(
         if (sortBy == null || sortBy.isBlank()) sortBy = "updatedAt";
 
         // sortBy 허용값 정규화 + 검증
-        sortBy = normalizeSortBy(sortBy);
+        sortBy = normalizeSortByValue(sortBy);
 
         // cursor / idAfter는 “쌍”으로만 허용
         boolean hasCursor = cursor != null && !cursor.isBlank();
@@ -49,10 +50,10 @@ public record PlaylistSearchCondition(
 
         // cursor 형식 검증(바인딩 단계에서 바로 걸러짐)
         if (hasCursor) {
-            if ("updatedAt".equalsIgnoreCase(sortBy)) {
-                parseDateTimeCursor(cursor);
+            if (isUpdatedAtSort(sortBy)) {
+                parseDateTimeCursorValue(cursor);
             } else {
-                parseLongCursor(cursor);
+                parseLongCursorValue(cursor);
             }
         }
     }
@@ -61,13 +62,13 @@ public record PlaylistSearchCondition(
         boolean hasCursor = cursor != null && !cursor.isBlank();
         if (!hasCursor) return new CursorKey(null, null, null);
 
-        if ("updatedAt".equalsIgnoreCase(sortBy)) {
-            LocalDateTime updatedAt = parseDateTimeCursor(cursor);
+        if (isUpdatedAtSort(sortBy)) {
+            LocalDateTime updatedAt = parseDateTimeCursorValue(cursor);
             return new CursorKey(updatedAt, null, idAfter);
-        } else {
-            Long subscriberCount = parseLongCursor(cursor);
-            return new CursorKey(null, subscriberCount, idAfter);
         }
+
+        Long subscriberCount = parseLongCursorValue(cursor);
+        return new CursorKey(null, subscriberCount, idAfter);
     }
 
     public String normalizedSortBy() {
@@ -82,22 +83,29 @@ public record PlaylistSearchCondition(
         return limit;
     }
 
-    public String nextCursorOf(com.mopl.domain.playlist.entity.Playlist last) {
+    public String nextCursorOf(Playlist last) {
         if (last == null) return null;
-        if ("updatedAt".equalsIgnoreCase(sortBy)) {
+
+        if (isUpdatedAtSort(sortBy)) {
             return last.getUpdatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         }
         return String.valueOf(last.getSubscriberCount());
     }
 
-    private static String normalizeSortBy(String sortBy) {
-        String v = sortBy.trim();
+    private boolean isUpdatedAtSort(String normalizedSortBy) {
+        return "updatedAt".equalsIgnoreCase(normalizedSortBy);
+    }
+
+    private String normalizeSortByValue(String rawSortBy) {
+        String v = rawSortBy.trim();
+
         if ("updatedAt".equalsIgnoreCase(v)) return "updatedAt";
         if ("subscribeCount".equalsIgnoreCase(v) || "subscriberCount".equalsIgnoreCase(v)) return "subscriberCount";
+
         throw new MoplException(ErrorCode.INVALID_REQUEST);
     }
 
-    private static Long parseLongCursor(String raw) {
+    private Long parseLongCursorValue(String raw) {
         try {
             return Long.parseLong(raw.trim());
         } catch (Exception e) {
@@ -105,7 +113,7 @@ public record PlaylistSearchCondition(
         }
     }
 
-    private static LocalDateTime parseDateTimeCursor(String raw) {
+    private LocalDateTime parseDateTimeCursorValue(String raw) {
         String normalized = raw.trim().replace(" ", "T");
         try {
             return LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
@@ -118,5 +126,6 @@ public record PlaylistSearchCondition(
             LocalDateTime cursorUpdatedAt,
             Long cursorSubscriberCount,
             Long idAfter
-    ) {}
+    ) {
+    }
 }

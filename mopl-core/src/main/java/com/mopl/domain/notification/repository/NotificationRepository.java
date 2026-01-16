@@ -25,5 +25,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("idAfter") Long idAfter,
             Pageable pageable
     );
+
+    @Query("""
+        select count(n)
+        from Notification n
+        where n.receiverId = :userId
+        """)
+    Long countByReceiverId(@Param("userId")Long userId);
     Optional<Notification> findByIdAndReceiverId(Long notificationId, Long userId);
 }

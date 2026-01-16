@@ -76,7 +76,7 @@ public class NotificationService {
                 pageable
         );
 
-        Long totalCount = (long)fetched.size();
+        Long totalCount = notificationRepository.countByReceiverId(userId);
 
         boolean hasNext = fetched.size() > limit;
 

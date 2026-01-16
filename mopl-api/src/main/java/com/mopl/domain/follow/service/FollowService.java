@@ -1,7 +1,6 @@
 package com.mopl.domain.follow.service;
 
 import com.mopl.domain.follow.dto.request.FollowRequest;
-import com.mopl.domain.follow.dto.response.FollowCountResponse;
 import com.mopl.domain.follow.dto.response.FollowResponse;
 import com.mopl.domain.follow.entity.Follow;
 import com.mopl.domain.follow.exception.FollowErrorCode;
@@ -78,7 +77,7 @@ public class FollowService {
     }
 
     // 팔로워/팔로잉 수 조회 로직
-    public FollowCountResponse getFollowCounts(Long targetId) {
+    public Long getFollowCounts(Long targetId) {
 
         // 1. 유저 존재 확인 (404)
         if (!userRepository.existsById(targetId)) {
@@ -90,8 +89,8 @@ public class FollowService {
 
         // 내가 팔로우 하는 사람 카운트 조회 (Following)
         long followingCount = followRepository.countByFollowerId(targetId);
-
-        return FollowCountResponse.of(followerCount, followingCount);
+        return followerCount;
+        //return FollowCountResponse.of(followerCount, followingCount);
     }
 
     private User getUserOrThrow(Long userId) {

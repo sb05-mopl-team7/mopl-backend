@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 @Builder
 @Schema(description = "시청 세션 응답")
-public record WatchingSessionResponse(
+public record WatchingSessionUserResponse(
         @JsonSerialize(using = ToStringSerializer.class)
         @Schema(description = "세션 ID (watcherId와 동일)")
         String id,
@@ -21,13 +21,13 @@ public record WatchingSessionResponse(
         LocalDateTime createdAt,
 
         @Schema(description = "시청자 정보")
-        UserSummaryDto watcher, // UserSummaryDto 사용
+        UserSummaryDto watcher,
 
         @Schema(description = "시청 중인 콘텐츠 정보")
         ContentDto content
 ) {
-    public static WatchingSessionResponse of(WatchingSession session, UserSummaryDto watcher, ContentDto content) {
-        return WatchingSessionResponse.builder()
+    public static WatchingSessionUserResponse of(WatchingSession session, UserSummaryDto watcher, ContentDto content) {
+        return WatchingSessionUserResponse.builder()
                 .id(String.valueOf(session.getId()))
                 .createdAt(session.getCreatedAt())
                 .watcher(watcher)

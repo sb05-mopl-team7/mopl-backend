@@ -3,12 +3,14 @@ package com.mopl.domain.auth.controller;
 import com.mopl.domain.auth.dto.JwtDto;
 import com.mopl.domain.auth.dto.ResetPasswordRequest;
 import com.mopl.domain.auth.dto.SignInRequest;
+import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.auth.service.AuthService;
 import com.mopl.domain.auth.service.EmailService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,8 +28,11 @@ public class AuthController {
     }
 
     @PostMapping("/sign-out")
-    public ResponseEntity<?> logout(HttpServletResponse response) {
-        authService.logout(response);
+    public ResponseEntity<?> logout(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                    HttpServletResponse response) {
+        Long myId = userPrincipal.getUserId();
+        authService.logout(myId, response);
+
         return ResponseEntity.ok().build();
     }
 

@@ -9,7 +9,8 @@ import com.mopl.domain.watching.dto.response.WatchingSessionUserResponse;
 import com.mopl.domain.watching.entity.WatchingSession;
 import com.mopl.domain.watching.exception.WatchingErrorCode;
 import com.mopl.domain.watching.exception.WatchingException;
-import com.mopl.domain.watching.repository.WatchingSessionRepository;
+import com.mopl.global.redis.RedisManager;
+import com.mopl.global.redis.RedisNameSpace;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,10 +20,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,13 +36,13 @@ class WatchingSessionUserServiceTest {
     private WatchingSessionService watchingSessionService;
 
     @Mock
-    private WatchingSessionRepository watchingSessionRepository;
-
-    @Mock
     private UserRepository userRepository;
 
     @Mock
     private ContentRepository contentRepository;
+
+    @Mock
+    private RedisManager redisManager;
 
     // 테스트 데이터 생성 헬퍼 메서드
     private User createUser(Long id) {
@@ -69,10 +73,14 @@ class WatchingSessionUserServiceTest {
             WatchingSession session = WatchingSession.builder()
                     .id(watcherId)
                     .contentId(contentId)
+                    .createdAt(LocalDateTime.now())
                     .build();
 
             given(userRepository.existsById(watcherId)).willReturn(true);
-            given(watchingSessionRepository.findById(watcherId)).willReturn(Optional.of(session));
+            // RedisManager의 findHashByKey가 세션을 반환하도록 Mocking
+            given(redisManager.findHashByKey(eq(RedisNameSpace.USER_WATCHING), eq(String.valueOf(watcherId)), eq(WatchingSession.class)))
+                    .willReturn(Optional.of(session));
+
             given(userRepository.findById(watcherId)).willReturn(Optional.of(user));
             given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
 
@@ -92,7 +100,8 @@ class WatchingSessionUserServiceTest {
             // Given
             Long watcherId = 1L;
             given(userRepository.existsById(watcherId)).willReturn(true);
-            given(watchingSessionRepository.findById(watcherId)).willReturn(Optional.empty());
+            // Redis에 해당 키에 대한 데이터가 없는 상황
+            given(redisManager.findHashByKey(any(), any(), any())).willReturn(Optional.empty());
 
             // When
             WatchingSessionUserResponse response = watchingSessionService.getWatchingSession(watcherId);
@@ -136,7 +145,8 @@ class WatchingSessionUserServiceTest {
             WatchingSession session = WatchingSession.builder().id(watcherId).contentId(100L).build();
 
             given(userRepository.existsById(watcherId)).willReturn(true);
-            given(watchingSessionRepository.findById(watcherId)).willReturn(Optional.of(session));
+            // RedisManager Mocking
+            given(redisManager.findHashByKey(any(), any(), any())).willReturn(Optional.of(session));
             given(userRepository.findById(watcherId)).willReturn(Optional.empty());
 
             // When & Then

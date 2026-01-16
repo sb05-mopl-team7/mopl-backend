@@ -9,7 +9,8 @@ import com.mopl.domain.user.enums.Role;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.domain.watching.entity.WatchingSession;
 import com.mopl.domain.watching.exception.WatchingErrorCode;
-import com.mopl.domain.watching.repository.WatchingSessionRepository;
+import com.mopl.global.redis.RedisManager;
+import com.mopl.global.redis.RedisNameSpace;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +25,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -48,13 +50,14 @@ class WatchingSessionUserControllerTest {
     private ContentRepository contentRepository;
 
     @Autowired
-    private WatchingSessionRepository watchingSessionRepository;
+    private RedisManager redisManager;
 
     private User savedUser;
     private Content savedContent;
 
     @BeforeEach
     void setUp() {
+
         savedUser = userRepository.save(new User("테스터", "test@mopl.io", "password"));
         Content content = new Content(ContentType.movie, "인터스텔라", "우주 영화", "https://image.com/thumb.jpg");
         savedContent = contentRepository.save(content);
@@ -62,7 +65,10 @@ class WatchingSessionUserControllerTest {
 
     @AfterEach
     void tearDown() {
-        watchingSessionRepository.deleteAll();
+
+        // RedisManager를 통해 테스트 데이터 삭제 (Hash 및 Set 클리닝)
+        redisManager.delete(RedisNameSpace.USER_WATCHING, String.valueOf(savedUser.getId()));
+        redisManager.removeFromSet(RedisNameSpace.CONTENT_WATCHERS, String.valueOf(savedContent.getId()), savedUser.getId());
     }
 
     // 인증 토큰 생성 헬퍼 메서드 (SecurityConfig의 인증 요구사항 충족)
@@ -79,17 +85,22 @@ class WatchingSessionUserControllerTest {
     @Test
     @DisplayName("[200] 시청 중인 세션 조회 성공 시 상세 정보를 반환한다")
     void getWatchingSession_Success() throws Exception {
+
         // Given
         WatchingSession session = WatchingSession.builder()
                 .id(savedUser.getId())
                 .contentId(savedContent.getId())
+                .createdAt(LocalDateTime.now())
                 .build();
-        watchingSessionRepository.save(session);
+
+        // RedisManager를 통해 명시적 저장 (Hash 구조 활용)
+        redisManager.saveHash(RedisNameSpace.USER_WATCHING, String.valueOf(savedUser.getId()), session);
+        redisManager.addToSet(RedisNameSpace.CONTENT_WATCHERS, String.valueOf(savedContent.getId()), savedUser.getId());
 
         // When & Then
         mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", savedUser.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .with(authentication(createAuthToken(savedUser)))) // 인증 정보 추가
+                        .with(authentication(createAuthToken(savedUser))))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(String.valueOf(savedUser.getId())))
@@ -100,6 +111,7 @@ class WatchingSessionUserControllerTest {
     @Test
     @DisplayName("[200] 시청 중인 정보가 없으면 Null을 반환한다 (정상 케이스)")
     void getWatchingSession_Null_Success() throws Exception {
+
         // When & Then
         mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", savedUser.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -138,11 +150,15 @@ class WatchingSessionUserControllerTest {
     @Test
     @DisplayName("[404] 세션에 등록된 콘텐츠가 DB에 없으면 CONTENT_NOT_FOUND 에러 발생")
     void getWatchingSession_ContentNotFound_Fail() throws Exception {
+        // Given
         WatchingSession session = WatchingSession.builder()
                 .id(savedUser.getId())
                 .contentId(888888L)
+                .createdAt(LocalDateTime.now())
                 .build();
-        watchingSessionRepository.save(session);
+
+        // RedisManager를 통해 존재하지 않는 contentId 정보 적재
+        redisManager.saveHash(RedisNameSpace.USER_WATCHING, String.valueOf(savedUser.getId()), session);
 
         mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", savedUser.getId())
                         .contentType(MediaType.APPLICATION_JSON)

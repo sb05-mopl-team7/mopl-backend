@@ -19,7 +19,6 @@ import org.springframework.stereotype.Component;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Component
@@ -34,11 +33,11 @@ public class PlaylistDtoAssembler {
     private final ContentRepository contentRepository;
     private final S3Manager s3Manager;
 
-    //단건 조회: 콘텐츠 전체 내려줌
+    // 단건 조회: 콘텐츠 전체 내려줌
     public PlaylistDto toDto(Long requesterId, Playlist playlist) {
         UserSummaryDto owner = loadOwner(playlist.getUserId());
         boolean subscribedByMe = isSubscribedByMe(requesterId, playlist);
-        List<PlaylistContentDto> contents = loadContentsByPlaylistId(playlist.getId()); // 전체
+        List<PlaylistContentDto> contents = loadContentsByPlaylistId(playlist.getId());
 
         return new PlaylistDto(
                 playlist.getId(),
@@ -52,7 +51,7 @@ public class PlaylistDtoAssembler {
         );
     }
 
-    //목록 조회: playlist당 콘텐츠 미리보기 3개만 내려줌(설명(description) 제외)
+    // 목록 조회: playlist당 콘텐츠 미리보기 3개만 내려줌(콘텐츠 description 제외)
     public List<PlaylistDto> toDtoList(Long requesterId, List<Playlist> playlists) {
         if (playlists == null || playlists.isEmpty()) return List.of();
 
@@ -64,9 +63,9 @@ public class PlaylistDtoAssembler {
         Map<Long, UserSummaryDto> ownerMap = loadOwnerMap(ownerIds);
         Set<Long> subscribedPlaylistIds = loadSubscribedPlaylistIds(requesterId, playlistIds);
 
-        // 목록에서는 preview만: playlist당 최대 3개 + description 제외
+        // 경고 해결: limitPerPlaylist 파라미터 제거하고 상수 사용
         Map<Long, List<PlaylistContentDto>> contentsMap =
-                loadContentPreviewsByPlaylistIds(playlistIds, LIST_CONTENT_PREVIEW_LIMIT);
+                loadContentPreviewsByPlaylistIds(playlistIds);
 
         List<PlaylistDto> result = new ArrayList<>();
         for (Playlist p : playlists) {
@@ -132,7 +131,7 @@ public class PlaylistDtoAssembler {
         return set;
     }
 
-    //단건 조회용(전체)
+    // 단건 조회용(전체)
     private List<PlaylistContentDto> loadContentsByPlaylistId(Long playlistId) {
         List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistId(playlistId);
         if (pcs.isEmpty()) return List.of();
@@ -151,8 +150,8 @@ public class PlaylistDtoAssembler {
         return result;
     }
 
-    //목록 조회용(playlist당 N개 preview)
-    private Map<Long, List<PlaylistContentDto>> loadContentPreviewsByPlaylistIds(List<Long> playlistIds, int limitPerPlaylist) {
+    // 목록 조회용(playlist당 3개 preview)
+    private Map<Long, List<PlaylistContentDto>> loadContentPreviewsByPlaylistIds(List<Long> playlistIds) {
         if (playlistIds == null || playlistIds.isEmpty()) return Map.of();
 
         List<PlaylistContent> pcs = playlistContentRepository.findAllByPlaylistIdIn(playlistIds);
@@ -167,10 +166,9 @@ public class PlaylistDtoAssembler {
         Map<Long, List<Long>> playlistToContentIds = new HashMap<>();
         Set<Long> allContentIds = new LinkedHashSet<>();
 
-        // playlist당 limitPerPlaylist까지만 contentId 수집(그 이상은 무시)
         for (PlaylistContent pc : pcs) {
             List<Long> ids = playlistToContentIds.computeIfAbsent(pc.getPlaylistId(), k -> new ArrayList<>());
-            if (ids.size() >= limitPerPlaylist) continue;
+            if (ids.size() >= LIST_CONTENT_PREVIEW_LIMIT) continue;
 
             ids.add(pc.getContentId());
             allContentIds.add(pc.getContentId());
@@ -190,7 +188,7 @@ public class PlaylistDtoAssembler {
             for (Long contentId : contentIds) {
                 Content content = contentMap.get(contentId);
                 if (content == null) continue;
-                dtos.add(toContentDto(content, false));
+                dtos.add(toContentDto(content, false)); // 콘텐츠 description 제외
             }
             result.put(playlistId, dtos);
         }
@@ -226,20 +224,17 @@ public class PlaylistDtoAssembler {
                 content.getReviewCount()
         );
     }
-
+    //DB에는 "S3 key" 또는 "S3 원본 URL" 또는 "외부 URL"이 저장될 수 있음
     private String presignIfS3(String value) {
         if (value == null || value.isBlank()) return null;
-
         if (value.contains("X-Amz-Signature=")) return value;
-
         if (value.startsWith("http")) {
             if (isS3Url(value)) {
                 String key = extractS3Key(value);
                 return s3Manager.generatePresignedUrl(key);
             }
-            return value;
+            return value; // 진짜 외부 URL
         }
-
         return s3Manager.generatePresignedUrl(value);
     }
 
@@ -249,23 +244,22 @@ public class PlaylistDtoAssembler {
             String host = (uri.getHost() == null) ? "" : uri.getHost().toLowerCase();
             return host.contains("amazonaws.com") && (host.contains(".s3.") || host.startsWith("s3."));
         } catch (Exception e) {
-            // 파싱 실패 시 보수적으로 문자열 기준 체크
             String lower = url.toLowerCase();
             return lower.contains("amazonaws.com") && (lower.contains(".s3.") || lower.contains("s3."));
         }
     }
-
     private String extractS3Key(String s3Url) {
         try {
             URI uri = URI.create(s3Url);
             String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
-            String path = uri.getPath();
+            String path = uri.getPath(); // "/key" or "/bucket/key"
 
             if (path == null || path.isBlank()) return s3Url;
 
             String decoded = URLDecoder.decode(path, StandardCharsets.UTF_8);
             String key = decoded.startsWith("/") ? decoded.substring(1) : decoded;
 
+            // path-style이면 첫 segment(bucket) 제거
             if (host.startsWith("s3.") || host.startsWith("s3-") || host.equals("s3.amazonaws.com")) {
                 int firstSlash = key.indexOf('/');
                 if (firstSlash > 0 && firstSlash < key.length() - 1) {

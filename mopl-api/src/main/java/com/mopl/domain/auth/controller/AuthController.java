@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
     private final AuthService authService;
     private final EmailService emailService;
 
@@ -30,10 +31,10 @@ public class AuthController {
     private static final int REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 14; // 2주
 
     @PostMapping("/sign-in")
-    public ResponseEntity<JwtDto> login(@ModelAttribute SignInRequest req, HttpServletResponse response) {
+    public ResponseEntity<JwtDto> login(@ModelAttribute SignInRequest req,
+                                        HttpServletResponse response) {
         TokenResultDto tokenDto = authService.login(req.username(), req.password());
-        //refresh 토큰 저장
-        addTokenCookie(response, "REFRESH_TOKEN", tokenDto.refreshToken(), REFRESH_TOKEN_MAX_AGE); //2주
+        addTokenCookie(response, "REFRESH_TOKEN", tokenDto.refreshToken(), REFRESH_TOKEN_MAX_AGE);
         return ResponseEntity.ok(tokenDto.jwtDto());
     }
 
@@ -42,23 +43,24 @@ public class AuthController {
                                     HttpServletResponse response) {
         Long myId = userPrincipal.getUserId();
         authService.logout(myId);
-        //refresh 토큰 삭제
         deleteCookie(response, "REFRESH_TOKEN");
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+    public ResponseEntity<Void> resetPassword(@RequestBody @Valid ResetPasswordRequest req) {
         emailService.resetPassword(req.email());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<JwtDto> refresh(@CookieValue("REFRESH_TOKEN") String refreshToken, HttpServletResponse response) {
+    public ResponseEntity<JwtDto> refresh(@CookieValue("REFRESH_TOKEN") String refreshToken,
+                                          HttpServletResponse response) {
         TokenResultDto tokenDto = authService.refresh(refreshToken);
         addTokenCookie(response, "REFRESH_TOKEN", tokenDto.refreshToken(), REFRESH_TOKEN_MAX_AGE);
         return ResponseEntity.ok().body(tokenDto.jwtDto());
     }
+
     @GetMapping("/csrf-token")
     public CsrfToken getCsrfToken(CsrfToken token) {
         return token;

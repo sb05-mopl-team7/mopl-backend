@@ -39,9 +39,7 @@ public class AuthService {
     public TokenResultDto login(String username, String password) {
         User user = userRepository.findByEmailAndLockedFalse(username)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
-        if (passwordEncoder.matches(password, user.getPassword())) {
-            return generateToken(user);
-        }
+        if (passwordEncoder.matches(password, user.getPassword())) return generateToken(user);
 
         if (redisManager.hasKey(RedisNameSpace.TEMP_PASSWORD, username)) {
             Optional<String> tempPassword = redisManager.findByKey(

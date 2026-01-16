@@ -6,9 +6,13 @@ import com.mopl.domain.conversation.entity.DirectMessage;
 import com.mopl.domain.conversation.entity.ReadStatus;
 import com.mopl.domain.conversation.repository.DirectMessageRepository;
 import com.mopl.domain.conversation.repository.ReadStatusRepository;
+import com.mopl.domain.notification.event.DmNotificationEvent;
 import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.user.entity.User;
+import com.mopl.global.redis.RedisManager;
+import com.mopl.global.redis.RedisNameSpace;
 import lombok.RequiredArgsConstructor;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +25,8 @@ public class DMChatService {
 
     private final DirectMessageRepository directMessageRepository;
     private final ReadStatusRepository readStatusRepository;
+    private final RedisManager redisManager;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Transactional
     public DirectMessageDto saveMessage(Long senderId, Long conversationId, String content) {
@@ -51,6 +57,21 @@ public class DMChatService {
         DirectMessage message = new DirectMessage(conversation, sender, content);
         directMessageRepository.save(message);
 
+        DirectMessageDto directMessageDto = toDto(senderId, conversationId, content, message, sender, receiver);
+
+        // 상대방 대화창 활성화 여부 확인 후 알림 전송
+        boolean isWatching = redisManager.isMember(RedisNameSpace.DM_VIEWERS, String.valueOf(conversationId), String.valueOf(receiver.getId()));
+        if (!isWatching) {
+            kafkaTemplate.send("dm-notification", new DmNotificationEvent(
+                    receiver.getId(),
+                    directMessageDto
+            ));
+        }
+
+        return directMessageDto;
+    }
+
+    private static DirectMessageDto toDto(Long senderId, Long conversationId, String content, DirectMessage message, User sender, User receiver) {
         return new DirectMessageDto(
                 message.getId(),
                 conversationId,

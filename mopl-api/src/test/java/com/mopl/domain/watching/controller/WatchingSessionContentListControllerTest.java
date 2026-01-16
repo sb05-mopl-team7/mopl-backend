@@ -9,7 +9,8 @@ import com.mopl.domain.user.enums.Role;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.domain.watching.entity.WatchingSession;
 import com.mopl.domain.watching.exception.WatchingErrorCode;
-import com.mopl.domain.watching.repository.WatchingSessionRepository;
+import com.mopl.global.redis.RedisManager;
+import com.mopl.global.redis.RedisNameSpace;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,22 +50,26 @@ class WatchingSessionContentListControllerTest {
     private ContentRepository contentRepository;
 
     @Autowired
-    private WatchingSessionRepository watchingSessionRepository;
+    private RedisManager redisManager;
 
     private User savedUser;
     private Content savedContent;
 
     @BeforeEach
     void setUp() {
+
         savedUser = userRepository.save(new User("테스터", "test@mopl.io", "password"));
         savedContent = contentRepository.save(new Content(ContentType.movie, "인터스텔라", "우주 영화", "url"));
     }
 
     @AfterEach
     void tearDown() {
-        watchingSessionRepository.deleteAll();
+        // 테스트 종료 후 RedisManager를 통해 수동으로 데이터 클리닝
+        redisManager.delete(RedisNameSpace.USER_WATCHING, String.valueOf(savedUser.getId()));
+        redisManager.removeFromSet(RedisNameSpace.CONTENT_WATCHERS, String.valueOf(savedContent.getId()), savedUser.getId());
     }
 
+    // 테스트용 인증 토큰 생성 헬퍼 메서드
     private UsernamePasswordAuthenticationToken createAuthToken(User user) {
         UserPrincipal principal = new UserPrincipal(user.getId(), user.getEmail(), Role.USER);
         return new UsernamePasswordAuthenticationToken(
@@ -78,15 +83,18 @@ class WatchingSessionContentListControllerTest {
     @Test
     @DisplayName("[200] 특정 콘텐츠의 시청 세션 목록을 성공적으로 조회한다")
     void getWatchingSessions_Success() throws Exception {
-        // Given
+        // 1. Given 세션 객체 생성 및 RedisManager를 통한 명시적 저장
         WatchingSession session = WatchingSession.builder()
                 .id(savedUser.getId())
                 .contentId(savedContent.getId())
                 .createdAt(LocalDateTime.now())
                 .build();
-        watchingSessionRepository.save(session);
 
-        // When & Then
+        //  Hash(세션 상세)와 Set(시청자 목록)에 각각 데이터 저장
+        redisManager.saveHash(RedisNameSpace.USER_WATCHING, String.valueOf(savedUser.getId()), session);
+        redisManager.addToSet(RedisNameSpace.CONTENT_WATCHERS, String.valueOf(savedContent.getId()), savedUser.getId());
+
+        // 2. When & Then API 호출 및 응답 검증
         mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
                         .param("limit", "10")
                         .param("sortDirection", "DESCENDING")
@@ -102,23 +110,27 @@ class WatchingSessionContentListControllerTest {
     @Test
     @DisplayName("[200] 이름 필터링(watcherNameLike)을 적용하여 목록을 조회한다")
     void getWatchingSessions_Filtering_Success() throws Exception {
-        // Given
+        // 1. Given 데이터 적재
         WatchingSession session = WatchingSession.builder()
                 .id(savedUser.getId())
                 .contentId(savedContent.getId())
+                .createdAt(LocalDateTime.now())
                 .build();
-        watchingSessionRepository.save(session);
+        redisManager.saveHash(RedisNameSpace.USER_WATCHING, String.valueOf(savedUser.getId()), session);
+        redisManager.addToSet(RedisNameSpace.CONTENT_WATCHERS, String.valueOf(savedContent.getId()), savedUser.getId());
 
-        // When & Then: 일치하는 이름 검색
+        // 2. When & Then 일치하는 이름 검색 시 1건 조회
         mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
                         .param("watcherNameLike", "테스터")
+                        .param("limit", "10")
                         .with(authentication(createAuthToken(savedUser))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalCount").value(1));
 
-        // When & Then: 일치하지 않는 이름 검색 (빈 목록)
+        // 3. When & Then 일치하지 않는 이름 검색 시 0건 조회 (빈 목록)
         mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
                         .param("watcherNameLike", "없는사람")
+                        .param("limit", "10")
                         .with(authentication(createAuthToken(savedUser))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalCount").value(0))
@@ -127,30 +139,33 @@ class WatchingSessionContentListControllerTest {
 
     // 2. 비즈니스 예외 케이스 (400)
     @Test
-    @DisplayName("[400] 잘못된 페이지 limit(0 이하) 요청 시 INVALID_PAGINATION_LIMIT 에러 발생")
+    @DisplayName("[400] 잘못된 페이지 limit(0 이하) 요청 시 에러 발생")
     void getWatchingSessions_InvalidLimit_Fail() throws Exception {
         mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
                         .param("limit", "0")
                         .with(authentication(createAuthToken(savedUser))))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(WatchingErrorCode.INVALID_PAGINATION_LIMIT.name()))
-                .andExpect(jsonPath("$.detail").value(WatchingErrorCode.INVALID_PAGINATION_LIMIT.getMessage()));
+                .andExpect(jsonPath("$.errorCode").value(WatchingErrorCode.INVALID_PAGINATION_LIMIT.getErrorCode()));
     }
 
     @Test
-    @DisplayName("[400] 잘못된 커서 날짜 형식 요청 시 INVALID_CURSOR 에러 발생")
+    @DisplayName("[400] 잘못된 커서 날짜 형식 요청 시 에러 발생")
     void getWatchingSessions_InvalidCursor_Fail() throws Exception {
-        // Given: 세션이 하나라도 있어야 커서 파싱 로직을 타므로 데이터 추가
-        watchingSessionRepository.save(new WatchingSession(savedUser.getId(), savedContent.getId(), LocalDateTime.now()));
+        // 1. Given 데이터가 있어야 커서 파싱 로직을 타므로 적재
+        WatchingSession session = new WatchingSession(savedUser.getId(), savedContent.getId(), LocalDateTime.now());
+        redisManager.saveHash(RedisNameSpace.USER_WATCHING, String.valueOf(savedUser.getId()), session);
+        redisManager.addToSet(RedisNameSpace.CONTENT_WATCHERS, String.valueOf(savedContent.getId()), savedUser.getId());
 
+        // 2. When & Then 잘못된 커서 형식 전달
         mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
                         .param("cursor", "not-a-date-format")
-                        .param("idAfter", "1")
+                        .param("idAfter", String.valueOf(savedUser.getId()))
+                        .param("limit", "10")
                         .with(authentication(createAuthToken(savedUser))))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(WatchingErrorCode.INVALID_CURSOR.name()));
+                .andExpect(jsonPath("$.errorCode").value(WatchingErrorCode.INVALID_CURSOR.getErrorCode()));
     }
 
     // 3. 인증 예외 케이스 (401)

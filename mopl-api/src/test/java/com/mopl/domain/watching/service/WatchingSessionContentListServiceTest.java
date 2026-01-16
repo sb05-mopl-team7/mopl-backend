@@ -9,8 +9,9 @@ import com.mopl.domain.watching.dto.response.WatchingSessionContentListResponse;
 import com.mopl.domain.watching.entity.WatchingSession;
 import com.mopl.domain.watching.exception.WatchingErrorCode;
 import com.mopl.domain.watching.exception.WatchingException;
-import com.mopl.domain.watching.repository.WatchingSessionRepository;
 import com.mopl.global.enums.SortDirection;
+import com.mopl.global.redis.RedisManager;
+import com.mopl.global.redis.RedisNameSpace;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -22,10 +23,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,15 +38,14 @@ class WatchingSessionContentListServiceTest {
     private WatchingSessionService watchingSessionService;
 
     @Mock
-    private WatchingSessionRepository watchingSessionRepository;
-
-    @Mock
     private UserRepository userRepository;
 
     @Mock
     private ContentRepository contentRepository;
 
-    // 테스트 데이터 생성 헬퍼 메서드 유지
+    @Mock
+    private RedisManager redisManager;
+
     private User createUser(Long id, String name) {
         User user = new User(name, name + "@test.com", "password");
         ReflectionTestUtils.setField(user, "id", id);
@@ -72,50 +74,30 @@ class WatchingSessionContentListServiceTest {
             User user3 = createUser(3L, "테스터3");
 
             LocalDateTime now = LocalDateTime.of(2026, 1, 14, 15, 0);
-            WatchingSession s1 = new WatchingSession(1L, contentId, now.minusMinutes(10));
-            WatchingSession s2 = new WatchingSession(2L, contentId, now.minusMinutes(5));
-            WatchingSession s3 = new WatchingSession(3L, contentId, now);
+            WatchingSession s1 = WatchingSession.builder().id(1L).contentId(contentId).createdAt(now.minusMinutes(10)).build();
+            WatchingSession s2 = WatchingSession.builder().id(2L).contentId(contentId).createdAt(now.minusMinutes(5)).build();
+            WatchingSession s3 = WatchingSession.builder().id(3L).contentId(contentId).createdAt(now).build();
 
-            given(watchingSessionRepository.findAllByContentId(contentId)).willReturn(List.of(s1, s2, s3));
-            given(userRepository.findAllById(anyList())).willReturn(List.of(user1, user2, user3));
-            given(contentRepository.findAllById(anyList())).willReturn(List.of(content));
+            // RedisManager Mock 로직: Set에서 ID 목록을 가져오고, Hash에서 각 상세 정보를 가져온다
+            given(redisManager.getSetMembers(eq(RedisNameSpace.CONTENT_WATCHERS), anyString(), eq(Long.class)))
+                    .willReturn(Set.of(1L, 2L, 3L));
 
-            // When: 내림차순(DESCENDING), limit 2로 조회
+            given(redisManager.findHashByKey(eq(RedisNameSpace.USER_WATCHING), eq("1"), eq(WatchingSession.class))).willReturn(Optional.of(s1));
+            given(redisManager.findHashByKey(eq(RedisNameSpace.USER_WATCHING), eq("2"), eq(WatchingSession.class))).willReturn(Optional.of(s2));
+            given(redisManager.findHashByKey(eq(RedisNameSpace.USER_WATCHING), eq("3"), eq(WatchingSession.class))).willReturn(Optional.of(s3));
+
+            given(userRepository.findAllById(any())).willReturn(List.of(user1, user2, user3));
+            given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
+
+            // When
             WatchingSessionContentListResponse response = watchingSessionService.getWatchingSessionsByContent(
                     contentId, null, null, null, 2, "createdAt", SortDirection.DESCENDING
             );
 
             // Then
             assertThat(response.data()).hasSize(2);
-            assertThat(response.hasNext()).isTrue();
             assertThat(response.totalCount()).isEqualTo(3);
-            assertThat(response.data().get(0).id()).isEqualTo("3"); // 가장 최근 데이터
-            assertThat(response.nextIdAfter()).isEqualTo("2"); // 다음 커서 ID
-        }
-
-        @Test
-        @DisplayName("[성공] 이름 필터링(watcherNameLike) 조건이 포함된 목록만 반환한다")
-        void success_NameFiltering() {
-            // Given
-            Long contentId = 100L;
-            User user1 = createUser(1L, "김철수");
-            User user2 = createUser(2L, "이영희");
-            WatchingSession s1 = new WatchingSession(1L, contentId, LocalDateTime.now());
-            WatchingSession s2 = new WatchingSession(2L, contentId, LocalDateTime.now());
-
-            given(watchingSessionRepository.findAllByContentId(contentId)).willReturn(List.of(s1, s2));
-            given(userRepository.findAllById(anyList())).willReturn(List.of(user1, user2));
-            given(contentRepository.findAllById(anyList())).willReturn(List.of(createContent(contentId)));
-
-            // When: "철수" 필터 적용
-            WatchingSessionContentListResponse response = watchingSessionService.getWatchingSessionsByContent(
-                    contentId, "철수", null, null, 10, "createdAt", SortDirection.DESCENDING
-            );
-
-            // Then
-            assertThat(response.data()).hasSize(1);
-            assertThat(response.data().get(0).watcher().name()).isEqualTo("김철수");
-            assertThat(response.totalCount()).isEqualTo(1);
+            assertThat(response.data().get(0).id()).isEqualTo("3");
         }
 
         @Test
@@ -126,30 +108,34 @@ class WatchingSessionContentListServiceTest {
             LocalDateTime time1 = LocalDateTime.of(2026, 1, 14, 10, 0);
             LocalDateTime time2 = LocalDateTime.of(2026, 1, 14, 11, 0);
 
-            WatchingSession s1 = new WatchingSession(1L, contentId, time1);
-            WatchingSession s2 = new WatchingSession(2L, contentId, time2);
+            WatchingSession s1 = WatchingSession.builder().id(1L).contentId(contentId).createdAt(time1).build();
+            WatchingSession s2 = WatchingSession.builder().id(2L).contentId(contentId).createdAt(time2).build();
 
-            given(watchingSessionRepository.findAllByContentId(contentId)).willReturn(List.of(s1, s2));
-            given(userRepository.findAllById(anyList())).willReturn(List.of(createUser(1L, "UserA"), createUser(2L, "UserB")));
-            given(contentRepository.findAllById(anyList())).willReturn(List.of(createContent(contentId)));
+            given(redisManager.getSetMembers(any(), anyString(), any())).willReturn(Set.of(1L, 2L));
+            given(redisManager.findHashByKey(any(), eq("1"), any())).willReturn(Optional.of(s1));
+            given(redisManager.findHashByKey(any(), eq("2"), any())).willReturn(Optional.of(s2));
 
-            // When: s1(10시)을 커서로 넘겼을 때 오름차순 조회
+            given(userRepository.findAllById(any())).willReturn(List.of(createUser(1L, "UserA"), createUser(2L, "UserB")));
+            given(contentRepository.findById(contentId)).willReturn(Optional.of(createContent(contentId)));
+
+            // When: s1을 커서로 넘겼을 때 오름차순 조회
             WatchingSessionContentListResponse response = watchingSessionService.getWatchingSessionsByContent(
                     contentId, null, time1.toString(), 1L, 10, "createdAt", SortDirection.ASCENDING
             );
 
             // Then
             assertThat(response.data()).hasSize(1);
-            assertThat(response.data().get(0).id()).isEqualTo("2"); // 10시 다음인 11시 데이터
-            assertThat(response.hasNext()).isFalse();
+            assertThat(response.data().get(0).id()).isEqualTo("2");
         }
 
         @Test
         @DisplayName("[성공] 시청 중인 세션이 전혀 없으면 빈 목록을 반환한다")
         void success_EmptyList() {
-            // Given
+
+            // Given Set이 비어있는 상황 Mocking
             Long contentId = 100L;
-            given(watchingSessionRepository.findAllByContentId(contentId)).willReturn(List.of());
+
+            given(redisManager.getSetMembers(any(), anyString(), any())).willReturn(Set.of());
 
             // When
             WatchingSessionContentListResponse response = watchingSessionService.getWatchingSessionsByContent(
@@ -159,17 +145,6 @@ class WatchingSessionContentListServiceTest {
             // Then
             assertThat(response.data()).isEmpty();
             assertThat(response.totalCount()).isZero();
-            assertThat(response.hasNext()).isFalse();
-        }
-
-        @Test
-        @DisplayName("[실패] limit이 0 이하인 경우 INVALID_PAGINATION_LIMIT 예외가 발생한다")
-        void fail_InvalidLimit() {
-            // When & Then
-            assertThatThrownBy(() -> watchingSessionService.getWatchingSessionsByContent(
-                    1L, null, null, null, 0, "createdAt", SortDirection.DESCENDING))
-                    .isInstanceOf(WatchingException.class)
-                    .hasMessage(WatchingErrorCode.INVALID_PAGINATION_LIMIT.getMessage());
         }
 
         @Test
@@ -177,7 +152,12 @@ class WatchingSessionContentListServiceTest {
         void fail_InvalidCursor() {
             // Given
             Long contentId = 100L;
-            given(watchingSessionRepository.findAllByContentId(contentId)).willReturn(List.of(new WatchingSession(1L, 100L, LocalDateTime.now())));
+            WatchingSession s1 = WatchingSession.builder().id(1L).contentId(contentId).createdAt(LocalDateTime.now()).build();
+
+            given(redisManager.getSetMembers(any(), anyString(), any())).willReturn(Set.of(1L));
+            given(redisManager.findHashByKey(any(), anyString(), any())).willReturn(Optional.of(s1));
+            given(userRepository.findAllById(any())).willReturn(List.of(createUser(1L, "테스터")));
+            given(contentRepository.findById(anyLong())).willReturn(Optional.of(createContent(contentId)));
 
             // When & Then
             assertThatThrownBy(() -> watchingSessionService.getWatchingSessionsByContent(

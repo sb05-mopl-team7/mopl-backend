@@ -18,7 +18,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -43,7 +45,7 @@ public class NotificationService {
         NotificationDto notificationDto = toDto(notification);
         sseManager.sendToUser(
                 receiverId,
-                "notification",
+                "notifications",
                 notificationDto
         );
     }
@@ -111,6 +113,15 @@ public class NotificationService {
                 .sortBy(sortBy)
                 .sortDirection(sortDirection)
                 .build();
+    }
+
+    public List<NotificationDto> findMissedNotifications(Long userId, long lastTimestamp, Long lastId) {
+        LocalDateTime lastTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastTimestamp), ZoneId.of("Asia/Seoul"));
+        List<Notification> notifications = notificationRepository.findMissedNotifications(userId, lastTime, lastId);
+
+        return notifications.stream()
+                .map(this::toDto)
+                .toList();
     }
 
     private StartId parseStartId(String cursorRaw, String idAfterRaw) {

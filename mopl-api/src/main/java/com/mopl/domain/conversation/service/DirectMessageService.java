@@ -9,11 +9,14 @@ import com.mopl.domain.conversation.repository.ReadStatusRepository;
 import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.user.entity.User;
 import com.mopl.global.dto.PageResponse;
+import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import static com.mopl.domain.conversation.exception.ConversationErrorCode.CONVERSATION_ID_MISMATCH;
@@ -26,6 +29,7 @@ public class DirectMessageService {
 
     private final DirectMessageRepository directMessageRepository;
     private final ReadStatusRepository readStatusRepository;
+    private final S3Manager s3Manager;
 
     // 로그인한 사용자의 대화방 메시지 전체 조회
     public PageResponse<DirectMessageDto> findMessages(DMCursorRequest cursorRequest, Long myId, Long conversationId) {
@@ -53,7 +57,8 @@ public class DirectMessageService {
         }
 
         UserSummaryDto mySummaryDto = new UserSummaryDto(myId, "me", null);
-        UserSummaryDto withUserDto = new UserSummaryDto(targetUser.getId(), targetUser.getName(), targetUser.getProfileImageUrl());
+        String presignedUrl = s3Manager.generatePresignedUrl(targetUser.getProfileImageUrl());
+        UserSummaryDto withUserDto = new UserSummaryDto(targetUser.getId(), targetUser.getName(), presignedUrl);
 
         List<DirectMessageDto> messageDtos = messages.stream()
                 .map(message -> convertToDto(myId, conversationId, message, mySummaryDto, withUserDto))
@@ -78,6 +83,18 @@ public class DirectMessageService {
                 .build();
     }
 
+    public List<DirectMessageDto> findMissedMessages(Long userId, long lastTimestamp, Long lastId) {
+        LocalDateTime lastTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastTimestamp), ZoneId.systemDefault());
+
+        List<DirectMessage> messages = directMessageRepository.findMissedMessages(userId, lastTime, lastId);
+
+        UserSummaryDto mySummaryDto = new UserSummaryDto(userId, "me", null);
+
+        return messages.stream()
+                .map(msg -> convertToMissedDto(msg, mySummaryDto))
+                .toList();
+    }
+
     private DirectMessageDto convertToDto(Long myId, Long conversationId, DirectMessage message, UserSummaryDto mySummaryDto, UserSummaryDto withUserDto) {
         Long messageId = message.getId();
         LocalDateTime createdAt = message.getCreatedAt();
@@ -93,5 +110,28 @@ public class DirectMessageService {
                 sender,
                 receiver,
                 message.getContent());
+    }
+
+    // 받는 사람이 무조건 본인
+    private DirectMessageDto convertToMissedDto(DirectMessage message, UserSummaryDto mySummaryDto) {
+        User author = message.getAuthor();
+
+        String presignedUrl = s3Manager.generatePresignedUrl(author.getProfileImageUrl());
+
+        // 보낸 사람 (상대방)
+        UserSummaryDto senderDto = new UserSummaryDto(
+                author.getId(),
+                author.getName(),
+                presignedUrl
+        );
+
+        return new DirectMessageDto(
+                message.getId(),
+                message.getConversation().getId(),
+                message.getCreatedAt(),
+                senderDto,   // 보낸 사람 (상대방)
+                mySummaryDto, // 받는 사람 (나)
+                message.getContent()
+        );
     }
 }

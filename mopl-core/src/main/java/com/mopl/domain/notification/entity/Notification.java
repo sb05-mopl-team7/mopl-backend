@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Table(name = "notifications")
+@Table(name = "notifications", indexes = {
+        @Index(name = "idx_noti_receiver_created", columnList = "receiver_id, created_at DESC")
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification extends BaseCreatedEntity {
 

@@ -46,4 +46,20 @@ public class RedisManager {
         String key = namespace.createKey(identifier);
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
     }
+
+    public void addSetElement(RedisNameSpace nameSpace, String identifier, Object value) {
+        String key = nameSpace.createKey(identifier);
+        redisTemplate.opsForSet().add(key, value);
+        redisTemplate.expire(key, nameSpace.getTtl());
+    }
+
+    public void removeSetElement(RedisNameSpace nameSpace, String identifier, Object value) {
+        String key = nameSpace.createKey(identifier);
+        redisTemplate.opsForSet().remove(key, value);
+    }
+
+    public boolean isMember(RedisNameSpace nameSpace, String identifier, Object value) {
+        String key = nameSpace.createKey(identifier);
+        return Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(key, value));
+    }
 }

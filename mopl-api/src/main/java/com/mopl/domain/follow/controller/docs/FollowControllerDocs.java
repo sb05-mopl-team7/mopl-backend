@@ -2,7 +2,6 @@ package com.mopl.domain.follow.controller.docs;
 
 import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.follow.dto.request.FollowRequest;
-import com.mopl.domain.follow.dto.response.FollowCountResponse;
 import com.mopl.domain.follow.dto.response.FollowResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -73,7 +72,7 @@ public interface FollowControllerDocs {
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     @GetMapping("/count")
-    ResponseEntity<FollowCountResponse> getFollowCounts(
+    ResponseEntity<Long> getFollowCounts(
             @Parameter(description = "조회할 대상 사용자 ID (PK)", required = true) @RequestParam Long targetId
     );
 

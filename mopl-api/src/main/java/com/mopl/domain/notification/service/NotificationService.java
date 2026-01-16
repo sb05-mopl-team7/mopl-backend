@@ -4,6 +4,8 @@ package com.mopl.domain.notification.service;
 import com.mopl.domain.notification.dto.NotificationDto;
 import com.mopl.domain.notification.entity.Notification;
 import com.mopl.domain.notification.enums.Level;
+import com.mopl.domain.notification.exception.NotificationErrorCode;
+import com.mopl.domain.notification.exception.NotificationException;
 import com.mopl.domain.notification.repository.NotificationRepository;
 import com.mopl.global.dto.PageResponse;
 import com.mopl.global.enums.SortDirection;
@@ -44,6 +46,14 @@ public class NotificationService {
                 "notification",
                 notificationDto
         );
+    }
+
+    @Transactional
+    public void deleteNotification(Long userId, Long  notificationId){
+        Notification  notification = notificationRepository
+                .findByIdAndReceiverId(notificationId, userId)
+                .orElseThrow(()-> new NotificationException(NotificationErrorCode.NOTIFICATION_NOT_EXIST));
+        notificationRepository.delete(notification);
     }
 
     @Transactional(readOnly = true)

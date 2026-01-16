@@ -5,7 +5,7 @@ import com.mopl.domain.content.enums.ContentType;
 import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.repository.UserRepository;
-import com.mopl.domain.watching.dto.response.WatchingSessionResponse;
+import com.mopl.domain.watching.dto.response.WatchingSessionUserResponse;
 import com.mopl.domain.watching.entity.WatchingSession;
 import com.mopl.domain.watching.exception.WatchingErrorCode;
 import com.mopl.domain.watching.exception.WatchingException;
@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
-class WatchingSessionServiceTest {
+class WatchingSessionUserServiceTest {
 
     @InjectMocks
     private WatchingSessionService watchingSessionService;
@@ -77,7 +77,7 @@ class WatchingSessionServiceTest {
             given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
 
             // When
-            WatchingSessionResponse response = watchingSessionService.getWatchingSession(watcherId);
+            WatchingSessionUserResponse response = watchingSessionService.getWatchingSession(watcherId);
 
             // Then
             assertThat(response).isNotNull();
@@ -95,7 +95,7 @@ class WatchingSessionServiceTest {
             given(watchingSessionRepository.findById(watcherId)).willReturn(Optional.empty());
 
             // When
-            WatchingSessionResponse response = watchingSessionService.getWatchingSession(watcherId);
+            WatchingSessionUserResponse response = watchingSessionService.getWatchingSession(watcherId);
 
             // Then
             assertThat(response).isNull();

@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.PersistenceCreator; // 추가
 import org.springframework.data.redis.core.RedisHash;
+import org.springframework.data.redis.core.index.Indexed;
 
 import java.time.LocalDateTime;
 
@@ -15,6 +16,7 @@ public class WatchingSession {
     @Id
     private final Long id; // watcherId 역할을 함
 
+    @Indexed
     private final Long contentId;
 
     private final LocalDateTime createdAt;

@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - develop
+    paths:
+      - "mopl-core/**"
+      - "mopl-api/**"
+      - "build.gradle"
+      - "settings.gradle"
+      - "gradle/**"
+      - "gradlew"
+      - ".github/workflows/cd-mopl-api.yml"
 
 jobs:
   build-and-push:

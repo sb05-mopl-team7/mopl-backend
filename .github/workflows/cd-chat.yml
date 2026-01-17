@@ -1,9 +1,17 @@
-name: CD mopl-api (develop)
+name: CD mopl-chat (develop)
 
 on:
   push:
     branches:
       - develop
+    paths:
+      - "mopl-core/**"
+      - "mopl-chat/**"
+      - "build.gradle"
+      - "settings.gradle"
+      - "gradle/**"
+      - "gradlew"
+      - ".github/workflows/cd-mopl-chat.yml"
 
 jobs:
   build-and-push:

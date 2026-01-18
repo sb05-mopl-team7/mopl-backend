@@ -13,6 +13,10 @@ spring:
       test: core-test
       local: core-local
 
+  kafka:
+    consumer:
+      group-id: chat-server-group # 채팅 서버용 그룹 id
+
 #jwt
 jwt:
   access-secret: ${JWT_ACCESS_SECRET}

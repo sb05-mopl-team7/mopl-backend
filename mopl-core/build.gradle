@@ -42,4 +42,8 @@ dependencies {
     implementation platform("software.amazon.awssdk:bom:2.26.21")
     implementation "software.amazon.awssdk:s3"
     implementation "software.amazon.awssdk:sts"
+
+    // Kafka
+    api 'org.springframework.boot:spring-boot-starter-kafka'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
 }

@@ -10,6 +10,7 @@ spring:
     group:
       dev: core-dev
       prod: core-prod
+      local: core-local
   servlet:
     multipart:
       max-file-size: 10MB
@@ -27,6 +28,10 @@ spring:
          auth: true
          starttls:
           enable: true
+
+  kafka:
+    consumer:
+      group-id: api-server-group # API 서버용 그룹 id
 
 # swagger
 springdoc:

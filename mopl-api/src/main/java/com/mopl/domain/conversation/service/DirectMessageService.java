@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.mopl.domain.conversation.exception.ConversationErrorCode.CONVERSATION_ID_MISMATCH;
 import static com.mopl.domain.conversation.exception.ConversationErrorCode.CONVERSATION_NOT_FOUND;
@@ -90,8 +92,10 @@ public class DirectMessageService {
 
         UserSummaryDto mySummaryDto = new UserSummaryDto(userId, "me", null);
 
+        Map<Long, String> urlCache = new HashMap<>(); // key: authorId, value: presignedUrl
+
         return messages.stream()
-                .map(msg -> convertToMissedDto(msg, mySummaryDto))
+                .map(msg -> convertToMissedDto(msg, mySummaryDto, urlCache))
                 .toList();
     }
 
@@ -113,10 +117,13 @@ public class DirectMessageService {
     }
 
     // 받는 사람이 무조건 본인
-    private DirectMessageDto convertToMissedDto(DirectMessage message, UserSummaryDto mySummaryDto) {
+    private DirectMessageDto convertToMissedDto(DirectMessage message, UserSummaryDto mySummaryDto, Map<Long, String> urlCache) {
         User author = message.getAuthor();
 
-        String presignedUrl = s3Manager.generatePresignedUrl(author.getProfileImageUrl());
+        String presignedUrl = urlCache.computeIfAbsent(
+                author.getId(),
+                authorId -> s3Manager.generatePresignedUrl(author.getProfileImageUrl())
+        );
 
         // 보낸 사람 (상대방)
         UserSummaryDto senderDto = new UserSummaryDto(

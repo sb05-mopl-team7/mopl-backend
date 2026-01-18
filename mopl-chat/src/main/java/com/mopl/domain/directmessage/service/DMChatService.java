@@ -12,6 +12,7 @@ import com.mopl.domain.user.entity.User;
 import com.mopl.global.redis.RedisManager;
 import com.mopl.global.redis.RedisNameSpace;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,9 @@ public class DMChatService {
     private final ReadStatusRepository readStatusRepository;
     private final RedisManager redisManager;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${mopl.kafka.topics.dm}")
+    private String dmTopic;
 
     @Transactional
     public DirectMessageDto saveMessage(Long senderId, Long conversationId, String content) {
@@ -62,7 +66,7 @@ public class DMChatService {
         // 상대방 대화창 활성화 여부 확인 후 알림 전송
         boolean isWatching = redisManager.isMember(RedisNameSpace.DM_VIEWERS, String.valueOf(conversationId), String.valueOf(receiver.getId()));
         if (!isWatching) {
-            kafkaTemplate.send("dm-notification", new DmNotificationEvent(
+            kafkaTemplate.send(dmTopic, new DmNotificationEvent(
                     receiver.getId(),
                     directMessageDto
             ));

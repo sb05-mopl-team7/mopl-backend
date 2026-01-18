@@ -4,6 +4,7 @@ package com.mopl.domain.notification.service;
 import com.mopl.domain.notification.dto.NotificationDto;
 import com.mopl.domain.notification.entity.Notification;
 import com.mopl.domain.notification.enums.Level;
+import com.mopl.domain.notification.enums.NotificationType;
 import com.mopl.domain.notification.exception.NotificationErrorCode;
 import com.mopl.domain.notification.exception.NotificationException;
 import com.mopl.domain.notification.repository.NotificationRepository;
@@ -13,6 +14,7 @@ import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
 import com.mopl.global.sse.SseManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -33,21 +36,15 @@ public class NotificationService {
     private final SseManager sseManager;
 
     @Transactional
-    public void createAndSendNotification(
-            Long receiverId,
-            String title,
-            String content,
-            Level level
-    ){
-        Notification notification = new Notification(receiverId,title,content,level);
-        notificationRepository.save(notification);
-
-        NotificationDto notificationDto = toDto(notification);
-        sseManager.sendToUser(
-                receiverId,
-                "notifications",
-                notificationDto
-        );
+    public void send(Long receiverId, NotificationType type, Object... args) {
+        try {
+            String title = type.generateTitle(args);
+            String content = type.generateBody(args);
+            createAndSendNotification(receiverId, title, content, type.getLevel());
+        } catch (Exception e) {
+            log.error("알림 생성 중 오류 발생", e);
+            throw new NotificationException(NotificationErrorCode.NOTIFICATION_NOT_SUPPORTED);
+        }
     }
 
     @Transactional
@@ -122,6 +119,18 @@ public class NotificationService {
         return notifications.stream()
                 .map(this::toDto)
                 .toList();
+    }
+
+    private void createAndSendNotification(Long receiverId, String title, String content, Level level) {
+        Notification notification = new Notification(receiverId, title, content, level);
+        notificationRepository.save(notification);
+
+        NotificationDto notificationDto = toDto(notification);
+        sseManager.sendToUser(
+                receiverId,
+                "notifications",
+                notificationDto
+        );
     }
 
     private StartId parseStartId(String cursorRaw, String idAfterRaw) {

@@ -1,7 +1,7 @@
 package com.mopl.domain.user.service;
 
 import com.mopl.domain.notification.enums.NotificationType;
-import com.mopl.domain.notification.event.NotificationEvent;
+import com.mopl.domain.notification.producer.NotificationEventProducer;
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
 import com.mopl.domain.user.dto.UserSearchCondition;
@@ -20,11 +20,9 @@ import com.mopl.global.exception.MoplException;
 import com.mopl.global.s3.FileCategory;
 import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -45,10 +43,7 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final S3Manager s3Manager;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
-
-    @Value("${mopl.kafka.topics.noti}")
-    private String notificationTopic;
+    private final NotificationEventProducer notificationEventProducer;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String email) {
@@ -109,9 +104,7 @@ public class UserService {
 
         Role role = user.getRole();
         if (user.updateRole(newRole)) {
-            kafkaTemplate.send(notificationTopic, NotificationEvent.of(userId,
-                    NotificationType.ROLE_UPDATED,
-                    role.name(), newRole.name()));
+            notificationEventProducer.send(userId, NotificationType.ROLE_UPDATED, role.name(), newRole.name());
         }
     }
 

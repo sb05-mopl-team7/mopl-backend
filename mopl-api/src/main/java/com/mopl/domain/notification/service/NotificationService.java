@@ -36,7 +36,7 @@ public class NotificationService {
     private final SseManager sseManager;
 
     @Transactional
-    public void send(Long receiverId, NotificationType type, Object... args) {
+    public void create(Long receiverId, NotificationType type, Object... args) {
         try {
             String title = type.generateTitle(args);
             String content = type.generateBody(args);

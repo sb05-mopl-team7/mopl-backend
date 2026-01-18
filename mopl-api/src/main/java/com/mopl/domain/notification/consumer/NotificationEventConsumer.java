@@ -18,6 +18,6 @@ public class NotificationEventConsumer {
     public void consumeNotificationEvent(NotificationEvent event) {
         log.info("알림 소비: receiverId={}, type={}", event.receiverId(), event.notificationType());
 
-        notificationService.send(event.receiverId(), event.notificationType(), event.args().toArray());
+        notificationService.create(event.receiverId(), event.notificationType(), event.args().toArray());
     }
 }

@@ -7,6 +7,8 @@ import com.mopl.domain.conversation.entity.ReadStatus;
 import com.mopl.domain.conversation.event.DmSendEvent;
 import com.mopl.domain.conversation.repository.DirectMessageRepository;
 import com.mopl.domain.conversation.repository.ReadStatusRepository;
+import com.mopl.domain.notification.enums.NotificationType;
+import com.mopl.domain.notification.producer.NotificationEventProducer;
 import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.user.entity.User;
 import com.mopl.global.redis.RedisManager;
@@ -27,6 +29,7 @@ public class DMChatService {
     private final DirectMessageRepository directMessageRepository;
     private final ReadStatusRepository readStatusRepository;
     private final RedisManager redisManager;
+    private final NotificationEventProducer notificationEventProducer;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${mopl.kafka.topics.dm}")
@@ -70,6 +73,12 @@ public class DMChatService {
                     receiver.getId(),
                     directMessageDto
             ));
+
+            notificationEventProducer.send(
+                    receiver.getId(),
+                    NotificationType.DM_RECEIVED,
+                    sender.getName(),
+                    message.getContent());
         }
 
         return directMessageDto;

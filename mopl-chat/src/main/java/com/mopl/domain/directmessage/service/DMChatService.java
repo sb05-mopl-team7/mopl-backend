@@ -4,9 +4,9 @@ import com.mopl.domain.conversation.dto.response.DirectMessageDto;
 import com.mopl.domain.conversation.entity.Conversation;
 import com.mopl.domain.conversation.entity.DirectMessage;
 import com.mopl.domain.conversation.entity.ReadStatus;
+import com.mopl.domain.conversation.event.DmSendEvent;
 import com.mopl.domain.conversation.repository.DirectMessageRepository;
 import com.mopl.domain.conversation.repository.ReadStatusRepository;
-import com.mopl.domain.notification.event.DmNotificationEvent;
 import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.user.entity.User;
 import com.mopl.global.redis.RedisManager;
@@ -63,10 +63,10 @@ public class DMChatService {
 
         DirectMessageDto directMessageDto = toDto(senderId, conversationId, content, message, sender, receiver);
 
-        // 상대방 대화창 활성화 여부 확인 후 알림 전송
+        // 상대방 대화창 활성화 여부 확인 후 DM 전송
         boolean isWatching = redisManager.isMember(RedisNameSpace.DM_VIEWERS, String.valueOf(conversationId), String.valueOf(receiver.getId()));
         if (!isWatching) {
-            kafkaTemplate.send(dmTopic, new DmNotificationEvent(
+            kafkaTemplate.send(dmTopic, new DmSendEvent(
                     receiver.getId(),
                     directMessageDto
             ));

@@ -1,8 +1,8 @@
-package com.mopl.domain.notification.event;
+package com.mopl.domain.conversation.event;
 
 import com.mopl.domain.conversation.dto.response.DirectMessageDto;
 
-public record DmNotificationEvent(
+public record DmSendEvent(
         Long receiverId,
         DirectMessageDto directMessageDto
 ) {

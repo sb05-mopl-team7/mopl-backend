@@ -86,7 +86,7 @@ public class DirectMessageService {
     }
 
     public List<DirectMessageDto> findMissedMessages(Long userId, long lastTimestamp, Long lastId) {
-        LocalDateTime lastTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastTimestamp), ZoneId.systemDefault());
+        LocalDateTime lastTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastTimestamp), ZoneId.of("Asia/Seoul"));
 
         List<DirectMessage> messages = directMessageRepository.findMissedMessages(userId, lastTime, lastId);
 

@@ -52,6 +52,6 @@ jwt:
   refresh-token-validity: 604800000  # 7일 (밀리초)
 
 cors:
-  allowed-origins: [http://localhost:3000]
+  allowed-origins: [http://localhost:8080]
   allowed-methods: [GET, POST,  DELETE, PATCH]
   allowed-headers: [Authorization, Content-Type, X-Xsrf-Token]

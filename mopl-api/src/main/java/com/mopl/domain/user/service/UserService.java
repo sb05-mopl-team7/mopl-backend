@@ -1,5 +1,7 @@
 package com.mopl.domain.user.service;
 
+import com.mopl.domain.notification.enums.NotificationType;
+import com.mopl.domain.notification.producer.NotificationEventProducer;
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
 import com.mopl.domain.user.dto.UserSearchCondition;
@@ -41,6 +43,7 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final S3Manager s3Manager;
+    private final NotificationEventProducer notificationEventProducer;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String email) {
@@ -98,7 +101,11 @@ public class UserService {
     public void updateRole(Long userId, Role newRole) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
-        user.updateRole(newRole);
+
+        Role role = user.getRole();
+        if (user.updateRole(newRole)) {
+            notificationEventProducer.send(userId, NotificationType.ROLE_UPDATED, role.name(), newRole.name());
+        }
     }
 
     @Transactional

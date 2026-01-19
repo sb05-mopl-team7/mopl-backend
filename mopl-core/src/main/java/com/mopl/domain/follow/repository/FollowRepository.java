@@ -3,6 +3,10 @@ package com.mopl.domain.follow.repository;
 import com.mopl.domain.follow.entity.Follow;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 
 public interface FollowRepository extends JpaRepository<@NonNull Follow, @NonNull Long> {
 
@@ -13,4 +17,11 @@ public interface FollowRepository extends JpaRepository<@NonNull Follow, @NonNul
     long countByFollowerId(Long followerId);
 
     long countByFolloweeId(Long followeeId);
+
+    // 특정 유저를 팔로우하는 유저들의 id 조회
+    @Query("""
+        SELECT f.follower.id FROM Follow f
+        WHERE f.followee.id = :followeeId
+    """)
+    List<Long> findFollowsByFolloweeId(@Param("followeeId") Long followeeId);
 }

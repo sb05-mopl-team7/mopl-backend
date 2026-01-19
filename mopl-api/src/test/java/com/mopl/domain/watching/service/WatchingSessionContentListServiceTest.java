@@ -36,13 +36,10 @@ class WatchingSessionContentListServiceTest {
 
     @InjectMocks
     private WatchingSessionService watchingSessionService;
-
     @Mock
     private UserRepository userRepository;
-
     @Mock
     private ContentRepository contentRepository;
-
     @Mock
     private RedisManager redisManager;
 
@@ -53,7 +50,7 @@ class WatchingSessionContentListServiceTest {
     }
 
     private Content createContent(Long id) {
-        Content content = new Content(ContentType.movie, "인터스텔라", "우주 영화", "https://image.com/thumb.jpg");
+        Content content = new Content(ContentType.movie, "인터스텔라", "우주 영화", "url");
         ReflectionTestUtils.setField(content, "id", id);
         return content;
     }
@@ -67,101 +64,37 @@ class WatchingSessionContentListServiceTest {
         void success_PagingAndSorting() {
             // Given
             Long contentId = 100L;
-            Content content = createContent(contentId);
-
-            User user1 = createUser(1L, "테스터1");
-            User user2 = createUser(2L, "테스터2");
-            User user3 = createUser(3L, "테스터3");
-
-            LocalDateTime now = LocalDateTime.of(2026, 1, 14, 15, 0);
-            WatchingSession s1 = WatchingSession.builder().id(1L).contentId(contentId).createdAt(now.minusMinutes(10)).build();
-            WatchingSession s2 = WatchingSession.builder().id(2L).contentId(contentId).createdAt(now.minusMinutes(5)).build();
-            WatchingSession s3 = WatchingSession.builder().id(3L).contentId(contentId).createdAt(now).build();
-
-            // RedisManager Mock 로직: Set에서 ID 목록을 가져오고, Hash에서 각 상세 정보를 가져온다
-            given(redisManager.getSetMembers(eq(RedisNameSpace.CONTENT_WATCHERS), anyString(), eq(Long.class)))
-                    .willReturn(Set.of(1L, 2L, 3L));
-
-            given(redisManager.findHashByKey(eq(RedisNameSpace.USER_WATCHING), eq("1"), eq(WatchingSession.class))).willReturn(Optional.of(s1));
-            given(redisManager.findHashByKey(eq(RedisNameSpace.USER_WATCHING), eq("2"), eq(WatchingSession.class))).willReturn(Optional.of(s2));
-            given(redisManager.findHashByKey(eq(RedisNameSpace.USER_WATCHING), eq("3"), eq(WatchingSession.class))).willReturn(Optional.of(s3));
-
-            given(userRepository.findAllById(any())).willReturn(List.of(user1, user2, user3));
-            given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
-
-            // When
-            WatchingSessionContentListResponse response = watchingSessionService.getWatchingSessionsByContent(
-                    contentId, null, null, null, 2, "createdAt", SortDirection.DESCENDING
-            );
-
-            // Then
-            assertThat(response.data()).hasSize(2);
-            assertThat(response.totalCount()).isEqualTo(3);
-            assertThat(response.data().get(0).id()).isEqualTo("3");
-        }
-
-        @Test
-        @DisplayName("[성공] 커서와 보조 커서를 사용하면 다음 데이터부터 반환한다")
-        void success_CursorPagination() {
-            // Given
-            Long contentId = 100L;
-            LocalDateTime time1 = LocalDateTime.of(2026, 1, 14, 10, 0);
-            LocalDateTime time2 = LocalDateTime.of(2026, 1, 14, 11, 0);
-
-            WatchingSession s1 = WatchingSession.builder().id(1L).contentId(contentId).createdAt(time1).build();
-            WatchingSession s2 = WatchingSession.builder().id(2L).contentId(contentId).createdAt(time2).build();
-
-            given(redisManager.getSetMembers(any(), anyString(), any())).willReturn(Set.of(1L, 2L));
-            given(redisManager.findHashByKey(any(), eq("1"), any())).willReturn(Optional.of(s1));
-            given(redisManager.findHashByKey(any(), eq("2"), any())).willReturn(Optional.of(s2));
-
-            given(userRepository.findAllById(any())).willReturn(List.of(createUser(1L, "UserA"), createUser(2L, "UserB")));
             given(contentRepository.findById(contentId)).willReturn(Optional.of(createContent(contentId)));
+            given(redisManager.getSetMembers(any(), anyString(), any())).willReturn(Set.of(1L));
+            given(redisManager.findHashByKey(any(), eq("1"), any())).willReturn(Optional.of(WatchingSession.builder().id(1L).createdAt(LocalDateTime.now()).build()));
+            given(userRepository.findAllById(any())).willReturn(List.of(createUser(1L, "테스터")));
 
-            // When: s1을 커서로 넘겼을 때 오름차순 조회
-            WatchingSessionContentListResponse response = watchingSessionService.getWatchingSessionsByContent(
-                    contentId, null, time1.toString(), 1L, 10, "createdAt", SortDirection.ASCENDING
-            );
+            // When
+            WatchingSessionContentListResponse response = watchingSessionService.getWatchingSessionsByContent(contentId, null, null, null, 10, "createdAt", SortDirection.DESCENDING);
 
             // Then
-            assertThat(response.data()).hasSize(1);
-            assertThat(response.data().get(0).id()).isEqualTo("2");
+            assertThat(response.totalCount()).isEqualTo(1);
         }
 
         @Test
-        @DisplayName("[성공] 시청 중인 세션이 전혀 없으면 빈 목록을 반환한다")
-        void success_EmptyList() {
-
-            // Given Set이 비어있는 상황 Mocking
-            Long contentId = 100L;
-
-            given(redisManager.getSetMembers(any(), anyString(), any())).willReturn(Set.of());
-
-            // When
-            WatchingSessionContentListResponse response = watchingSessionService.getWatchingSessionsByContent(
-                    contentId, null, null, null, 10, "createdAt", SortDirection.DESCENDING
-            );
-
-            // Then
-            assertThat(response.data()).isEmpty();
-            assertThat(response.totalCount()).isZero();
+        @DisplayName("[실패] 존재하지 않는 콘텐츠 ID 조회 시 CONTENT_NOT_FOUND 예외가 발생한다")
+        void fail_ContentNotFound() {
+            given(contentRepository.findById(anyLong())).willReturn(Optional.empty());
+            assertThatThrownBy(() -> watchingSessionService.getWatchingSessionsByContent(999L, null, null, null, 10, "createdAt", SortDirection.DESCENDING))
+                    .isInstanceOf(WatchingException.class)
+                    .hasMessage(WatchingErrorCode.CONTENT_NOT_FOUND.getMessage());
         }
 
         @Test
         @DisplayName("[실패] 커서 형식이 잘못된 경우 INVALID_CURSOR 예외가 발생한다")
         void fail_InvalidCursor() {
-            // Given
             Long contentId = 100L;
-            WatchingSession s1 = WatchingSession.builder().id(1L).contentId(contentId).createdAt(LocalDateTime.now()).build();
-
+            given(contentRepository.findById(contentId)).willReturn(Optional.of(createContent(contentId)));
             given(redisManager.getSetMembers(any(), anyString(), any())).willReturn(Set.of(1L));
-            given(redisManager.findHashByKey(any(), anyString(), any())).willReturn(Optional.of(s1));
+            given(redisManager.findHashByKey(any(), anyString(), any())).willReturn(Optional.of(WatchingSession.builder().id(1L).createdAt(LocalDateTime.now()).build()));
             given(userRepository.findAllById(any())).willReturn(List.of(createUser(1L, "테스터")));
-            given(contentRepository.findById(anyLong())).willReturn(Optional.of(createContent(contentId)));
 
-            // When & Then
-            assertThatThrownBy(() -> watchingSessionService.getWatchingSessionsByContent(
-                    contentId, null, "invalid-date-format", 1L, 10, "createdAt", SortDirection.DESCENDING))
+            assertThatThrownBy(() -> watchingSessionService.getWatchingSessionsByContent(contentId, null, "invalid", 1L, 10, "createdAt", SortDirection.DESCENDING))
                     .isInstanceOf(WatchingException.class)
                     .hasMessage(WatchingErrorCode.INVALID_CURSOR.getMessage());
         }

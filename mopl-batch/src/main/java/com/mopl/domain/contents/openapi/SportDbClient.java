@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Component
@@ -20,11 +21,15 @@ public class SportDbClient {
     }
 
     public Mono<List<SportDbDto>> getSportsEventSeason() {
+
+        int currentYear = LocalDate.now().getYear();
+        String seasonParam = (currentYear - 1) + "-" + (currentYear);
+
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/v1/json/123/eventsseason.php")
                         .queryParam("id", "4328")
-                        .queryParam("s", "2025-2026")
+                        .queryParam("s", seasonParam)
                         .build())
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<SportDbResponse<SportDbDto>>() {

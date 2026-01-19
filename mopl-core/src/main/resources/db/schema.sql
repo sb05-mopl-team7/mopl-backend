@@ -19,13 +19,15 @@ CREATE TABLE contents
 (
     id             BIGINT       NOT NULL AUTO_INCREMENT,
     content_type   VARCHAR(255) NOT NULL,
+    origin_id      BIGINT       NOT NULL,
     title          VARCHAR(255) NOT NULL,
     description    TEXT         NOT NULL,
     thumbnail_url  VARCHAR(255) NOT NULL,
     average_rating DOUBLE DEFAULT 0.0,
     review_count   INT    DEFAULT 0,
-    created_at     DATETIME     NOT NULL,
-    PRIMARY KEY (id)
+    created_at        DATETIME     NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_content_origin (content_type, origin_id)
 );
 
 CREATE TABLE tags

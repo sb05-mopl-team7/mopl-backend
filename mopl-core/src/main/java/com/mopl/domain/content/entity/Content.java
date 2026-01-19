@@ -11,7 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "contents")
+@Table(name = "contents", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_content_origin", columnNames = {"content_type", "origin_id"})
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class Content extends BaseCreatedEntity {
@@ -22,6 +24,9 @@ public class Content extends BaseCreatedEntity {
 
     @Enumerated(EnumType.STRING)
     private ContentType contentType;
+
+    @Column(nullable = false, unique = true)
+    private Long originId;
 
     private String title;
 

@@ -43,12 +43,15 @@ public class JwtFilter extends OncePerRequestFilter {
                 log.debug("JWT 인증 성공: {}", authentication.getName());
             }
         } catch (ExpiredJwtException e) {
+            SecurityContextHolder.clearContext();
             request.setAttribute("exception", ErrorCode.EXPIRED_TOKEN);
         } catch (JwtException | IllegalArgumentException e) {
             // 위조되거나 잘못된 토큰
+            SecurityContextHolder.clearContext();
             request.setAttribute("exception", ErrorCode.INVALID_TOKEN);
         } catch (Exception e) {
             log.error("JWT 필터 내부 오류", e);
+            SecurityContextHolder.clearContext();
             // 발생한 예외를 Request 속성에 저장하여 EntryPoint 등에서 활용할 수 있게 함
             request.setAttribute("exception", ErrorCode.INVALID_TOKEN);
         }

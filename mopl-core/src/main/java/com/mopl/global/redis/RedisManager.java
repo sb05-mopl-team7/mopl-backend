@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Collections;
 import java.util.Map;
@@ -14,10 +15,19 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class RedisManager {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
+
+    public RedisManager(RedisTemplate<String, Object> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+        // tools.jackson 빌더에서 에러가 발생하는 가시성 설정을 제거하고
+        // 가장 안정적인 자동 모듈 탐색 방식만 사용합니다.
+        this.objectMapper = JsonMapper.builder()
+                .findAndAddModules()
+                .build();
+    }
 
     /** 데이터 저장 - 네임스페이스에 정의된 TTL 적용 */
     public void save(RedisNameSpace namespace, String identifier, Object value) {
@@ -29,15 +39,13 @@ public class RedisManager {
     public <T> Optional<T> findByKey(RedisNameSpace namespace, String identifier, Class<T> clazz) {
         String key = namespace.createKey(identifier);
         Object value = redisTemplate.opsForValue().get(key);
-
         if(value == null) return Optional.empty();
-
         try {
             return Optional.of(clazz.cast(value));
         } catch (ClassCastException e) {
-            log.error("Redis 타입 불일치 발생 - Key: {}, 예상 타입: {}, 실제 데이터 타입: {}",
-                    key, clazz.getSimpleName(), value.getClass().getSimpleName());
-            return Optional.empty();}
+            log.error("Redis 타입 불일치 발생", e);
+            return Optional.empty();
+        }
     }
 
     /** 데이터 삭제 */
@@ -69,9 +77,7 @@ public class RedisManager {
     public <T> Set<T> getSetMembers(RedisNameSpace namespace, String identifier, Class<T> clazz) {
         String key = namespace.createKey(identifier);
         Set<Object> members = redisTemplate.opsForSet().members(key);
-
         if (members == null) return Collections.emptySet();
-
         return members.stream()
                 .filter(clazz::isInstance)
                 .map(clazz::cast)
@@ -81,8 +87,10 @@ public class RedisManager {
     /** Hash 구조로 객체 저장 */
     public void saveHash(RedisNameSpace namespace, String identifier, Object value) {
         String key = namespace.createKey(identifier);
-        // 객체를 Hash 맵으로 변환하여 저장 (Jackson 등이 자동으로 처리)
-        redisTemplate.opsForHash().putAll(key, new ObjectMapper().convertValue(value, Map.class));
+        // 제네릭 경고 해결을 위한 명시적 타입 지정
+        Map<String, Object> map = objectMapper.convertValue(value,
+                objectMapper.getTypeFactory().constructMapType(Map.class, String.class, Object.class));
+        redisTemplate.opsForHash().putAll(key, map);
         redisTemplate.expire(key, namespace.getTtl());
     }
 
@@ -90,9 +98,7 @@ public class RedisManager {
     public <T> Optional<T> findHashByKey(RedisNameSpace namespace, String identifier, Class<T> clazz) {
         String key = namespace.createKey(identifier);
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
-
         if (entries.isEmpty()) return Optional.empty();
-
-        return Optional.of(new ObjectMapper().convertValue(entries, clazz));
+        return Optional.of(objectMapper.convertValue(entries, clazz));
     }
 }

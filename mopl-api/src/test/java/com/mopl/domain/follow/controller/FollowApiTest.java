@@ -3,13 +3,14 @@ package com.mopl.domain.follow.controller;
 import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.follow.exception.FollowErrorCode;
 import com.mopl.domain.user.enums.Role;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
-import tools.jackson.databind.ObjectMapper;
 import com.mopl.domain.follow.dto.request.FollowRequest;
 import com.mopl.domain.follow.entity.Follow;
 import com.mopl.domain.follow.repository.FollowRepository;
+import com.mopl.domain.notification.producer.NotificationEventProducer;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.exception.ErrorCode;
@@ -17,11 +18,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Collections;
 
@@ -48,6 +50,10 @@ class FollowApiTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    // 추가: 실제 Kafka 브로커 연결을 시도하지 않도록 알림 프로듀서를 Mock으로 대체합니다.
+    @MockitoBean
+    private NotificationEventProducer notificationEventProducer;
 
     // 테스트용 유저
     private User user1;

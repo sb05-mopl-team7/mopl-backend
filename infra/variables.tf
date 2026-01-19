@@ -8,6 +8,12 @@ variable "project_name" {
   default = "mopl"
 }
 
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+  default     = "prod"
+}
+
 # -----------------------------
 # 기존 리소스 참조(필수)
 # -----------------------------
@@ -29,6 +35,12 @@ variable "private_subnet_ids" {
 variable "ecs_tasks_sg_id" {
   type        = string
   description = "기존 ECS Tasks가 사용하는 Security Group ID (ALB->ECS 인바운드 허용 및 내부 접근용)"
+}
+
+variable "enable_nat_gateway" {
+  description = "Enable NAT Gateway"
+  type        = bool
+  default     = false
 }
 
 # -----------------------------
@@ -78,6 +90,12 @@ variable "db_username" {
   default = "mopl_admin"
 }
 
+variable "db_password" {
+  type        = string
+  description = "Database master password"
+  sensitive   = true
+}
+
 variable "db_instance_class" {
   type    = string
   default = "db.t3.micro"
@@ -118,4 +136,19 @@ variable "grafana_admin_password" {
 variable "tags" {
   type    = map(string)
   default = {}
+}
+
+variable "admin_ip_cidr" {
+  description = "Admin IP for SSH access"
+  type        = string
+}
+
+variable "ec2_ami_id" {
+  description = "AMI ID for EC2"
+  type        = string
+}
+
+variable "ec2_key_name" {
+  description = "EC2 key pair name"
+  type        = string
 }

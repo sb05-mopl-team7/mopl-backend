@@ -5,8 +5,8 @@ import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.watching.entity.WatchingSession;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
-import tools.jackson.databind.annotation.JsonSerialize;
-import tools.jackson.databind.ser.std.ToStringSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 import java.time.LocalDateTime;
 
@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public record WatchingSessionUserResponse(
         @JsonSerialize(using = ToStringSerializer.class)
         @Schema(description = "세션 ID (watcherId와 동일)")
-        String id,
+        Long id,
 
         @Schema(description = "세션 생성 일시")
         LocalDateTime createdAt,
@@ -27,8 +27,10 @@ public record WatchingSessionUserResponse(
         ContentDto content
 ) {
     public static WatchingSessionUserResponse of(WatchingSession session, UserSummaryDto watcher, ContentDto content) {
+        if (session == null) return null;
+
         return WatchingSessionUserResponse.builder()
-                .id(String.valueOf(session.getId()))
+                .id(session.getId()) // 타입 변경에 따른 수정
                 .createdAt(session.getCreatedAt())
                 .watcher(watcher)
                 .content(content)

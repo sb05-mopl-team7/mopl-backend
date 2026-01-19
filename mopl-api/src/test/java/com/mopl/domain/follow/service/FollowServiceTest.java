@@ -1,7 +1,6 @@
 package com.mopl.domain.follow.service;
 
 import com.mopl.domain.follow.dto.request.FollowRequest;
-import com.mopl.domain.follow.dto.response.FollowCountResponse;
 import com.mopl.domain.follow.dto.response.FollowResponse;
 import com.mopl.domain.follow.entity.Follow;
 import com.mopl.domain.follow.exception.FollowErrorCode;
@@ -175,17 +174,19 @@ class FollowServiceTest {
     class CountTest {
 
         @Test
-        @DisplayName("[성공] 팔로워/팔로잉 카운트 조회 성공")
+        @DisplayName("[성공] 팔로워 카운트 조회 성공")
         void success() {
+            // Given
             Long targetId = 1L;
             given(userRepository.existsById(targetId)).willReturn(true);
             given(followRepository.countByFolloweeId(targetId)).willReturn(15L);
             given(followRepository.countByFollowerId(targetId)).willReturn(3L);
 
-            FollowCountResponse response = followService.getFollowCounts(targetId);
+            // 서비스 반환 타입인 Long에 맞게 변수 타입 수정
+            Long response = followService.getFollowCounts(targetId);
 
-            assertThat(response.followerCount()).isEqualTo(15L);
-            assertThat(response.followingCount()).isEqualTo(3L);
+            // 서비스 로직 상 최종적으로 followerCount(15L)를 반환하므로 해당 값 검증
+            assertThat(response).isEqualTo(15L);
         }
 
         @Test

@@ -4,6 +4,7 @@ import com.mopl.domain.auth.dto.UserPrincipal;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.enums.Role;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -115,9 +116,13 @@ public class JwtTokenProvider {
                     .build()
                     .parseClaimsJws(token);
             return true;
+        } catch (ExpiredJwtException e) {
+            // 만료된 토큰은 info 로그만 찍고 예외를 던져 필터에게 알림
+            log.info("만료된 JWT 토큰입니다.");
+            throw e;
         } catch (JwtException | IllegalArgumentException e) {
-            log.error(e.getMessage(), e);
-            return false;
+            log.error("유효하지 않은 JWT 토큰", e);
+            throw e;
         }
     }
 

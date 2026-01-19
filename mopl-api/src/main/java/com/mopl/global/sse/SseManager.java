@@ -29,8 +29,16 @@ public class SseManager {
         emitters.put(userId, emitter);
 
         emitter.onCompletion(() -> emitters.remove(userId));
-        emitter.onTimeout(() -> emitters.remove(userId));
-        emitter.onError((e) -> emitters.remove(userId));
+
+        emitter.onTimeout(() -> {
+            emitter.complete();
+            emitters.remove(userId);
+        });
+
+        emitter.onError((e) -> {
+            emitter.complete();
+            emitters.remove(userId);
+        });
 
         // 더미 이벤트 전송 (503 에러 방지용)
         sendToClient(emitter, "connect", "connected!");

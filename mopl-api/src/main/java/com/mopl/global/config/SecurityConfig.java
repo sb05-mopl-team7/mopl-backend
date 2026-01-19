@@ -3,6 +3,7 @@ package com.mopl.global.config;
 import com.mopl.domain.auth.exception.JwtAuthenticationEntryPoint;
 import com.mopl.domain.auth.jwt.JwtFilter;
 import com.mopl.domain.auth.jwt.JwtTokenProvider;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -55,6 +56,7 @@ public class SecurityConfig {
                                 .csrfTokenRequestHandler(requestHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers(
                                 "/api-docs/**",
                                 "/swagger-ui/**",

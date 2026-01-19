@@ -1,15 +1,30 @@
 spring:
+
   config:
     import: optional:file:.env[.properties], optional:file:../.env[.properties]
+
   jpa:
     open-in-view: false
     properties:
       hibernate:
         default_batch_fetch_size: 100
+
   data:
     redis:
       repositories:
         enabled: true
+
+  kafka:
+    consumer:
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*" # 모든 패키지의 DTO 수신 허용
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
 cloud:
   aws:
     s3:
@@ -18,3 +33,12 @@ cloud:
       static: ${AWS_REGION}
     stack:
       auto: false
+
+mopl:
+  kafka:
+    topics:
+      dm: dm-send
+      noti: notification
+    consumer:
+      dm-group-id: api-dm-consumer-group # DM용 그룹 id
+      noti-group-id: api-noti-consumer-group # 알림용 그룹 id

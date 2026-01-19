@@ -6,6 +6,8 @@ import com.mopl.domain.follow.entity.Follow;
 import com.mopl.domain.follow.exception.FollowErrorCode;
 import com.mopl.domain.follow.exception.FollowException;
 import com.mopl.domain.follow.repository.FollowRepository;
+import com.mopl.domain.notification.enums.NotificationType;
+import com.mopl.domain.notification.producer.NotificationEventProducer;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.exception.ErrorCode;
@@ -21,6 +23,7 @@ public class FollowService {
 
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
+    private final NotificationEventProducer notificationEventProducer;
 
     // 팔로우 로직
     @Transactional
@@ -49,10 +52,9 @@ public class FollowService {
                 .build();
         followRepository.save(follow);
 
-        return FollowResponse.from(follow);
+        notificationEventProducer.send(targetId, NotificationType.FOLLOW_ME, me.getName());
 
-        // TODO 요구사항: "다른 사용자가 나를 팔로우하면 알림을 받습니다."
-        // notificationService.send(target, NotificationType.FOLLOW, me.getName() + "님이 팔로우했습니다.");
+        return FollowResponse.from(follow);
     }
 
     // 언팔로우 로직

@@ -1,5 +1,7 @@
 package com.mopl.global.sse;
 
+import com.mopl.domain.conversation.dto.response.DirectMessageDto;
+import com.mopl.domain.notification.dto.NotificationDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -13,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SseManager {
 
     private final Map<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
+    private static final Long DEFAULT_TIMEOUT = 60_000L; // 프론트의 재연결 주기 기준
 
     /**
      * 클라이언트와 서버 간의 SSE 파이프라인을 생성하고 관리합니다.
@@ -22,20 +25,15 @@ public class SseManager {
      * @return 실시간 통신을 위한 SseEmitter 객체
      */
     public SseEmitter subscribe(Long userId) {
-        SseEmitter emitter = new SseEmitter(60_000L); // 프론트엔 재연결 주기 기준
+        SseEmitter emitter = new SseEmitter(DEFAULT_TIMEOUT);
         emitters.put(userId, emitter);
 
         emitter.onCompletion(() -> emitters.remove(userId));
         emitter.onTimeout(() -> emitters.remove(userId));
         emitter.onError((e) -> emitters.remove(userId));
 
-        try {
-            assert emitter.getTimeout() != null;
-            Map<String, Long> timeoutData = Map.of("timeout", emitter.getTimeout());
-            emitter.send(SseEmitter.event().name("timeout").data(timeoutData));
-        } catch (IOException e) {
-            emitters.remove(userId);
-        }
+        // 더미 이벤트 전송 (503 에러 방지용)
+        sendToClient(emitter, "connect", "connected!");
 
         return emitter;
     }
@@ -45,18 +43,49 @@ public class SseManager {
      * 전송 실패 시 해당 사용자의 연결을 관리 목록에서 제거합니다.
      *
      * @param userId 이벤트를 수신할 사용자 ID
-     * @param eventName 이벤트 종류 (예: "chat", "notification")
+     * @param eventName 이벤트 종류 (예: "direct-messages", "notifications")
      * @param data 전송할 데이터 객체
      */
     public void sendToUser(Long userId, String eventName, Object data) {
         SseEmitter emitter = emitters.get(userId);
         if (emitter != null) {
-            try {
-                emitter.send(SseEmitter.event().name(eventName).data(data));
-            } catch (IOException e) {
-                log.error("SSE 전송 실패, userId: {}", userId);
-                emitters.remove(userId);
-            }
+            String eventId = generateEventId(data);
+            sendToClient(emitter, eventId, eventName, data);
         }
+    }
+
+    private void sendToClient(SseEmitter emitter, String id, String name, Object data) {
+        try {
+            emitter.send(SseEmitter.event()
+                    .id(id) // 재연결시 LastEventId 파라미터로 사용됨
+                    .name(name)
+                    .data(data));
+
+        } catch (IOException e) {
+            log.warn("SSE 전송 실패 (User disconnected): {}", e.getMessage());
+            emitter.complete();
+        }
+    }
+
+    private void sendToClient(SseEmitter emitter, String name, Object data) {
+        try {
+            emitter.send(SseEmitter.event().name(name).data(data));
+        } catch (IOException e) {
+            emitter.complete();
+        }
+    }
+
+    private String generateEventId(Object data) {
+        long timestamp = System.currentTimeMillis();
+
+        if (data instanceof NotificationDto notificationDto) {
+            return timestamp + "_NOTI_" + notificationDto.id();
+        }
+
+        if (data instanceof DirectMessageDto directMessageDto) {
+            return timestamp + "_DM_" + directMessageDto.id();
+        }
+
+        return timestamp + "_UNKNOWN_" + 0;
     }
 }

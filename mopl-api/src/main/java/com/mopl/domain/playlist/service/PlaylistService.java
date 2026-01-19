@@ -1,6 +1,9 @@
 package com.mopl.domain.playlist.service;
 
 import com.mopl.domain.content.repository.ContentRepository;
+import com.mopl.domain.follow.repository.FollowRepository;
+import com.mopl.domain.notification.enums.NotificationType;
+import com.mopl.domain.notification.producer.NotificationEventProducer;
 import com.mopl.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.mopl.domain.playlist.dto.request.PlaylistSearchCondition;
 import com.mopl.domain.playlist.dto.request.PlaylistUpdateRequest;
@@ -14,6 +17,10 @@ import com.mopl.domain.playlist.repository.PlaylistContentRepository;
 import com.mopl.domain.playlist.repository.PlaylistRepository;
 import com.mopl.domain.playlist.repository.PlaylistSubscribeRepository;
 import com.mopl.domain.playlist.support.PlaylistDtoAssembler;
+import com.mopl.domain.user.entity.User;
+import com.mopl.domain.user.exception.UserErrorCode;
+import com.mopl.domain.user.exception.UserException;
+import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +37,9 @@ public class PlaylistService {
     private final PlaylistSubscribeRepository playlistSubscribeRepository;
     private final PlaylistContentRepository playlistContentRepository;
     private final ContentRepository contentRepository;
+    private final UserRepository userRepository;
+    private final FollowRepository followRepository;
+    private final NotificationEventProducer notificationEventProducer;
 
     private final PlaylistDtoAssembler playlistDtoAssembler;
 
@@ -38,6 +48,21 @@ public class PlaylistService {
     public PlaylistDto create(Long requesterId, PlaylistCreateRequest request) {
         Playlist playlist = new Playlist(requesterId, request.title(), request.description());
         Playlist saved = playlistRepository.save(playlist);
+
+        // 나를 팔로우하는 사람들에게 알림 발행
+        User user = userRepository.findById(requesterId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+
+        List<Long> followerIds = followRepository.findFollowsByFolloweeId(requesterId);
+        for (Long followerId : followerIds) {
+            notificationEventProducer.send(
+                    followerId,
+                    NotificationType.FOLLOWING_ACTIVITY_PLAYLIST,
+                    user.getName(),
+                    playlist.getTitle(),
+                    playlist.getDescription()
+            );
+        }
         return playlistDtoAssembler.toDto(requesterId, saved);
     }
 
@@ -89,6 +114,17 @@ public class PlaylistService {
 
         playlistSubscribeRepository.save(new PlaylistSubscribe(requesterId, playlistId));
         playlistRepository.increaseSubscriberCount(playlistId);
+
+        // 다른 사용자가 내 플레이리스트 구독시 알림 발행
+        Long ownerId = playlist.getUserId();
+        User requester = userRepository.findById(requesterId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+
+        notificationEventProducer.send(
+                ownerId,
+                NotificationType.PLAYLIST_SUBSCRIBED,
+                requester.getName(),
+                playlist.getTitle());
     }
 
     // 플레이리스트 구독 취소
@@ -119,6 +155,17 @@ public class PlaylistService {
         if (playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId)) return;
 
         playlistContentRepository.save(new PlaylistContent(playlistId, contentId));
+
+        // 구독중인 플레이리스트에 콘텐츠 추가되는 경우 알림 발행
+        Long ownerId = playlist.getUserId();
+        List<Long> subscriberIds = playlistSubscribeRepository.findUserIdsByPlaylistId(playlistId);
+        for (Long subscriberId : subscriberIds) {
+            if (subscriberId.equals(ownerId)) {
+                continue;
+            }
+
+            notificationEventProducer.send(subscriberId, NotificationType.PLAYLIST_CONTENT_ADDED, playlist.getTitle());
+        }
     }
 
     // 플레이리스트에서 콘텐츠 삭제
@@ -159,6 +206,8 @@ public class PlaylistService {
 
         List<PlaylistDto> data = playlistDtoAssembler.toDtoList(requesterId, page);
 
+        long totalCount = (long) page.size();
+
         String nextCursor = null;
         Long nextIdAfter = null;
 
@@ -173,7 +222,7 @@ public class PlaylistService {
                 .nextCursor(nextCursor)
                 .nextIdAfter(nextIdAfter)
                 .hasNext(hasNext)
-                .totalCount(0L)
+                .totalCount(totalCount)
                 .sortBy(sortBy)
                 .sortDirection(direction)
                 .build();

@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "direct_messages")
+@Table(name = "direct_messages", indexes = {
+        @Index(name = "idx_dm_conv_created", columnList = "conversation_id, created_at DESC")
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DirectMessage extends BaseCreatedEntity {
 

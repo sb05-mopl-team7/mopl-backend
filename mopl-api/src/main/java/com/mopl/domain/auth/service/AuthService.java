@@ -1,6 +1,7 @@
 package com.mopl.domain.auth.service;
 
 import com.mopl.domain.auth.dto.JwtDto;
+import com.mopl.domain.auth.dto.TokenResultDto;
 import com.mopl.domain.auth.exception.AuthErrorCode;
 import com.mopl.domain.auth.exception.AuthException;
 import com.mopl.domain.auth.jwt.JwtTokenProvider;
@@ -12,12 +13,8 @@ import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.redis.RedisManager;
 import com.mopl.global.redis.RedisNameSpace;
 import com.mopl.global.s3.S3Manager;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -35,91 +32,71 @@ public class AuthService {
     private final S3Manager s3Manager;
     private final RedisManager redisManager;
 
-    @Value("${jwt.cookie.secure}")
-    private boolean cookieSecure;
-
-    @Value("${jwt.cookie.same-site:Lax}")  // 기본값 Lax
-    private String cookieSameSite;
-
-    public JwtDto login(String username, String password, HttpServletResponse response) {
+    /**
+     * 로그인
+     * DB 비밀번호 또는 임시 비밀번호(Redis)로 인증합니다.
+     */
+    public TokenResultDto login(String username, String password) {
         User user = userRepository.findByEmailAndLockedFalse(username)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+        if (passwordEncoder.matches(password, user.getPassword())) return generateToken(user);
 
-        //DB 비밀번호 일치
-        if (passwordEncoder.matches(password, user.getPassword())) {
-            return generateToken(user, response);
-        }
-
-        //임시 비밀번호 일치
         if (redisManager.hasKey(RedisNameSpace.TEMP_PASSWORD, username)) {
             Optional<String> tempPassword = redisManager.findByKey(
                     RedisNameSpace.TEMP_PASSWORD,
                     username,
                     String.class);
-
             if (tempPassword.isPresent() && tempPassword.get().equals(password)) {
                 redisManager.delete(RedisNameSpace.TEMP_PASSWORD, username);
-                return generateToken(user, response);
+                return generateToken(user);
             }
         }
-        //둘다 틀린 경우
         throw new UserException(UserErrorCode.PASSWORD_NOT_CORRECT);
     }
 
-    private JwtDto generateToken(User user, HttpServletResponse response) {
-        //TODO http는 controller로 분리 작업 필요
-        String accessToken = jwtTokenProvider.createAccessToken(user);
+    //로그인 성공 후 토큰 생성
+    private TokenResultDto generateToken(User user) {
         String refreshToken = jwtTokenProvider.createRefreshToken(user);
+        redisManager.save(RedisNameSpace.AUTH_TOKEN, user.getId().toString(), refreshToken);
 
+        String accessToken = jwtTokenProvider.createAccessToken(user);
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), accessToken);
 
-        addTokenCookie(response, "REFRESH_TOKEN", refreshToken, 60 * 60 * 24 * 14); //2주
-
-        return jwtDto;
+        return new TokenResultDto(jwtDto, refreshToken);
     }
 
-    public void logout(HttpServletResponse response) {
-        deleteCookie(response, "REFRESH_TOKEN");
+    public void logout(Long myId) {
+        redisManager.delete(RedisNameSpace.AUTH_TOKEN, myId.toString());
     }
 
-    public JwtDto refresh(String refreshToken, HttpServletResponse response) {
+    /**
+     * Refresh Token을 검증하고 새로운 Access/Refresh Token을 발급합니다.
+     * Redis에 저장된 토큰과 비교하여 탈취된 토큰 사용을 방지합니다.
+     */
+    public TokenResultDto refresh(String refreshToken) {
         if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
             throw new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
+
         Long userId = jwtTokenProvider.getUserIdFromRefreshToken(refreshToken);
+        Optional<String> token = redisManager.findByKey(
+                RedisNameSpace.AUTH_TOKEN,
+                userId.toString(),
+                String.class);
+        if (token.isEmpty() || !token.get().equals(refreshToken)) {
+            throw new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID);
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
-        String newAccessToken = jwtTokenProvider.createAccessToken(user);
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
+        redisManager.save(RedisNameSpace.AUTH_TOKEN, userId.toString(), newRefreshToken);
 
+        String newAccessToken = jwtTokenProvider.createAccessToken(user);
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), newAccessToken);
 
-        addTokenCookie(response, "REFRESH_TOKEN", newRefreshToken, 60 * 60 * 24 * 14);
-
-        return jwtDto;
-    }
-
-    private void addTokenCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        ResponseCookie cookie = ResponseCookie.from(name, value)
-                .path("/")
-                .maxAge(maxAge)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-    }
-
-    private void deleteCookie(HttpServletResponse response, String name) {
-        ResponseCookie cookie = ResponseCookie.from(name, "")
-                .path("/")
-                .maxAge(0)// 즉시 만료
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        return new TokenResultDto(jwtDto, newRefreshToken);
     }
 }

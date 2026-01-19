@@ -1,7 +1,6 @@
 package com.mopl.domain.follow.entity;
 
 import com.mopl.domain.user.entity.User;
-import com.mopl.global.entity.BaseCreatedEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -20,7 +19,7 @@ import lombok.NoArgsConstructor;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Follow extends BaseCreatedEntity {
+public class Follow {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

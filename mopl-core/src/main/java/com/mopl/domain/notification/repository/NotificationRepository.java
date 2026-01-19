@@ -25,5 +25,22 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("idAfter") Long idAfter,
             Pageable pageable
     );
+
+    @Query("""
+        select count(n)
+        from Notification n
+        where n.receiverId = :userId
+        """)
+    Long countByReceiverId(@Param("userId")Long userId);
     Optional<Notification> findByIdAndReceiverId(Long notificationId, Long userId);
+
+    @Query("""
+        SELECT n FROM Notification n
+        WHERE n.receiverId = :userId
+            AND (n.createdAt > :lastTime OR (n.createdAt = :lastTime AND n.id > :lastId))
+        ORDER BY n.createdAt ASC, n.id ASC
+    """)
+    List<Notification> findMissedNotifications(@Param("userId") Long userId,
+                                               @Param("lastTime") LocalDateTime lastTime,
+                                               @Param("lastId") Long lastId);
 }

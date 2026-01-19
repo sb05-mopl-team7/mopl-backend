@@ -7,7 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "playlists")
+@Table(name = "playlists", indexes = {
+        @Index(name = "idx_playlist_user_created", columnList = "user_id, created_at DESC")
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class Playlist extends BaseTimeEntity {

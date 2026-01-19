@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class RedisManager {
 
     private final RedisTemplate<String, Object> redisTemplate;
@@ -39,7 +40,9 @@ public class RedisManager {
     public <T> Optional<T> findByKey(RedisNameSpace namespace, String identifier, Class<T> clazz) {
         String key = namespace.createKey(identifier);
         Object value = redisTemplate.opsForValue().get(key);
+
         if(value == null) return Optional.empty();
+
         try {
             return Optional.of(clazz.cast(value));
         } catch (ClassCastException e) {
@@ -100,5 +103,21 @@ public class RedisManager {
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
         if (entries.isEmpty()) return Optional.empty();
         return Optional.of(objectMapper.convertValue(entries, clazz));
+    }
+
+    public void addSetElement(RedisNameSpace nameSpace, String identifier, Object value) {
+        String key = nameSpace.createKey(identifier);
+        redisTemplate.opsForSet().add(key, value);
+        redisTemplate.expire(key, nameSpace.getTtl());
+    }
+
+    public void removeSetElement(RedisNameSpace nameSpace, String identifier, Object value) {
+        String key = nameSpace.createKey(identifier);
+        redisTemplate.opsForSet().remove(key, value);
+    }
+
+    public boolean isMember(RedisNameSpace nameSpace, String identifier, Object value) {
+        String key = nameSpace.createKey(identifier);
+        return Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(key, value));
     }
 }

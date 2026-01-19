@@ -2,13 +2,16 @@ package com.mopl.global.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Slf4j
@@ -58,6 +61,19 @@ public class GlobalExceptionHandler {
         log.error("권한 부족: {}", ErrorCode.INSUFFICIENT_PERMISSIONS.getMessage(), e);
 
         return createErrorResponse(ErrorCode.INSUFFICIENT_PERMISSIONS, ErrorCode.INSUFFICIENT_PERMISSIONS.getMessage());
+    }
+
+    /**
+     * SSE 타임아웃 예외 처리
+     * 이 예외는 클라이언트가 재연결하면 되므로
+     * 별도의 에러 바디(JSON)를 쓰지 않고 304(Not Modified)나 204(No Content) 등을 반환하거나
+     * 아무것도 반환하지 않아야 함.
+     */
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    @ResponseStatus(HttpStatus.NOT_MODIFIED)
+    public void handleAsyncRequestTimeoutException(AsyncRequestTimeoutException e) {
+        // 로그만 남기고 아무것도 하지 않음 (JSON 변환 시도 방지)
+        log.debug("SSE Connection Timeout: {}", e.getMessage());
     }
 
     /** 공통 응답 생성 메서드 */

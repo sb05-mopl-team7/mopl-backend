@@ -159,6 +159,8 @@ public class PlaylistService {
 
         List<PlaylistDto> data = playlistDtoAssembler.toDtoList(requesterId, page);
 
+        long totalCount = (long) page.size();
+
         String nextCursor = null;
         Long nextIdAfter = null;
 
@@ -173,7 +175,7 @@ public class PlaylistService {
                 .nextCursor(nextCursor)
                 .nextIdAfter(nextIdAfter)
                 .hasNext(hasNext)
-                .totalCount(0L)
+                .totalCount(totalCount)
                 .sortBy(sortBy)
                 .sortDirection(direction)
                 .build();

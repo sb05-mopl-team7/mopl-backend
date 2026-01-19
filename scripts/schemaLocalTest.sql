@@ -1,3 +1,7 @@
+DROP DATABASE IF EXISTS mopl_local;
+CREATE DATABASE mopl_local;
+USE mopl_local;
+
 CREATE TABLE users
 (
     id                BIGINT       NOT NULL AUTO_INCREMENT,
@@ -24,7 +28,7 @@ CREATE TABLE contents
     thumbnail_url  VARCHAR(255) NOT NULL,
     average_rating DOUBLE DEFAULT 0.0,
     review_count   INT    DEFAULT 0,
-    created_at     DATETIME     NOT NULL,
+    created_at        DATETIME     NOT NULL,
     PRIMARY KEY (id)
 );
 
@@ -55,9 +59,7 @@ CREATE TABLE reviews
     updated_at DATETIME     NOT NULL,
     created_at DATETIME     NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_reviews_user_content (user_id, content_id),
-    -- 콘텐츠별 최신 리뷰 조회를 위한 인덱스
-    INDEX idx_review_content_created (content_id, created_at DESC)
+    UNIQUE KEY  uk_reviews_user_content  (user_id, content_id)
 );
 
 CREATE TABLE playlists
@@ -69,9 +71,7 @@ CREATE TABLE playlists
     subscriber_count BIGINT       NOT NULL DEFAULT 0,
     updated_at       DATETIME     NOT NULL,
     created_at       DATETIME     NOT NULL,
-    PRIMARY KEY (id),
-    -- 유저별 플레이리스트 최신순 조회를 위한 인덱스
-    INDEX idx_playlist_user_created (user_id, created_at DESC)
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE playlist_subscribes
@@ -116,9 +116,7 @@ CREATE TABLE direct_messages
     author_id       BIGINT       NOT NULL,
     content         VARCHAR(255) NOT NULL,
     created_at      DATETIME     NOT NULL,
-    PRIMARY KEY (id),
-    -- 대화방별 메시지 최신순 조회를 위한 인덱스
-    INDEX idx_dm_conv_created (conversation_id, created_at DESC)
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE notifications
@@ -129,9 +127,7 @@ CREATE TABLE notifications
     content     VARCHAR(255) NOT NULL,
     level       VARCHAR(255) NOT NULL,
     created_at  DATETIME     NOT NULL,
-    PRIMARY KEY (id),
-    -- 유저별 알림 최신순 조회를 위한 인덱스
-    INDEX idx_noti_receiver_created (receiver_id, created_at DESC)
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE follows
@@ -142,3 +138,5 @@ CREATE TABLE follows
     PRIMARY KEY (id),
     UNIQUE KEY uk_follows_relation (follower_id, followee_id)
 );
+
+SHOW TABLES;

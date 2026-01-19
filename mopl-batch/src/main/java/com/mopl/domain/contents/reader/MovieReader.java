@@ -1,5 +1,7 @@
 package com.mopl.domain.contents.reader;
 
+import com.mopl.domain.content.enums.ContentType;
+import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.contents.openapi.TmdbClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -17,6 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MovieReader implements ItemReader<Long> {
 
+    private final ContentRepository contentRepository;
     private final TmdbClient tmdbClient;
     private Iterator<Long> itemIterator;
 
@@ -32,15 +36,39 @@ public class MovieReader implements ItemReader<Long> {
                 return null;
             }
 
-            log.debug("TMDB API 호출 중... page: {}", page);
-            List<Long> contentList = tmdbClient.getPopularMovieIdList(page).block();
+            try {
 
-            // 더 이상 데이터 없으면 배치 종료
-            if (contentList == null || contentList.isEmpty()) return null;
+                log.info("TMDB API 호출 중... page: {}", page);
+                List<Long> contentList = tmdbClient.getPopularMovieIdList(page).block();
 
-            this.itemIterator = contentList.iterator();
-            this.page++;
+                if (contentList == null || contentList.isEmpty()) {
+                    log.warn("페이지 {}: API로부터 응답받은 데이터가 없습니다.", page);
+                    return null;
+                }
 
+                Set<Long> existingMovieIds =  contentRepository.findExistingOriginIds(contentList, ContentType.movie);
+
+                List<Long> newMovies = contentList.stream()
+                        .filter(id -> !existingMovieIds.contains(id))
+                        .toList();
+
+                log.info("페이지 {}: 총 {}개 중 {}개가 새로운 영화입니다", page, contentList.size(), newMovies.size());
+
+                // 모든 영화가 기존 데이터면 다음 페이지로
+                if (newMovies.isEmpty()) {
+                    log.debug("페이지 {}의 모든 영화가 이미 저장되어 있습니다. 다음 페이지로 진행합니다.", page);
+                    this.page++;
+                    return read();  // 재귀 호출로 다음 페이지 처리
+                }
+
+                this.itemIterator = newMovies.iterator();
+                this.page++;
+
+            } catch (Exception e) {
+                log.error("Reader에서 예외 발생 - 페이지: {}, 원인: {}", page, e.getMessage(), e);
+                this.page++;
+                return read();
+            }
         }
         return itemIterator.next();
     }

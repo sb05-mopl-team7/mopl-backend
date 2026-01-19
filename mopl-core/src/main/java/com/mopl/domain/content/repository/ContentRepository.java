@@ -1,6 +1,7 @@
 package com.mopl.domain.content.repository;
 
 import com.mopl.domain.content.entity.Content;
+import com.mopl.domain.content.enums.ContentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface ContentRepository extends JpaRepository<Content, Long>, ContentRepositoryCustom {
 
@@ -85,4 +87,9 @@ public interface ContentRepository extends JpaRepository<Content, Long>, Content
             @Param("contentId") Long contentId,
             @Param("rating") double rating
     );
+
+    @Query("SELECT c.originId FROM Content c WHERE c.originId IN :originIds AND c.contentType = :type")
+    Set<Long> findExistingOriginIds(@Param("originIds") List<Long> originIds, @Param("type") ContentType type);
+
+    boolean existsByOriginIdAndContentType(Long originId, ContentType type);
 }

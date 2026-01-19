@@ -19,7 +19,7 @@ CREATE TABLE contents
 (
     id             BIGINT       NOT NULL AUTO_INCREMENT,
     content_type   VARCHAR(255) NOT NULL,
-    origin_id      BIGINT       NOT NULL UNIQUE,
+    origin_id      BIGINT       NOT NULL,
     title          VARCHAR(255) NOT NULL,
     description    TEXT         NOT NULL,
     thumbnail_url  VARCHAR(255) NOT NULL,

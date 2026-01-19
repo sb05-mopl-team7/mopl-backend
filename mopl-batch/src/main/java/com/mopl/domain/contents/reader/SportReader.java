@@ -8,9 +8,10 @@ import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -21,28 +22,33 @@ public class SportReader implements ItemReader<SportDbDto> {
     private final SportDbClient sportDbClient;
     private Iterator<SportDbDto> itemIterator;
 
-    private int page = 1;
-    private final int maxPage = 20;
 
     @Override
-    public SportDbDto read() throws IOException {
-        if (itemIterator == null || !itemIterator.hasNext()) {
+    public SportDbDto read() {
+        if (itemIterator == null) {
+            try {
+                log.info("Sport DB API 호출 시작");
+                List<SportDbDto> sportList = sportDbClient.getSportsEventSeason().block();
 
-            if (page > maxPage) {
-                log.info("TMDB Reader: 최대 페이지 제한({})에 도달하여 읽기를 종료합니다.", maxPage);
+                if (sportList == null || sportList.isEmpty()) {
+                    log.warn("API로부터 응답받은 데이터가 없습니다.");
+                    return null;
+                }
+
+                Set<Long> seen = new HashSet<>();
+
+                List<SportDbDto> deduped = sportList.stream()
+                        .filter(dto -> seen.add(dto.id()))
+                        .toList();
+
+                log.info("Sport API {}건 → dedup {}건", sportList.size(), deduped.size());
+                itemIterator = deduped.iterator();
+
+            } catch (Exception e) {
+                log.error("Reader에서 예외 발생 - 원인: {}", e.getMessage(), e);
                 return null;
             }
-
-            log.debug("TMDB API 호출 중... page: {}", page);
-            List<SportDbDto> tvSeriesList = sportDbClient.getSportsEventSeason().block();
-
-            // 더 이상 데이터 없으면 배치 종료
-            if (tvSeriesList == null || tvSeriesList.isEmpty()) return null;
-
-            this.itemIterator = tvSeriesList.iterator();
-            this.page++;
-
         }
-        return itemIterator.next();
+        return itemIterator.hasNext() ? itemIterator.next() : null;
     }
 }

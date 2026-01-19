@@ -41,6 +41,7 @@ public class SportBatchJob {
                 .processor(sportProcessor)
                 .writer(tmdbWriter)
                 .transactionManager(transactionManager)
+                .skipLimit(Integer.MAX_VALUE)
                 .build();
     }
 }

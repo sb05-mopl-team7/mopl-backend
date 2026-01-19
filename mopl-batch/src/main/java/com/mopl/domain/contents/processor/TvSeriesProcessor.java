@@ -45,6 +45,7 @@ public class TvSeriesProcessor implements ItemProcessor<TvSeriesDto, Content> {
     public Content process(TvSeriesDto item) throws Exception {
 
         if(item.description() == null || item.description().isBlank()) {
+            log.info("상세 정보가 없어 처리를 건너뜁니다. - ID: {} title: {}", item.id(), item.title());
             return null;
         }
 
@@ -53,6 +54,7 @@ public class TvSeriesProcessor implements ItemProcessor<TvSeriesDto, Content> {
 
             Content content = new Content(
                     ContentType.tvSeries,
+                    item.id(),
                     item.title(),
                     item.description(),
                     thumbnailUrl

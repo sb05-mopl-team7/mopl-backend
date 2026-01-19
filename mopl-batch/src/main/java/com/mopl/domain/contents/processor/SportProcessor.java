@@ -3,6 +3,7 @@ package com.mopl.domain.contents.processor;
 import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.entity.Tag;
 import com.mopl.domain.content.enums.ContentType;
+import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.domain.contents.dto.sportDb.SportDbDto;
 import com.mopl.global.s3.FileCategory;
@@ -26,6 +27,7 @@ import static com.mopl.domain.contents.dto.tmdb.KeywordDto.tagCache;
 @RequiredArgsConstructor
 public class SportProcessor implements ItemProcessor<SportDbDto, Content> {
 
+    private final ContentRepository contentRepository;
     private final TagRepository tagRepository;
     private final ImageDownloadUtil imageDownloadUtil;
     private final S3Manager s3Manager;
@@ -35,19 +37,26 @@ public class SportProcessor implements ItemProcessor<SportDbDto, Content> {
         if (tagCache.isEmpty()) {
             List<Tag> allTags = tagRepository.findAll();
             allTags.forEach(tag -> tagCache.put(tag.getTag(), tag));
-            log.info("TV 시리즈 배치를 위해 태그 {}개를 캐시에 로드했습니다.", tagCache.size());
+            log.info("스포츠 배치를 위해 태그 {}개를 캐시에 로드했습니다.", tagCache.size());
         }
     }
 
     @Override
     public Content process(SportDbDto item) {
 
+        boolean exists = contentRepository
+                .existsByOriginIdAndContentType(item.id(), ContentType.sport);
+
+        if (exists) return null;
+
+        try {
             String thumbnailUrl = getThumbnailUrl(item.thumbnailUrl());
 
             Content content = new Content(
-                ContentType.sport,
-                item.title(),
-                item.description(),
+                    ContentType.sport,
+                    item.id(),
+                    item.title(),
+                    item.description(),
                     thumbnailUrl
             );
 
@@ -55,6 +64,11 @@ public class SportProcessor implements ItemProcessor<SportDbDto, Content> {
             saveTag(tagNames, content);
 
             return content;
+
+        } catch (Exception e) {
+            log.error("스포츠 정보 조회 실패 - ID: {}, 사유: {}", item.title(), e.getMessage());
+            return null;
+        }
     }
 
     /**

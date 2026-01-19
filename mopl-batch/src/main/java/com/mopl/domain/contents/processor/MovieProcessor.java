@@ -18,10 +18,7 @@ import org.springframework.batch.core.step.StepExecution;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import static com.mopl.domain.contents.dto.tmdb.KeywordDto.tagCache;
 
@@ -48,20 +45,20 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
 
     @Override
     public Content process(Long movieId) throws Exception {
-
-        if(processedMovieIds.containsKey(movieId)){
-            log.debug("이미 처리된 영화 ID: {}", movieId);
-            return null;
-        }
-
         try {
             TmdbDetailDto movie = tmdbClient.getMovieDetails(movieId)
                     .filter(m -> m.description() != null && !m.description().isBlank()).block();
+
+            if(movie == null) {
+                log.info("영화 상세 정보가 없어 처리를 건너뜁니다. - ID: {}", movieId);
+                return null;
+            }
 
             String thumbnailUrl = getThumbnailUrl(movie.thumbnailUrl());
 
             Content content = new Content(
                 ContentType.movie,
+                movie.id(),             //  originId 설정
                 movie.title(),
                 movie.description(),
                 thumbnailUrl
@@ -69,7 +66,7 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
 
             saveTag(movie.genres(), content);
 
-            processedMovieIds.put(movieId, true);
+            log.info("새로운 영화 - ID: {}, 제목: {}", movieId, movie.title());
             return content;
 
         } catch (Exception e) {
@@ -97,21 +94,5 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
                 content.addTag(tag);
             });
     }
-
-    /**
-     * 이미 처리한 TMDB 영화 ID를 저장하는 LRU 캐시입니다.
-     * - 목적: 배치 실행 중 이미 처리한 TMDB 영화 ID 중복 방지
-     * - 용량: 최대 50개 유지 (오래된 것부터 자동 제거)
-     * - static: 배치 전역에서 공유
-     * - 1~5 page
-     */
-    private static final Map<Long, Boolean> processedMovieIds = Collections.synchronizedMap(
-        new LinkedHashMap<Long, Boolean>(50, 0.75f, true
-    ) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry eldest) {
-                return size() > 50;
-            }
-    });
 }
 

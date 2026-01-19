@@ -30,124 +30,71 @@ public class WatchingSessionService {
     private final UserRepository userRepository;
     private final ContentRepository contentRepository;
 
-    // 특정 사용자의 시청 세션 단건 조회
+    /**
+     * 특정 사용자의 시청 세션 단건 조회
+     * @return 시청 중인 세션 정보 (없을 경우 null)
+     */
     public WatchingSessionUserResponse getWatchingSession(Long watcherId) {
         if (watcherId == null || watcherId < 0) {
             throw new WatchingException(WatchingErrorCode.INVALID_WATCHING_REQUEST);
         }
 
-        if (!userRepository.existsById(watcherId)) {
-            throw new WatchingException(WatchingErrorCode.USER_NOT_FOUND);
-        }
-
+        // 1. Redis에서 세션 존재 여부 확인
         return watchingSessionRepository.findById(watcherId)
-                .map(this::convertToResponse)
-                .orElse(null);
+                .map(session -> {
+                    // 2. [최적화] 유저 정보 조회
+                    User user = userRepository.findById(watcherId)
+                            .orElseThrow(() -> new WatchingException(WatchingErrorCode.USER_NOT_FOUND));
+
+                    // 3. [최적화] Fetch Join을 사용하여 태그 정보까지 한 번에 조회 (N+1 방지)
+                    Content content = contentRepository.findByIdWithTags(session.getContentId())
+                            .orElseThrow(() -> new WatchingException(WatchingErrorCode.CONTENT_NOT_FOUND));
+
+                    return convertToResponse(session, user, content);
+                })
+                .orElse(null); // 시청 중이지 않으면 null 반환 (Controller에서 204 대응)
     }
 
-    // 시청 세션 단건 변환 (개별 조회용)
-    private WatchingSessionUserResponse convertToResponse(WatchingSession session) {
-        User user = userRepository.findById(session.getId())
-                .orElseThrow(() -> new WatchingException(WatchingErrorCode.USER_NOT_FOUND));
-
-        Content content = contentRepository.findById(session.getContentId())
-                .orElseThrow(() -> new WatchingException(WatchingErrorCode.CONTENT_NOT_FOUND));
-
-        return convertToResponse(session, user, content);
-    }
-
-    // 시청 세션 엔티티와 RDB 데이터를 결합하여 응답 DTO로 변환
-    private WatchingSessionUserResponse convertToResponse(WatchingSession session, User user, Content content) {
-        UserSummaryDto watcherDto = new UserSummaryDto(
-                user.getId(),
-                user.getName(),
-                user.getProfileImageUrl()
-        );
-
-        List<String> tags = content.getContentTags().stream()
-                .map(contentTag -> contentTag.getTag().getTag())
-                .toList();
-
-        ContentDto contentDto = new ContentDto(
-                String.valueOf(content.getId()),
-                content.getContentType(),
-                content.getTitle(),
-                content.getDescription(),
-                content.getThumbnailUrl(),
-                tags,
-                content.getAverageRating(),
-                content.getReviewCount(),
-                0
-        );
-
-        return WatchingSessionUserResponse.of(session, watcherDto, contentDto);
-    }
-
-    // 특정 콘텐츠의 시청 세션 목록 조회 (커서 페이지네이션 적용)
+    /**
+     * 특정 콘텐츠의 시청 세션 목록 조회 (커서 페이지네이션 적용)
+     */
     public WatchingSessionContentListResponse getWatchingSessionsByContent(
             Long contentId, String watcherNameLike, String cursor,
             Long idAfter, Integer limit, String sortBy, SortDirection sortDirection
     ) {
-        // 1. 페이지 크기 유효성 검사
-        if (limit == null || limit <= 0) {
-            throw new WatchingException(WatchingErrorCode.INVALID_PAGINATION_LIMIT);
-        }
-
-        // 2. Redis에서 해당 콘텐츠를 시청 중인 모든 세션 조회 (Secondary Index 활용)
+        // 1. Redis에서 해당 콘텐츠의 시청 세션 모두 조회
         List<WatchingSession> allSessions = watchingSessionRepository.findAllByContentId(contentId);
         if (allSessions.isEmpty()) {
             return createEmptyResponse(sortBy, sortDirection);
         }
 
-        // 3. 세션에 포함된 유저 및 콘텐츠 ID를 추출하여 DB 쿼리 최소화
-        List<Long> watcherIds = allSessions.stream().map(WatchingSession::getId).toList();
-        List<Long> contentIds = allSessions.stream().map(WatchingSession::getContentId).distinct().toList();
+        // 2. [최적화] 콘텐츠 정보는 단 1회만 조회 (Fetch Join 적용)
+        Content content = contentRepository.findByIdWithTags(contentId)
+                .orElseThrow(() -> new WatchingException(WatchingErrorCode.CONTENT_NOT_FOUND));
 
-        // 4. 조회된 엔티티를 Map으로 변환
+        // 3. [최적화] N+1 방지를 위해 시청자 정보를 In-clause로 일괄 조회
+        List<Long> watcherIds = allSessions.stream().map(WatchingSession::getId).toList();
         Map<Long, User> userMap = userRepository.findAllById(watcherIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
-        Map<Long, Content> contentMap = contentRepository.findAllById(contentIds).stream()
-                .collect(Collectors.toMap(Content::getId, content -> content));
 
-        // 5. 엔티티 결합, 필터링 및 전체 정렬 수행
+        // 4. 필터링 및 정렬 (Memory Level)
         List<WatchingSessionUserResponse> allResponses = allSessions.stream()
-                .map(session -> {
-                    User user = userMap.get(session.getId());
-                    Content content = contentMap.get(session.getContentId());
-                    if (user == null || content == null) return null; // 데이터 불일치 시 제외
-                    return convertToResponse(session, user, content);
-                })
-                .filter(Objects::nonNull)
-                // 이름 부분 일치 검색 필터링
+                .filter(session -> userMap.containsKey(session.getId()))
+                .map(session -> convertToResponse(session, userMap.get(session.getId()), content))
                 .filter(res -> watcherNameLike == null || res.watcher().name().contains(watcherNameLike))
-                // 커서 기반 정렬 (createdAt 우선, 동일 시간일 경우 id 기준 정렬)
-                .sorted((o1, o2) -> {
-                    int compare = sortDirection == SortDirection.ASCENDING
-                            ? o1.createdAt().compareTo(o2.createdAt())
-                            : o2.createdAt().compareTo(o1.createdAt());
-                    return (compare != 0) ? compare : o1.id().compareTo(o2.id());
-                })
+                .sorted(getComparator(sortDirection))
                 .toList();
 
-        // 6. 커서 위치 탐색 및 페이지 슬라이싱
-        int startIndex = 0;
-        if (cursor != null && idAfter != null) {
-            try {
-                LocalDateTime cursorTime = LocalDateTime.parse(cursor);
-                startIndex = findStartIndex(allResponses, cursorTime, idAfter, sortDirection);
-            } catch (Exception e) {
-                throw new WatchingException(WatchingErrorCode.INVALID_CURSOR);
-            }
-        }
-
+        // 5. 커서 기반 슬라이싱 연산
+        int startIndex = findStartIndex(allResponses, cursor, idAfter, sortDirection);
         int totalSize = allResponses.size();
         int endIndex = Math.min(startIndex + limit, totalSize);
         List<WatchingSessionUserResponse> pagedData = allResponses.subList(startIndex, endIndex);
 
-        // 7. 다음 페이지 존재 여부 확인 및 다음 커서 정보 생성
+        // 6. 다음 페이지 정보 생성
         boolean hasNext = endIndex < totalSize;
         String nextCursor = null;
-        String nextIdAfter = null;
+        Long nextIdAfter = null;
 
         if (hasNext && !pagedData.isEmpty()) {
             WatchingSessionUserResponse lastItem = pagedData.get(pagedData.size() - 1);
@@ -166,34 +113,67 @@ public class WatchingSessionService {
                 .build();
     }
 
-    // 커서(시간, ID) 값을 기준으로 다음 페이지가 시작될 인덱스를 검색
-    private int findStartIndex(List<WatchingSessionUserResponse> list, LocalDateTime cursorTime, Long idAfter, SortDirection direction) {
-        for (int i = 0; i < list.size(); i++) {
-            WatchingSessionUserResponse item = list.get(i);
-            boolean isAfter;
+    /** 커서(시간, ID) 값을 기준으로 슬라이싱 시작 인덱스 탐색 */
+    private int findStartIndex(List<WatchingSessionUserResponse> list, String cursor, Long idAfter, SortDirection direction) {
+        if (cursor == null || idAfter == null) return 0;
 
-            // 정렬 방향에 따라 커서보다 '뒤'에 있는 데이터인지 판단
-            if (direction == SortDirection.ASCENDING) {
-                isAfter = item.createdAt().isAfter(cursorTime) ||
-                        (item.createdAt().isEqual(cursorTime) && Long.parseLong(item.id()) > idAfter);
-            } else {
-                isAfter = item.createdAt().isBefore(cursorTime) ||
-                        (item.createdAt().isEqual(cursorTime) && Long.parseLong(item.id()) < idAfter);
+        try {
+            LocalDateTime cursorTime = LocalDateTime.parse(cursor);
+            for (int i = 0; i < list.size(); i++) {
+                WatchingSessionUserResponse item = list.get(i);
+                if (direction == SortDirection.ASCENDING) {
+                    if (item.createdAt().isAfter(cursorTime) ||
+                            (item.createdAt().isEqual(cursorTime) && item.id() > idAfter)) return i;
+                } else {
+                    if (item.createdAt().isBefore(cursorTime) ||
+                            (item.createdAt().isEqual(cursorTime) && item.id() < idAfter)) return i;
+                }
             }
-
-            if (isAfter) return i;
+        } catch (Exception e) {
+            throw new WatchingException(WatchingErrorCode.INVALID_CURSOR);
         }
         return list.size();
     }
 
-    // 데이터가 없는 경우를 위한 빈 응답 객체 생성
+    /** 정렬 Comparator (createdAt -> id 순) */
+    private Comparator<WatchingSessionUserResponse> getComparator(SortDirection direction) {
+        return (o1, o2) -> {
+            int compare = (direction == SortDirection.ASCENDING)
+                    ? o1.createdAt().compareTo(o2.createdAt())
+                    : o2.createdAt().compareTo(o1.createdAt());
+            return (compare != 0) ? compare : o1.id().compareTo(o2.id());
+        };
+    }
+
+    /** 엔티티 결합 및 DTO 변환 (패키지 구조 및 필드명 준수) */
+    private WatchingSessionUserResponse convertToResponse(WatchingSession session, User user, Content content) {
+        UserSummaryDto watcherDto = new UserSummaryDto(
+                user.getId(),
+                user.getName(),
+                user.getProfileImageUrl()
+        );
+
+        // Fetch Join 덕분에 추가 쿼리 없이 태그 리스트 생성 가능
+        List<String> tags = content.getContentTags().stream()
+                .map(ct -> ct.getTag().getTag())
+                .toList();
+
+        ContentDto contentDto = new ContentDto(
+                String.valueOf(content.getId()),
+                content.getContentType(),
+                content.getTitle(),
+                content.getDescription(),
+                content.getThumbnailUrl(),
+                tags,
+                content.getAverageRating(),
+                content.getReviewCount(),
+                0
+        );
+
+        return WatchingSessionUserResponse.of(session, watcherDto, contentDto);
+    }
+
     private WatchingSessionContentListResponse createEmptyResponse(String sortBy, SortDirection direction) {
-        return WatchingSessionContentListResponse.builder()
-                .data(Collections.emptyList())
-                .hasNext(false)
-                .totalCount(0)
-                .sortBy(sortBy)
-                .sortDirection(direction)
-                .build();
+        return WatchingSessionContentListResponse.empty(sortBy, direction);
     }
 }

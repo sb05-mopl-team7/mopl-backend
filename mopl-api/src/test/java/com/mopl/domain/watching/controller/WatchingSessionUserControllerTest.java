@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
@@ -57,7 +56,6 @@ class WatchingSessionUserControllerTest {
 
     @BeforeEach
     void setUp() {
-
         savedUser = userRepository.save(new User("테스터", "test@mopl.io", "password"));
         Content content = new Content(ContentType.movie, "인터스텔라", "우주 영화", "https://image.com/thumb.jpg");
         savedContent = contentRepository.save(content);
@@ -65,7 +63,6 @@ class WatchingSessionUserControllerTest {
 
     @AfterEach
     void tearDown() {
-
         // RedisManager를 통해 테스트 데이터 삭제 (Hash 및 Set 클리닝)
         redisManager.delete(RedisNameSpace.USER_WATCHING, String.valueOf(savedUser.getId()));
         redisManager.removeFromSet(RedisNameSpace.CONTENT_WATCHERS, String.valueOf(savedContent.getId()), savedUser.getId());
@@ -99,7 +96,6 @@ class WatchingSessionUserControllerTest {
 
         // When & Then
         mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", savedUser.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
                         .with(authentication(createAuthToken(savedUser))))
                 .andDo(print())
                 .andExpect(status().isOk())
@@ -114,7 +110,6 @@ class WatchingSessionUserControllerTest {
 
         // When & Then
         mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", savedUser.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
                         .with(authentication(createAuthToken(savedUser))))
                 .andDo(print())
                 .andExpect(status().isOk())
@@ -126,12 +121,10 @@ class WatchingSessionUserControllerTest {
     @DisplayName("[400] 잘못된 요청 파라미터(음수 ID) 시 INVALID_WATCHING_REQUEST 에러 발생")
     void getWatchingSession_InvalidRequest_Fail() throws Exception {
         mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", -1L)
-                        .contentType(MediaType.APPLICATION_JSON)
                         .with(authentication(createAuthToken(savedUser))))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(WatchingErrorCode.INVALID_WATCHING_REQUEST.name()))
-                .andExpect(jsonPath("$.detail").value(WatchingErrorCode.INVALID_WATCHING_REQUEST.getMessage()));
+                .andExpect(jsonPath("$.code").value(WatchingErrorCode.INVALID_WATCHING_REQUEST.getErrorCode()));
     }
 
     // 3. 리소스 없음 케이스 (404)
@@ -139,12 +132,10 @@ class WatchingSessionUserControllerTest {
     @DisplayName("[404] 존재하지 않는 유저 조회 시 USER_NOT_FOUND 에러 발생")
     void getWatchingSession_UserNotFound_Fail() throws Exception {
         mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", 999999L)
-                        .contentType(MediaType.APPLICATION_JSON)
                         .with(authentication(createAuthToken(savedUser))))
                 .andDo(print())
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value(WatchingErrorCode.USER_NOT_FOUND.name()))
-                .andExpect(jsonPath("$.detail").value(WatchingErrorCode.USER_NOT_FOUND.getMessage()));
+                .andExpect(jsonPath("$.code").value(WatchingErrorCode.USER_NOT_FOUND.getErrorCode()));
     }
 
     @Test
@@ -161,11 +152,9 @@ class WatchingSessionUserControllerTest {
         redisManager.saveHash(RedisNameSpace.USER_WATCHING, String.valueOf(savedUser.getId()), session);
 
         mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", savedUser.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
                         .with(authentication(createAuthToken(savedUser))))
                 .andDo(print())
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value(WatchingErrorCode.CONTENT_NOT_FOUND.name()))
-                .andExpect(jsonPath("$.detail").value(WatchingErrorCode.CONTENT_NOT_FOUND.getMessage()));
+                .andExpect(jsonPath("$.code").value(WatchingErrorCode.CONTENT_NOT_FOUND.getErrorCode()));
     }
 }

@@ -19,6 +19,7 @@ import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.dto.PageResponse;
+import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class ConversationService {
     private final UserRepository userRepository;
     private final ReadStatusRepository readStatusRepository;
     private final DirectMessageRepository directMessageRepository;
+    private final S3Manager s3Manager;
 
     @Transactional
     public ConversationDto createConversation(Long myId, ConversationCreateRequest createRequest) {
@@ -53,36 +55,6 @@ public class ConversationService {
         return conversationRepository.findByParticipants(myId, withUserId)
                 .map(conversation -> fetchDetailsAndConvertToDto(conversation, me.getId(), targetUser))
                 .orElseGet(() -> createNewConversation(me, targetUser));
-    }
-
-    // 기존 대화방이 없을 때 새로 생성
-    private ConversationDto createNewConversation(User me, User target) {
-
-        Conversation newConversation = conversationRepository.save(new Conversation());
-
-        ReadStatus myReadStatus = ReadStatus.create(newConversation, me);
-        ReadStatus targetReadStatus = ReadStatus.create(newConversation, target);
-        readStatusRepository.saveAll(List.of(myReadStatus, targetReadStatus));
-
-        return convertToDto(newConversation, me.getId(), target, myReadStatus, null);
-    }
-
-    /**
-     * 추가 정보(채팅방의 마지막 메시지, 나의 읽음 상태) DB 조회 후 DTO로 컨버팅
-     */
-    private ConversationDto fetchDetailsAndConvertToDto(Conversation conversation, Long myId, User target) {
-        DirectMessage lastMessage = directMessageRepository.findTopByConversationIdOrderByCreatedAtDescIdDesc(conversation.getId())
-                .orElse(null);
-
-        ReadStatus myReadStatus = readStatusRepository.findByConversationIdAndUserId(conversation.getId(), myId)
-                .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
-
-        return convertToDto(conversation, myId, target, myReadStatus, lastMessage);
-    }
-
-    private User getUserOrThrow(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
     }
 
     // 대화 목록 전체 조회 (커서 페이지네이션)
@@ -133,15 +105,6 @@ public class ConversationService {
                 .build();
     }
 
-    private ConversationDto queryResultToDto(ConversationQueryResult queryResult, Long myId) {
-        Conversation conversation = queryResult.conversation();
-        User targetUser = queryResult.targetUser();
-        DirectMessage message = queryResult.lastMessage();
-        ReadStatus myStatus = queryResult.myReadStatus();
-
-        return convertToDto(conversation, myId, targetUser, myStatus, message);
-    }
-
     // 대화방의 메시지 읽음 처리
     @Transactional
     public void updateAsRead(Long myId, Long conversationId, Long directMessageId) {
@@ -170,11 +133,52 @@ public class ConversationService {
         return queryResultToDto(queryResult, myId);
     }
 
+    // 기존 대화방이 없을 때 새로 생성
+    private ConversationDto createNewConversation(User me, User target) {
+
+        Conversation newConversation = conversationRepository.save(new Conversation());
+
+        ReadStatus myReadStatus = ReadStatus.create(newConversation, me);
+        ReadStatus targetReadStatus = ReadStatus.create(newConversation, target);
+        readStatusRepository.saveAll(List.of(myReadStatus, targetReadStatus));
+
+        return convertToDto(newConversation, me.getId(), target, myReadStatus, null);
+    }
+
+    /**
+     * 추가 정보(채팅방의 마지막 메시지, 나의 읽음 상태) DB 조회 후 DTO로 컨버팅
+     */
+    private ConversationDto fetchDetailsAndConvertToDto(Conversation conversation, Long myId, User target) {
+        DirectMessage lastMessage = directMessageRepository.findTopByConversationIdOrderByCreatedAtDescIdDesc(conversation.getId())
+                .orElse(null);
+
+        ReadStatus myReadStatus = readStatusRepository.findByConversationIdAndUserId(conversation.getId(), myId)
+                .orElseThrow(() -> new ConversationException(CONVERSATION_NOT_FOUND));
+
+        return convertToDto(conversation, myId, target, myReadStatus, lastMessage);
+    }
+
+    private User getUserOrThrow(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+    }
+
+    private ConversationDto queryResultToDto(ConversationQueryResult queryResult, Long myId) {
+        Conversation conversation = queryResult.conversation();
+        User targetUser = queryResult.targetUser();
+        DirectMessage message = queryResult.lastMessage();
+        ReadStatus myStatus = queryResult.myReadStatus();
+
+        return convertToDto(conversation, myId, targetUser, myStatus, message);
+    }
+
     private ConversationDto convertToDto(Conversation conversation, Long myId, User targetUser,
                                          ReadStatus myReadStatus, DirectMessage lastMessage) {
 
         Long conversationId = conversation.getId();
-        UserSummaryDto with = new UserSummaryDto(targetUser.getId(), targetUser.getName(), targetUser.getProfileImageUrl());
+
+        String targetProfileUrl = s3Manager.generatePresignedUrl(targetUser.getProfileImageUrl());
+        UserSummaryDto with = new UserSummaryDto(targetUser.getId(), targetUser.getName(), targetProfileUrl);
 
         if (lastMessage == null) {
             return new ConversationDto(conversationId, with, null, false);

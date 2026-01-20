@@ -1,34 +1,67 @@
+# VPC
+output "vpc_id" {
+  description = "VPC ID"
+  value       = aws_vpc.this.id
+}
+
+output "private_subnet_ids" {
+  description = "Private subnet IDs"
+  value       = aws_subnet.private[*].id
+}
+
+# Security Group
+output "security_group_id" {
+  description = "Shared security group ID"
+  value       = aws_security_group.main.id
+}
+
+
+# ALB
 output "alb_dns_name" {
-  value       = try(aws_lb.alb[0].dns_name, null)
-  description = "ALB DNS (alb_enable=true일 때만 값 존재)"
+  description = "ALB DNS name (public endpoint)"
+  value       = aws_lb.this.dns_name
 }
 
-output "api_target_group_arn" {
-  value       = try(aws_lb_target_group.api_tg[0].arn, null)
-  description = "기존 ECS api 서비스에 연결할 Target Group ARN"
+output "alb_arn" {
+  description = "ALB ARN"
+  value       = aws_lb.this.arn
 }
 
-output "chat_target_group_arn" {
-  value       = try(aws_lb_target_group.chat_tg[0].arn, null)
-  description = "기존 ECS chat 서비스에 연결할 Target Group ARN"
+
+# ECS
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = aws_ecs_cluster.main.name
 }
 
-output "rds_endpoint" {
-  value       = aws_db_instance.mysql.address
-  description = "RDS endpoint"
+output "ecs_cluster_arn" {
+  description = "ECS cluster ARN"
+  value       = aws_ecs_cluster.main.arn
 }
 
-output "db_secret_arn" {
-  value       = aws_secretsmanager_secret.db.arn
-  description = "Secrets Manager ARN(DB 계정/비번 저장)"
+output "ecs_api_service_name" {
+  description = "ECS API service name"
+  value       = aws_ecs_service.api.name
 }
 
-output "tools_instance_id" {
-  value       = aws_instance.tools.id
-  description = "Tools EC2 instance id"
+output "ecs_chat_service_name" {
+  description = "ECS Chat service name"
+  value       = aws_ecs_service.chat.name
 }
 
-output "tools_private_ip" {
-  value       = aws_instance.tools.private_ip
-  description = "Tools EC2 private ip (Kafka advertised listener 사용)"
+
+# CloudWatch
+output "cloudwatch_log_group_api" {
+  description = "CloudWatch log group for API"
+  value       = aws_cloudwatch_log_group.ecs_api.name
+}
+
+output "cloudwatch_log_group_chat" {
+  description = "CloudWatch log group for Chat"
+  value       = aws_cloudwatch_log_group.ecs_chat.name
+}
+
+output "cloudwatch_log_group_batch" {
+  description = "CloudWatch log group for Batch"
+  value       = aws_cloudwatch_log_group.ecs_batch.name
 }

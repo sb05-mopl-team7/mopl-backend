@@ -22,21 +22,6 @@ variable "vpc_id" {
   description = "기존 VPC ID"
 }
 
-variable "public_subnet_ids" {
-  type        = list(string)
-  description = "기존 Public Subnet ID 목록(ALB용)"
-}
-
-variable "private_subnet_ids" {
-  type        = list(string)
-  description = "기존 Private Subnet ID 목록(RDS/EC2용)"
-}
-
-variable "ecs_tasks_sg_id" {
-  type        = string
-  description = "기존 ECS Tasks가 사용하는 Security Group ID (ALB->ECS 인바운드 허용 및 내부 접근용)"
-}
-
 variable "enable_nat_gateway" {
   description = "Enable NAT Gateway"
   type        = bool
@@ -51,30 +36,9 @@ variable "alb_enable" {
   default = true
 }
 
-variable "alb_ingress_cidrs" {
-  type        = list(string)
-  description = "ALB 인바운드 허용 CIDR 목록(기본 전체 오픈). 운영은 회사 IP로 제한 권장"
-  default     = ["0.0.0.0/0"]
-}
-
 variable "api_container_port" {
   type    = number
   default = 8080
-}
-
-variable "chat_container_port" {
-  type    = number
-  default = 8080
-}
-
-variable "api_healthcheck_path" {
-  type    = string
-  default = "/actuator/health"
-}
-
-variable "chat_healthcheck_path" {
-  type    = string
-  default = "/actuator/health"
 }
 
 # -----------------------------
@@ -151,4 +115,46 @@ variable "ec2_ami_id" {
 variable "ec2_key_name" {
   description = "EC2 key pair name"
   type        = string
+}
+
+# ECS
+variable "ecs_task_cpu" {
+  description = "Fargate task CPU units to provision (1 vCPU = 1024 CPU units)"
+  type        = number
+  default     = 256
+}
+
+variable "api_security_group_id" {
+  type        = string
+  description = "Security Group ID attached to ECS API tasks"
+}
+
+variable "api_target_group_arn" {
+  type        = string
+  description = "ALB Target Group ARN for ECS API service"
+}
+
+variable "api_task_cpu" {
+  type        = number
+  description = "CPU units for ECS API task (e.g. 256, 512, 1024)"
+}
+
+variable "api_task_memory" {
+  type        = number
+  description = "Memory (MB) for ECS API task (e.g. 512, 1024, 2048)"
+}
+
+variable "api_image_uri" {
+  type        = string
+  description = "ECR image URI for ECS API task (e.g. repo:release-7)"
+}
+
+variable "chat_image_uri" {
+  type        = string
+  description = "ECR image URI for ECS API task (e.g. repo:release-7)"
+}
+
+variable "batch_image_uri" {
+  type        = string
+  description = "ECR image URI for ECS API task (e.g. repo:release-7)"
 }

@@ -3,7 +3,7 @@ resource "aws_lb" "this" {
   name               = "${var.project_name}-alb"
   load_balancer_type = "application"
   internal           = false
-  security_groups    = [aws_security_group.alb.id]
+  security_groups    = [aws_security_group.main.id]
   subnets            = [aws_subnet.public.id]
 
   tags = {
@@ -59,37 +59,6 @@ resource "aws_acm_certificate" "this" {
     Env  = var.environment
   }
 }
-
-# ALB Security Group
-resource "aws_security_group" "alb" {
-  name        = "${var.project_name}-alb-sg"
-  description = "Security group for ALB"
-  vpc_id      = aws_vpc.this.id
-
-  ingress {
-    description = "HTTPS from internet"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.project_name}-alb-sg"
-    Env  = var.environment
-  }
-}
-
-
-
-
 
 # ALB Target Group
 resource "aws_lb_target_group" "ecs" {

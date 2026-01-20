@@ -19,7 +19,7 @@ resource "aws_db_subnet_group" "this" {
 resource "aws_security_group" "rds" {
   name        = "${var.project_name}-rds-sg"
   description = "Security group for RDS"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = aws_vpc.main.id
 
   ingress {
     description     = "MySQL from ECS"

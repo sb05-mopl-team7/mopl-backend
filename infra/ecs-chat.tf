@@ -51,7 +51,7 @@ resource "aws_ecs_service" "chat" {
 
   # Chat도 ALB 뒤에 붙일 거면 사용
   load_balancer {
-    target_group_arn = aws_lb_target_group.ecs.arn
+    target_group_arn = aws_lb_target_group.batch.arn
     container_name   = local.chat_container_name
     container_port   = 8080
   }

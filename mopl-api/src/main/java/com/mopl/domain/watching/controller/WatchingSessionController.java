@@ -15,14 +15,18 @@ public class WatchingSessionController implements WatchingSessionControllerDocs 
 
     private final WatchingSessionService watchingSessionService;
 
-    // 특정 사용자의 시청 세션 단건 조회
     @Override
     public ResponseEntity<WatchingSessionUserResponse> getWatchingSession(Long watcherId) {
         WatchingSessionUserResponse response = watchingSessionService.getWatchingSession(watcherId);
+
+        // 시청 중인 세션이 없을 경우 204 No Content 반환
+        if (response == null) {
+            return ResponseEntity.noContent().build();
+        }
+
         return ResponseEntity.ok(response);
     }
 
-    // 특정 콘텐츠의 시청 세션 목록 조회 (커서 페이지네이션)
     @Override
     public ResponseEntity<WatchingSessionContentListResponse> getWatchingSessionsByContent(
             Long contentId,
@@ -33,15 +37,21 @@ public class WatchingSessionController implements WatchingSessionControllerDocs 
             String sortBy,
             SortDirection sortDirection
     ) {
+        // null 방어 및 기본값 설정 (Docs 인터페이스의 defaultValue와 일치)
+        int finalLimit = (limit != null) ? limit : 10;
+        String finalSortBy = (sortBy != null) ? sortBy : "createdAt";
+        SortDirection finalSortDirection = (sortDirection != null) ? sortDirection : SortDirection.DESCENDING;
+
         WatchingSessionContentListResponse response = watchingSessionService.getWatchingSessionsByContent(
                 contentId,
                 watcherNameLike,
                 cursor,
                 idAfter,
-                limit,
-                sortBy,
-                sortDirection
+                finalLimit,
+                finalSortBy,
+                finalSortDirection
         );
+
         return ResponseEntity.ok(response);
     }
 }

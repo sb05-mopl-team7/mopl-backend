@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SseManager {
 
     private final Map<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
-    private static final Long DEFAULT_TIMEOUT = 60_000L; // 프론트의 재연결 주기 기준
+    private static final Long DEFAULT_TIMEOUT = 45_000L; // 프론트의 재연결 주기 기준
 
     /**
      * 클라이언트와 서버 간의 SSE 파이프라인을 생성하고 관리합니다.

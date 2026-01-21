@@ -2,7 +2,8 @@
 resource "aws_db_subnet_group" "this" {
   name       = "${var.project_name}-db-subnet-group"
   subnet_ids = [
-    aws_subnet.private.id
+    aws_subnet.private_a.id,
+    aws_subnet.private_c.id
   ]
 
   tags = {
@@ -51,8 +52,8 @@ resource "aws_db_instance" "main" {
   allocated_storage = 20
   storage_type      = "gp2"
 
-  db_name  = "mopl-db-mysql"
-  username = "mopl-admin"
+  db_name  = "mopldb"
+  username = "mopl_admin"
   password = data.aws_ssm_parameter.db_password.value
 
   db_subnet_group_name   = aws_db_subnet_group.this.name
@@ -64,7 +65,7 @@ resource "aws_db_instance" "main" {
   skip_final_snapshot = true
   deletion_protection = false
 
-  backup_retention_period = 3
+  backup_retention_period = 0
 
   tags = {
     Name = "${var.project_name}-mysql"

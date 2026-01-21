@@ -8,8 +8,11 @@ resource "aws_ecs_task_definition" "chat" {
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
 
-  cpu    = 1024
-  memory = 2048
+  cpu    = 512
+  memory = 1024
+
+  execution_role_arn = aws_iam_role.tools_broker_ssm_role.arn
+  task_role_arn      = null
 
   container_definitions = jsonencode([
     {
@@ -24,7 +27,7 @@ resource "aws_ecs_task_definition" "chat" {
         },
         {
           name = "JWT_ACCESS_SECRET"
-          value = data.aws_ssm_parameter.access_secret.value
+          valueFrom = data.aws_ssm_parameter.access_secret.arn
         }
       ]
 
@@ -47,7 +50,7 @@ resource "aws_ecs_task_definition" "chat" {
         },
         {
           name = "REDIS_PORT"
-          value = 6379
+          value = "6379"
         },
         {
           name = "GOOGLE_MAIL_USERNAME"
@@ -94,7 +97,7 @@ resource "aws_ecs_service" "chat" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = [aws_subnet.private.id]
+    subnets         = [aws_subnet.private_a.id, aws_subnet.private_c.id]
     security_groups = [aws_security_group.main.id]
     assign_public_ip = false
   }

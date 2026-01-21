@@ -8,7 +8,7 @@ resource "aws_ecs_service" "api" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.private.id]
+    subnets          = [aws_subnet.private_a.id, aws_subnet.private_c.id]
     security_groups  = [aws_security_group.ec2.id]
     assign_public_ip = false
   }
@@ -37,8 +37,7 @@ resource "aws_ecs_task_definition" "api" {
   cpu                      = 512
   memory                   = 1024
 
-  # IAM Role 사용 안함
-  execution_role_arn = null
+  execution_role_arn = aws_iam_role.tools_broker_ssm_role.arn
   task_role_arn      = null
 
   container_definitions = jsonencode([
@@ -55,23 +54,23 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name = "GOOGLE_MAIL_PASSWORD"
-          value = data.aws_ssm_parameter.gmail_password.value
+          valueFrom = data.aws_ssm_parameter.gmail_password.arn
         },
         {
           name = "JWT_ACCESS_SECRET"
-          value = data.aws_ssm_parameter.access_secret.value
+          valueFrom = data.aws_ssm_parameter.access_secret.arn
         },
         {
           name = "JWT_REFRESH_SECRET"
-          value = data.aws_ssm_parameter.refresh_secret.value
+          valueFrom = data.aws_ssm_parameter.refresh_secret.arn
         },
         {
           name = "AWS_ACCESS_KEY"
-          value = data.aws_ssm_parameter.aws_access_key.value
+          valueFrom = data.aws_ssm_parameter.aws_access_key.arn
         },
         {
           name = "AWS_SECRET_KEY"
-          value = data.aws_ssm_parameter.aws_refresh_key.value
+          valueFrom = data.aws_ssm_parameter.aws_refresh_key.arn
         }
       ]
 
@@ -94,7 +93,7 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name = "REDIS_PORT"
-          value = 6379
+          value = "6379"
         },
         {
           name = "GOOGLE_MAIL_USERNAME"
@@ -124,8 +123,8 @@ resource "aws_ecs_task_definition" "api" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.ecs_api
-          awslogs-region        = var.aws_region
+          awslogs-group         = aws_cloudwatch_log_group.ecs_api.name
+          awslogs-region        = "ap-northeast-2"
           awslogs-stream-prefix = "ecs"
         }
       }

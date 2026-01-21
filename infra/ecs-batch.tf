@@ -8,8 +8,11 @@ resource "aws_ecs_task_definition" "batch" {
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
 
-  cpu    = 1024
-  memory = 2048
+  cpu    = 512
+  memory = 1024
+
+  execution_role_arn = aws_iam_role.tools_broker_ssm_role.arn
+  task_role_arn      = null
 
   container_definitions = jsonencode([
     {
@@ -20,15 +23,15 @@ resource "aws_ecs_task_definition" "batch" {
       secrets = [
         {
           name      = "TMDB_API_TOKEN"
-          valueFrom = data.aws_ssm_parameter.tmdb_api_token.value
+          valueFrom = data.aws_ssm_parameter.tmdb_api_token.arn
         },
         {
           name = "AWS_ACCESS_KEY"
-          value = data.aws_ssm_parameter.aws_access_key.value
+          valueFrom = data.aws_ssm_parameter.aws_access_key.arn
         },
         {
           name = "AWS_SECRET_KEY"
-          value = data.aws_ssm_parameter.aws_refresh_key.value
+          valueFrom = data.aws_ssm_parameter.aws_refresh_key.arn
         }
       ]
 
@@ -81,6 +84,7 @@ resource "aws_cloudwatch_event_target" "batch_target" {
   rule      = aws_cloudwatch_event_rule.batch_schedule.name
   target_id = "mopl-batch"
   arn       = aws_ecs_cluster.main.arn
+  role_arn  = aws_iam_role.eventbridge_ecs_role.arn
 
   ecs_target {
     task_definition_arn = aws_ecs_task_definition.batch.arn
@@ -88,7 +92,7 @@ resource "aws_cloudwatch_event_target" "batch_target" {
     task_count          = 1
 
     network_configuration {
-      subnets         = [aws_subnet.private.id]
+      subnets         = [aws_subnet.private_a.id, aws_subnet.private_c.id]
       security_groups = [aws_security_group.main.id]
       assign_public_ip = false
     }

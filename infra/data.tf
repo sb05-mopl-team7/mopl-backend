@@ -43,3 +43,9 @@ data "aws_ssm_parameter" "tmdb_api_token" {
   name = "/mopl/prod/tmdb_api_token"
   with_decryption = true
 }
+
+data "aws_route53_zone" "main" {
+  name = "mopl.shop"
+}
+
+data "aws_caller_identity" "current" {}

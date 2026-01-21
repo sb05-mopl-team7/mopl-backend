@@ -6,7 +6,7 @@ output "vpc_id" {
 
 output "private_subnet_ids" {
   description = "Private subnet IDs"
-  value       = aws_subnet.private[*].id
+  value       = [aws_subnet.private_a.id, aws_subnet.private_c.id]
 }
 
 # Security Group

@@ -28,3 +28,8 @@ variable "batch_image_uri" {
   type        = string
   description = "ECR image URI for ECS API task (e.g. repo:release-7)"
 }
+
+variable "acm_certificate_arn" {
+  type        = string
+  description = "ACM certificate ARN for ALB HTTPS listener"
+}

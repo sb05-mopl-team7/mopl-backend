@@ -3,7 +3,7 @@ resource "aws_instance" "tools_broker" {
   ami           = "ami-03fd85ef2fae79c05"
   instance_type = "t3.micro"
 
-  subnet_id              = aws_subnet.private.id
+  subnet_id              = aws_subnet.private_a.id
   vpc_security_group_ids = [aws_security_group.ec2.id]
 
   associate_public_ip_address = false
@@ -15,4 +15,3 @@ resource "aws_instance" "tools_broker" {
     Name = "${var.project_name}-ec2"
   }
 }
-

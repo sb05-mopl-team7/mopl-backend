@@ -5,47 +5,10 @@ resource "aws_lb" "this" {
   internal           = false
   security_groups    = [aws_security_group.main.id]
 
-  subnets            = [aws_subnet.public.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_c.id]
 
   tags = {
     Name = "${var.project_name}-alb"
-    Env  = var.environment
-  }
-}
-
-# Route53
-resource "aws_route53_zone" "main" {
-  name = "mopl.shop"
-
-  tags = {
-    Name = "${var.project_name}-zone"
-    Env  = var.environment
-  }
-}
-
-resource "aws_route53_record" "alb" {
-  zone_id = aws_route53_zone.main.zone_id
-  name    = "mopl.shop"
-  type    = "A"
-
-  alias {
-    name                   = aws_lb.this.dns_name
-    zone_id                = aws_lb.this.zone_id
-    evaluate_target_health = true
-  }
-}
-
-# ACM Certificate
-resource "aws_acm_certificate" "this" {
-  domain_name       = "mopl.shop"
-  validation_method = "DNS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
-
-  tags = {
-    Name = "${var.project_name}-cert"
     Env  = var.environment
   }
 }
@@ -58,6 +21,7 @@ resource "aws_lb_listener" "http" {
 
   default_action {
     type = "redirect"
+
     redirect {
       port        = "443"
       protocol    = "HTTPS"
@@ -72,9 +36,9 @@ resource "aws_lb_listener" "https" {
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = aws_acm_certificate.this.arn
 
-  # 기본은 API로 보냄 ("/" 같은 요청)
+  certificate_arn = var.acm_certificate_arn
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.api.arn

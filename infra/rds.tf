@@ -53,7 +53,7 @@ resource "aws_db_instance" "main" {
 
   db_name  = "mopl-db-mysql"
   username = "mopl-admin"
-  password = var.db_password
+  password = data.aws_ssm_parameter.db_password.value
 
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.rds.id]
@@ -72,3 +72,7 @@ resource "aws_db_instance" "main" {
   }
 }
 
+data "aws_ssm_parameter" "db_password" {
+  name            = "/mopl/prod/db/password"
+  with_decryption = true
+}

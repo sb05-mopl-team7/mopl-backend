@@ -14,12 +14,6 @@ variable "environment" {
   default     = "prod"
 }
 
-variable "db_password" {
-  type        = string
-  description = "Database master password"
-  sensitive   = true
-}
-
 variable "api_image_uri" {
   type        = string
   description = "ECR image URI for ECS API task (e.g. repo:release-7)"

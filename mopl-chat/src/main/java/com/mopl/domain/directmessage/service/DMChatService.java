@@ -4,7 +4,7 @@ import com.mopl.domain.conversation.dto.response.DirectMessageDto;
 import com.mopl.domain.conversation.entity.Conversation;
 import com.mopl.domain.conversation.entity.DirectMessage;
 import com.mopl.domain.conversation.entity.ReadStatus;
-import com.mopl.domain.conversation.event.DmSendEvent;
+import com.mopl.domain.conversation.producer.DmEventProducer;
 import com.mopl.domain.conversation.repository.DirectMessageRepository;
 import com.mopl.domain.conversation.repository.ReadStatusRepository;
 import com.mopl.domain.notification.enums.NotificationType;
@@ -13,9 +13,8 @@ import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.user.entity.User;
 import com.mopl.global.redis.RedisManager;
 import com.mopl.global.redis.RedisNameSpace;
+import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,10 +29,8 @@ public class DMChatService {
     private final ReadStatusRepository readStatusRepository;
     private final RedisManager redisManager;
     private final NotificationEventProducer notificationEventProducer;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
-
-    @Value("${mopl.kafka.topics.dm}")
-    private String dmTopic;
+    private final DmEventProducer dmEventProducer;
+    private final S3Manager s3Manager;
 
     @Transactional
     public DirectMessageDto saveMessage(Long senderId, Long conversationId, String content) {
@@ -52,7 +49,7 @@ public class DMChatService {
         }
 
         if (myStatus == null) {
-            throw new IllegalArgumentException("대화방에 참여하고 있지 않습니다.");
+            throw new IllegalArgumentException("대화방에 참여하고 있지 않습니다."); // TODO 예외 및 핸들러를 core 모듈로 옮긴 후 도메인 예외로 변경
         }
         if (receiver == null) {
             throw new IllegalArgumentException("상대방을 찾을 수 없습니다.");
@@ -69,10 +66,7 @@ public class DMChatService {
         // 상대방 대화창 활성화 여부 확인 후 DM 전송
         boolean isWatching = redisManager.isMember(RedisNameSpace.DM_VIEWERS, String.valueOf(conversationId), String.valueOf(receiver.getId()));
         if (!isWatching) {
-            kafkaTemplate.send(dmTopic, new DmSendEvent(
-                    receiver.getId(),
-                    directMessageDto
-            ));
+            dmEventProducer.send(receiver.getId(), directMessageDto);
 
             notificationEventProducer.send(
                     receiver.getId(),
@@ -84,13 +78,16 @@ public class DMChatService {
         return directMessageDto;
     }
 
-    private static DirectMessageDto toDto(Long senderId, Long conversationId, String content, DirectMessage message, User sender, User receiver) {
+    private DirectMessageDto toDto(Long senderId, Long conversationId, String content, DirectMessage message, User sender, User receiver) {
+        String senderProfileUrl = s3Manager.generatePresignedUrl(sender.getProfileImageUrl());
+        String receiverProfileUrl = s3Manager.generatePresignedUrl(receiver.getProfileImageUrl());
+
         return new DirectMessageDto(
                 message.getId(),
                 conversationId,
                 message.getCreatedAt(),
-                new UserSummaryDto(senderId, sender.getName(), sender.getProfileImageUrl()),
-                new UserSummaryDto(receiver.getId(), receiver.getName(), receiver.getProfileImageUrl()),
+                new UserSummaryDto(senderId, sender.getName(), senderProfileUrl),
+                new UserSummaryDto(receiver.getId(), receiver.getName(), receiverProfileUrl),
                 content
         );
     }

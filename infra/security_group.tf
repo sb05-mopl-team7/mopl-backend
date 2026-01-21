@@ -77,3 +77,36 @@ resource "aws_security_group" "ec2" {
     Env  = var.environment
   }
 }
+
+# main 보안 그룹에 Fargate 태스크가 접근할 수 있도록 규칙 추가
+resource "aws_security_group_rule" "endpoint_from_ecs" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.main.id       # 엔드포인트가 사용하는 SG
+  source_security_group_id = aws_security_group.ec2.id        # Fargate 태스크가 사용하는 SG
+  description              = "Allow ECS tasks to access VPC Endpoints"
+}
+
+# ALB(main SG)가 ECS 태스크(ec2 SG)의 8080 포트에 접근 허용
+resource "aws_security_group_rule" "alb_to_ecs" {
+  type                     = "ingress"
+  from_port                = 8080
+  to_port                  = 8080
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ec2.id        # 태스크 SG
+  source_security_group_id = aws_security_group.main.id       # ALB SG
+  description              = "Allow ALB to access ECS tasks on 8080"
+}
+
+# ALB -> Chat 태스크 허용
+resource "aws_security_group_rule" "alb_to_chat" {
+  type                     = "ingress"
+  from_port                = 8081
+  to_port                  = 8081
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ec2.id
+  source_security_group_id = aws_security_group.main.id
+  description              = "Allow ALB to access Chat tasks on 8081"
+}

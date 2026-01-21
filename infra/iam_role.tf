@@ -7,7 +7,12 @@ resource "aws_iam_role" "tools_broker_ssm_role" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
+      Principal = {
+        Service = [
+          "ecs-tasks.amazonaws.com",
+          "ec2.amazonaws.com"
+        ]
+      }
       Action = "sts:AssumeRole"
     }]
   })
@@ -103,4 +108,9 @@ resource "aws_iam_role_policy" "eventbridge_ecs_policy" {
       }
     ]
   })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_standard" {
+  role       = aws_iam_role.tools_broker_ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }

@@ -35,10 +35,14 @@ import static org.mockito.Mockito.*;
 @ActiveProfiles("test")
 class UserServiceTest {
 
-    @Autowired UserService userService;
-    @Autowired UserRepository userRepository;
-    @Autowired PasswordEncoder passwordEncoder;
-    @MockitoBean private S3Manager s3Manager;
+    @Autowired
+    UserService userService;
+    @Autowired
+    UserRepository userRepository;
+    @Autowired
+    PasswordEncoder passwordEncoder;
+    @MockitoBean
+    private S3Manager s3Manager;
 
     // 테스트 데이터 생성 헬퍼
     private void createTestUsers() {
@@ -57,9 +61,9 @@ class UserServiceTest {
 
     @Test
     @DisplayName("성공: 사용자 생성 시 DB에 저장되고 암호화된 비밀번호를 가진다")
-    void createUser_Success () {
+    void createUser_Success() {
         // given
-        UserCreateRequest request = new UserCreateRequest("사용자1","email@com.com", "password1234");
+        UserCreateRequest request = new UserCreateRequest("사용자1", "email@com.com", "password1234");
 
         // when
         UserDto result = userService.createUser(request);
@@ -104,7 +108,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("성공: 사용자의 권한을 변경 한다(admin 계정 확인은 컨트롤러)")
-    void updateRole_Success () {
+    void updateRole_Success() {
         //given
         User me = userRepository.save(new User("me", "me@test.com", "pw"));
 
@@ -129,7 +133,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("locked 상태 변경 전후 확인")
-    void updateLocked_Success () {
+    void updateLocked_Success() {
         //given
         User me = userRepository.save(new User("me", "me@test.com", "pw"));
         assertThat(me.getLocked()).isFalse();
@@ -155,7 +159,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("성공: 사용자의 비밀번호를 변경한다")
-    void updatePassword_Success () {
+    void updatePassword_Success() {
         //given
         User user = userRepository.save(new User("me", "me@test.com", "oldpw"));
         String newPassword = "newPassword123";
@@ -236,6 +240,7 @@ class UserServiceTest {
         // S3 호출 안됨
         verify(s3Manager, never()).upload(any(), any());
     }
+
     @Test
     @DisplayName("성공: 검색 조건 없이 전체 사용자 조회(다음 페이지 있음)")
     void findAllUsers_NoCondition() {
@@ -268,8 +273,6 @@ class UserServiceTest {
         assertThat(result.data().get(1).name()).isEqualTo("Iris");
         assertThat(result.data().get(2).name()).isEqualTo("Henry");
     }
-
-
 
 
 }

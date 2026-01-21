@@ -1,6 +1,4 @@
-############################
 # RDS Subnet Group
-############################
 resource "aws_db_subnet_group" "this" {
   name       = "${var.project_name}-db-subnet-group"
   subnet_ids = [
@@ -42,10 +40,8 @@ resource "aws_security_group" "rds" {
   }
 }
 
-############################
 # RDS MySQL Instance
-############################
-resource "aws_db_instance" "this" {
+resource "aws_db_instance" "main" {
   identifier = "${var.project_name}-mysql"
 
   engine         = "mysql"
@@ -55,8 +51,8 @@ resource "aws_db_instance" "this" {
   allocated_storage = 20
   storage_type      = "gp2"
 
-  db_name  = var.db_name
-  username = var.db_username
+  db_name  = "mopl-db-mysql"
+  username = "mopl-admin"
   password = var.db_password
 
   db_subnet_group_name   = aws_db_subnet_group.this.name

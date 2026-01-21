@@ -5,8 +5,6 @@ resource "aws_lb" "this" {
   internal           = false
   security_groups    = [aws_security_group.main.id]
 
-  # NOTE: 실무/운영은 public subnet 2개(AZ 2개) 권장/필수인 경우가 많음
-  # 지금은 public subnet 1개라 그대로 둠 (추후 2개 만들면 여기에 2개 넣기)
   subnets            = [aws_subnet.public.id]
 
   tags = {
@@ -15,9 +13,31 @@ resource "aws_lb" "this" {
   }
 }
 
+# Route53
+resource "aws_route53_zone" "main" {
+  name = "mopl.shop"
+
+  tags = {
+    Name = "${var.project_name}-zone"
+    Env  = var.environment
+  }
+}
+
+resource "aws_route53_record" "alb" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "mopl.shop"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.this.dns_name
+    zone_id                = aws_lb.this.zone_id
+    evaluate_target_health = true
+  }
+}
+
 # ACM Certificate
 resource "aws_acm_certificate" "this" {
-  domain_name       = var.domain_name
+  domain_name       = "mopl.shop"
   validation_method = "DNS"
 
   lifecycle {
@@ -166,22 +186,5 @@ resource "aws_lb_listener_rule" "chat" {
   action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.chat.arn
-  }
-}
-
-# /batch/* -> 8082
-resource "aws_lb_listener_rule" "batch" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 30
-
-  condition {
-    path_pattern {
-      values = ["/batch/*"]
-    }
-  }
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.batch.arn
   }
 }

@@ -14,28 +14,6 @@ variable "environment" {
   default     = "prod"
 }
 
-variable "domain_name" {}
-
-variable "vpc_id" {
-  type        = string
-  description = "기존 VPC ID"
-}
-
-variable "api_container_port" {
-  type    = number
-  default = 8080
-}
-
-variable "db_name" {
-  type    = string
-  default = "mopl"
-}
-
-variable "db_username" {
-  type    = string
-  default = "mopl_admin"
-}
-
 variable "db_password" {
   type        = string
   description = "Database master password"

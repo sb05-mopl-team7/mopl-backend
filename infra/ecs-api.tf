@@ -16,7 +16,7 @@ resource "aws_ecs_service" "api" {
   load_balancer {
     target_group_arn = aws_lb_target_group.api
     container_name   = local.api_container_name
-    container_port   = var.api_container_port
+    container_port   = 8080
   }
 
   deployment_minimum_healthy_percent = 50
@@ -55,7 +55,7 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name  = "DB_HOST"
-          value = aws_db_instance.main.address
+          value = aws_db_instance.this.address
         },
         {
           name  = "DB_USER"
@@ -66,7 +66,7 @@ resource "aws_ecs_task_definition" "api" {
 
       portMappings = [
         {
-          containerPort = var.api_container_port
+          containerPort = 8080
           protocol      = "tcp"
         }
       ]

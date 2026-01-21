@@ -8,13 +8,13 @@ resource "aws_ecs_service" "api" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = aws_subnet.private.id
-    security_groups  = [aws_security_group.ec2]
+    subnets          = [aws_subnet.private.id]
+    security_groups  = [aws_security_group.ec2.id]
     assign_public_ip = false
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.api
+    target_group_arn = aws_lb_target_group.api.arn
     container_name   = local.api_container_name
     container_port   = 8080
   }
@@ -55,11 +55,11 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name  = "DB_HOST"
-          value = aws_db_instance.this.address
+          value = aws_db_instance.main.address
         },
         {
           name  = "DB_USER"
-          value = var.db_username
+          value = aws_db_instance.main.username
         },
         # ... 기타 필요한 변수들
       ]

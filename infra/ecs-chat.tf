@@ -44,7 +44,7 @@ resource "aws_ecs_service" "chat" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = aws_subnet.private.id
+    subnets         = [aws_subnet.private.id]
     security_groups = [aws_security_group.main.id]
     assign_public_ip = false
   }

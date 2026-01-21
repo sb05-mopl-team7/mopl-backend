@@ -47,6 +47,23 @@ resource "aws_ecs_task_definition" "api" {
       image     = var.api_image_uri # CD에서 입력
       essential = true
 
+      # 컨테이너 실행 시 주입될 환경변수
+      environment = [
+        {
+          name  = "SPRING_PROFILES_ACTIVE"
+          value = var.environment  # 여기서 프로필을 결정
+        },
+        {
+          name  = "DB_HOST"
+          value = aws_db_instance.main.address
+        },
+        {
+          name  = "DB_USER"
+          value = var.db_username
+        },
+        # ... 기타 필요한 변수들
+      ]
+
       portMappings = [
         {
           containerPort = var.api_container_port

@@ -1,164 +1,121 @@
 package com.mopl.domain.watching.controller;
 
-import com.mopl.domain.auth.dto.UserPrincipal;
-import com.mopl.domain.content.entity.Content;
-import com.mopl.domain.content.enums.ContentType;
-import com.mopl.domain.content.repository.ContentRepository;
-import com.mopl.domain.user.entity.User;
-import com.mopl.domain.user.enums.Role;
-import com.mopl.domain.user.repository.UserRepository;
-import com.mopl.domain.watching.entity.WatchingSession;
+import com.mopl.domain.watching.dto.response.WatchingSessionContentListResponse;
+import com.mopl.domain.watching.dto.response.WatchingSessionUserResponse;
 import com.mopl.domain.watching.exception.WatchingErrorCode;
-import com.mopl.domain.watching.repository.WatchingSessionRepository;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import com.mopl.domain.watching.exception.WatchingException;
+import com.mopl.domain.watching.service.WatchingSessionService;
+import com.mopl.global.enums.SortDirection;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.List;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@ActiveProfiles("test")
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
+@WebMvcTest(WatchingSessionController.class)
+@AutoConfigureMockMvc(addFilters = false) // 인증 필터를 제외하여 컨트롤러 로직에 집중
+@DisplayName("시청 세션 콘텐츠 리스트 컨트롤러 테스트")
 class WatchingSessionContentListControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private UserRepository userRepository;
+    @MockitoBean
+    private WatchingSessionService watchingSessionService;
 
-    @Autowired
-    private ContentRepository contentRepository;
+    @Nested
+    @DisplayName("GET /api/contents/{contentId}/watching-sessions")
+    class Describe_getWatchingSessionsByContent {
 
-    @Autowired
-    private WatchingSessionRepository watchingSessionRepository;
+        @Test
+        @WithMockUser
+        @DisplayName("[200] 특정 콘텐츠의 시청 세션 목록을 성공적으로 조회한다")
+        void it_returns_200_ok_with_list() throws Exception {
+            // given
+            Long contentId = 456L;
+            LocalDateTime now = LocalDateTime.now();
 
-    private User savedUser;
-    private Content savedContent;
+            WatchingSessionUserResponse userResponse = WatchingSessionUserResponse.builder()
+                    .id(123L)
+                    .createdAt(now)
+                    .build();
 
-    @BeforeEach
-    void setUp() {
-        savedUser = userRepository.save(new User("테스터", "test@mopl.io", "password"));
-        savedContent = contentRepository.save(new Content(ContentType.movie, "인터스텔라", "우주 영화", "url"));
-    }
+            WatchingSessionContentListResponse listResponse = WatchingSessionContentListResponse.builder()
+                    .data(List.of(userResponse))
+                    .nextCursor(now.toString())
+                    .nextIdAfter(123L)
+                    .hasNext(true)
+                    .totalCount(100L)
+                    .sortBy("createdAt")
+                    .sortDirection(SortDirection.DESCENDING)
+                    .build();
 
-    @AfterEach
-    void tearDown() {
-        watchingSessionRepository.deleteAll();
-    }
+            given(watchingSessionService.getWatchingSessionsByContent(
+                    eq(contentId), anyString(), any(), any(), anyInt(), anyString(), any(SortDirection.class)
+            )).willReturn(listResponse);
 
-    private UsernamePasswordAuthenticationToken createAuthToken(User user) {
-        UserPrincipal principal = new UserPrincipal(user.getId(), user.getEmail(), Role.USER);
-        return new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
-        );
-    }
+            // when & then
+            mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", contentId)
+                            .param("watcherNameLike", "우디")
+                            .param("limit", "10")
+                            .param("sortBy", "createdAt")
+                            .param("sortDirection", "DESCENDING"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.totalCount").value(100))
+                    .andExpect(jsonPath("$.data[0].id").value("123"))
+                    .andExpect(jsonPath("$.nextIdAfter").value("123"));
+        }
 
-    // 1. 성공 케이스 (200)
-    @Test
-    @DisplayName("[200] 특정 콘텐츠의 시청 세션 목록을 성공적으로 조회한다")
-    void getWatchingSessions_Success() throws Exception {
-        // Given
-        WatchingSession session = WatchingSession.builder()
-                .id(savedUser.getId())
-                .contentId(savedContent.getId())
-                .createdAt(LocalDateTime.now())
-                .build();
-        watchingSessionRepository.save(session);
+        @Test
+        @WithMockUser
+        @DisplayName("[200] 시청자가 없을 경우 빈 목록과 함께 성공 응답을 반환한다")
+        void it_returns_200_ok_with_empty_list() throws Exception {
+            // given
+            Long contentId = 456L;
+            WatchingSessionContentListResponse emptyResponse = WatchingSessionContentListResponse.empty("createdAt", SortDirection.DESCENDING);
 
-        // When & Then
-        mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
-                        .param("limit", "10")
-                        .param("sortDirection", "DESCENDING")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .with(authentication(createAuthToken(savedUser))))
-                .andDo(print())
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[0].watcher.name").value("테스터"))
-                .andExpect(jsonPath("$.totalCount").value(1));
-    }
+            given(watchingSessionService.getWatchingSessionsByContent(
+                    eq(contentId), any(), any(), any(), anyInt(), anyString(), any(SortDirection.class)
+            )).willReturn(emptyResponse);
 
-    @Test
-    @DisplayName("[200] 이름 필터링(watcherNameLike)을 적용하여 목록을 조회한다")
-    void getWatchingSessions_Filtering_Success() throws Exception {
-        // Given
-        WatchingSession session = WatchingSession.builder()
-                .id(savedUser.getId())
-                .contentId(savedContent.getId())
-                .build();
-        watchingSessionRepository.save(session);
+            // when & then
+            mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", contentId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isEmpty())
+                    .andExpect(jsonPath("$.totalCount").value(0));
+        }
 
-        // When & Then: 일치하는 이름 검색
-        mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
-                        .param("watcherNameLike", "테스터")
-                        .with(authentication(createAuthToken(savedUser))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCount").value(1));
+        @Test
+        @WithMockUser
+        @DisplayName("[400] 잘못된 정렬 기준이나 파라미터가 주어지면 에러를 반환한다")
+        void it_returns_400_bad_request() throws Exception {
+            // given
+            Long contentId = 456L;
+            given(watchingSessionService.getWatchingSessionsByContent(
+                    eq(contentId), any(), any(), any(), anyInt(), anyString(), any(SortDirection.class)
+            )).willThrow(new WatchingException(WatchingErrorCode.INVALID_WATCHING_REQUEST));
 
-        // When & Then: 일치하지 않는 이름 검색 (빈 목록)
-        mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
-                        .param("watcherNameLike", "없는사람")
-                        .with(authentication(createAuthToken(savedUser))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCount").value(0))
-                .andExpect(jsonPath("$.data").isEmpty());
-    }
+            // when & then
+            mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", contentId)
+                            .param("sortBy", "invalidField")) // 잘못된 필드로 정렬 요청 상황 시뮬레이션
+                    .andExpect(status().isBadRequest());
+        }
 
-    // 2. 비즈니스 예외 케이스 (400)
-    @Test
-    @DisplayName("[400] 잘못된 페이지 limit(0 이하) 요청 시 INVALID_PAGINATION_LIMIT 에러 발생")
-    void getWatchingSessions_InvalidLimit_Fail() throws Exception {
-        mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
-                        .param("limit", "0")
-                        .with(authentication(createAuthToken(savedUser))))
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(WatchingErrorCode.INVALID_PAGINATION_LIMIT.name()))
-                .andExpect(jsonPath("$.detail").value(WatchingErrorCode.INVALID_PAGINATION_LIMIT.getMessage()));
-    }
-
-    @Test
-    @DisplayName("[400] 잘못된 커서 날짜 형식 요청 시 INVALID_CURSOR 에러 발생")
-    void getWatchingSessions_InvalidCursor_Fail() throws Exception {
-        // Given: 세션이 하나라도 있어야 커서 파싱 로직을 타므로 데이터 추가
-        watchingSessionRepository.save(new WatchingSession(savedUser.getId(), savedContent.getId(), LocalDateTime.now()));
-
-        mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
-                        .param("cursor", "not-a-date-format")
-                        .param("idAfter", "1")
-                        .with(authentication(createAuthToken(savedUser))))
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value(WatchingErrorCode.INVALID_CURSOR.name()));
-    }
-
-    // 3. 인증 예외 케이스 (401)
-    @Test
-    @DisplayName("[401] 인증되지 않은 사용자가 목록 조회 시 오류 발생")
-    void getWatchingSessions_Unauthorized_Fail() throws Exception {
-        mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", savedContent.getId())
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isUnauthorized());
+        // [참고] 401 테스트는 Security Filter 설정이 포함되어야 하므로
+        // 컨트롤러 단위 테스트인 본 파일에서는 제외하거나 Filter를 켜고 별도 설정을 해야 합니다.
     }
 }

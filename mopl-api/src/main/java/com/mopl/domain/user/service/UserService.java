@@ -124,6 +124,15 @@ public class UserService {
 
     }
 
+    @Transactional(readOnly = true)
+    public UserDto detail(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
+        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        return userMapper.toDto(user, thumbnailUrl);
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<UserDto> findAllUsers(UserSearchCondition searchCondition) {
         String keywordLike = searchCondition.emailLike();
         Role roleEqual = searchCondition.roleEqual();
@@ -156,9 +165,7 @@ public class UserService {
                 ? fetched.subList(0, limit)
                 : fetched;
 
-        List<UserDto> data = page.stream()
-                .map(this::toDto)
-                .toList();
+        List<UserDto> data = userMapper.toDtoList(page);
 
         String nextCursor = null;
         String nextIdAfter = null;
@@ -289,28 +296,11 @@ public class UserService {
         return createdAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
-    private UserDto toDto(User user) {
-        return new UserDto(
-                user.getId(),
-                user.getCreatedAt(),
-                user.getEmail(),
-                user.getName(),
-                user.getProfileImageUrl(),
-                user.getRole(),
-                user.getLocked()
-        );
-    }
 
     private record StartId(String sortByProperty,Object cursorValue, Long idAfter) {
 
     }
-    @Transactional(readOnly = true)
-    public UserDto detail(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
-        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
-        return userMapper.toDto(user, thumbnailUrl);
-    }
+
 
 
 

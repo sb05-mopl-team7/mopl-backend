@@ -71,8 +71,3 @@ resource "aws_db_instance" "main" {
     Env  = var.environment
   }
 }
-
-data "aws_ssm_parameter" "db_password" {
-  name            = "/mopl/prod/db/password"
-  with_decryption = true
-}

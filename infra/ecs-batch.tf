@@ -17,6 +17,44 @@ resource "aws_ecs_task_definition" "batch" {
       image     = var.batch_image_uri
       essential = true
 
+      secrets = [
+        {
+          name      = "TMDB_API_TOKEN"
+          valueFrom = data.aws_ssm_parameter.tmdb_api_token.value
+        },
+        {
+          name = "AWS_ACCESS_KEY"
+          value = data.aws_ssm_parameter.aws_access_key.value
+        },
+        {
+          name = "AWS_SECRET_KEY"
+          value = data.aws_ssm_parameter.aws_refresh_key.value
+        }
+      ]
+
+      environment = [
+        {
+          name  = "SPRING_PROFILES_ACTIVE"
+          value = var.environment  # 여기서 프로필을 결정
+        },
+        {
+          name  = "DB_HOST"
+          value = aws_db_instance.main.address
+        },
+        {
+          name  = "DB_USER"
+          value = aws_db_instance.main.username
+        },
+        {
+          name = "AWS_REGION"
+          value = data.aws_ssm_parameter.aws_region.value
+        },
+        {
+          name = "AWS_S3_BUCKET"
+          value = data.aws_ssm_parameter.aws_s3_bucket.value
+        },
+      ]
+
       command = ["java", "-jar", "app.jar"] # 배치 전용 엔트리포인트
 
       logConfiguration = {

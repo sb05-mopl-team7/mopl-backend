@@ -17,6 +17,56 @@ resource "aws_ecs_task_definition" "chat" {
       image     = var.chat_image_uri
       essential = true
 
+      secrets = [
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = data.aws_ssm_parameter.db_password.arn
+        },
+        {
+          name = "JWT_ACCESS_SECRET"
+          value = data.aws_ssm_parameter.access_secret.value
+        }
+      ]
+
+      environment = [
+        {
+          name  = "SPRING_PROFILES_ACTIVE"
+          value = var.environment  # 여기서 프로필을 결정
+        },
+        {
+          name  = "DB_HOST"
+          value = aws_db_instance.main.address
+        },
+        {
+          name  = "DB_USER"
+          value = aws_db_instance.main.username
+        },
+        {
+          name = "REDIS_HOST_PROD"
+          value = "redis"
+        },
+        {
+          name = "REDIS_PORT"
+          value = 6379
+        },
+        {
+          name = "GOOGLE_MAIL_USERNAME"
+          value = "isylsy166@gmail.com"
+        },
+        {
+          name = "AWS_REGION"
+          value = data.aws_ssm_parameter.aws_region.value
+        },
+        {
+          name = "AWS_S3_BUCKET"
+          value = data.aws_ssm_parameter.aws_s3_bucket.value
+        },
+        {
+          name = "KAFKA_BOOTSTRAP_SERVERS_PROD"
+          value = "kafka:9092"
+        }
+      ]
+
       portMappings = [
         {
           containerPort = 8080

@@ -48,6 +48,33 @@ resource "aws_ecs_task_definition" "api" {
       essential = true
 
       # 컨테이너 실행 시 주입될 환경변수
+      secrets = [
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = data.aws_ssm_parameter.db_password.arn
+        },
+        {
+          name = "GOOGLE_MAIL_PASSWORD"
+          value = data.aws_ssm_parameter.gmail_password.value
+        },
+        {
+          name = "JWT_ACCESS_SECRET"
+          value = data.aws_ssm_parameter.access_secret.value
+        },
+        {
+          name = "JWT_REFRESH_SECRET"
+          value = data.aws_ssm_parameter.refresh_secret.value
+        },
+        {
+          name = "AWS_ACCESS_KEY"
+          value = data.aws_ssm_parameter.aws_access_key.value
+        },
+        {
+          name = "AWS_SECRET_KEY"
+          value = data.aws_ssm_parameter.aws_refresh_key.value
+        }
+      ]
+
       environment = [
         {
           name  = "SPRING_PROFILES_ACTIVE"
@@ -61,7 +88,30 @@ resource "aws_ecs_task_definition" "api" {
           name  = "DB_USER"
           value = aws_db_instance.main.username
         },
-        # ... 기타 필요한 변수들
+        {
+          name = "REDIS_HOST_PROD"
+          value = "redis"
+        },
+        {
+          name = "REDIS_PORT"
+          value = 6379
+        },
+        {
+          name = "GOOGLE_MAIL_USERNAME"
+          value = "isylsy166@gmail.com"
+        },
+        {
+          name = "AWS_REGION"
+          value = data.aws_ssm_parameter.aws_region.value
+        },
+        {
+          name = "AWS_S3_BUCKET"
+          value = data.aws_ssm_parameter.aws_s3_bucket.value
+        },
+        {
+          name = "KAFKA_BOOTSTRAP_SERVERS_PROD"
+          value = "kafka:9092"
+        }
       ]
 
       portMappings = [

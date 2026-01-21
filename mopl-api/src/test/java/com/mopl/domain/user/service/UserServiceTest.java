@@ -1,5 +1,7 @@
 package com.mopl.domain.user.service;
 
+import com.mopl.domain.notification.enums.NotificationType;
+import com.mopl.domain.notification.producer.NotificationEventProducer;
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
 import com.mopl.domain.user.dto.UserSearchCondition;
@@ -43,6 +45,8 @@ class UserServiceTest {
     PasswordEncoder passwordEncoder;
     @MockitoBean
     private S3Manager s3Manager;
+    @MockitoBean
+    private NotificationEventProducer notificationEventProducer;
 
     // 테스트 데이터 생성 헬퍼
     private void createTestUsers() {
@@ -111,6 +115,7 @@ class UserServiceTest {
     void updateRole_Success() {
         //given
         User me = userRepository.save(new User("me", "me@test.com", "pw"));
+        Role oldRole = me.getRole();  // 기존 role 저장(USER 권한)
 
         //when
         userService.updateRole(me.getId(), Role.ADMIN);
@@ -118,6 +123,15 @@ class UserServiceTest {
         //then
         User updated = userRepository.findById(me.getId()).orElseThrow();
         assertThat(updated.getRole()).isEqualTo(Role.ADMIN);
+
+        // Kafka 이벤트 발행 검증 - 정확한 파라미터 확인
+        verify(notificationEventProducer, times(1))
+                .send(
+                        eq(me.getId()),
+                        eq(NotificationType.ROLE_UPDATED),
+                        eq(oldRole.name()),      // 이전 role
+                        eq(Role.ADMIN.name())    // 새 role
+                );
     }
 
     @Test

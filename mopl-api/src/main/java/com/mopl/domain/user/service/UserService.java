@@ -181,6 +181,13 @@ public class UserService {
     private Sort buildSort(SortBy sortBy, SortDirection sortDirection) {
         Sort.Direction direction = sortDirection.toSpring();
 
+        // role 정렬 시 ADMIN이 큰 값으로 취급되도록
+        if (sortBy == SortBy.role) {
+            direction = (sortDirection == SortDirection.DESCENDING)
+                    ? Sort.Direction.ASC
+                    : Sort.Direction.DESC;
+        }
+
         // 1차 정렬: 사용자가 선택한 기준
         Sort sort = Sort.by(direction, sortBy.property());
 

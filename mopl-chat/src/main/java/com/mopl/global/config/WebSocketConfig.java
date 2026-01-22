@@ -22,7 +22,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws") // 클라이언트가 웹소켓 연결을 시작할 엔드포인트
             .setAllowedOrigins(
                     "http://localhost:3000",
-                    "http://localhost:8080") // 운영 시 실제 도메인 넣어야 함
+                    "http://localhost:8080",
+                    "https://d1oe57b4vms6oj.cloudfront.net") // TODO application.yml에 옮기기
             .withSockJS(); // SockJS 지원 (웹소켓 미지원 브라우저 대응)
     }
 

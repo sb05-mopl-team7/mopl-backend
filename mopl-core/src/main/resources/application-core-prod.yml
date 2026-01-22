@@ -17,7 +17,7 @@ spring:
       port: ${REDIS_PORT}
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS_DEV}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS_PROD}
 
 logging:
   level:

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -41,19 +42,20 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
-                                .ignoringRequestMatchers(
-                                        "/api/auth/sign-in",
-                                        "/api/auth/reset-password",
-                                        "/api/auth/refresh",
-                                        "/api/auth/sign-out",
-                                        "/api/users"
-                                )
-                                .ignoringRequestMatchers(
-                                        "/h2-console/**"
-                                )
-                                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                                .csrfTokenRequestHandler(requestHandler)
+                        .ignoringRequestMatchers(
+                                "/api/auth/sign-in",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh",
+                                "/api/auth/sign-out",
+                                "/api/users"
+                        )
+                        .ignoringRequestMatchers(
+                                "/h2-console/**"
+                        )
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(requestHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()

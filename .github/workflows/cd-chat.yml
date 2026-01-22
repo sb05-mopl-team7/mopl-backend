@@ -11,7 +11,7 @@ on:
       - "settings.gradle"
       - "gradle/**"
       - "gradlew"
-      - ".github/workflows/cd-mopl-chat.yml"
+      - ".github/workflows/cd-chat.yml"
 
   workflow_dispatch:
 

@@ -11,7 +11,7 @@ on:
       - "settings.gradle"
       - "gradle/**"
       - "gradlew"
-      - ".github/workflows/cd-mopl-batch.yml"
+      - ".github/workflows/cd-batch.yml"
 
   workflow_dispatch:
 

@@ -145,7 +145,7 @@ resource "aws_lb_listener_rule" "chat" {
 
   condition {
     path_pattern {
-      values = ["/chat/*"]
+      values = ["/ws/*"]
     }
   }
 

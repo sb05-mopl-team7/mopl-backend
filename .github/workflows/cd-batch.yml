@@ -3,7 +3,7 @@ name: CD mopl-batch (develop)
 on:
   push:
     branches:
-      - develop
+      - release
     paths:
       - "mopl-core/**"
       - "mopl-batch/**"

@@ -54,7 +54,7 @@ resource "aws_security_group" "ec2" {
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = ["10.0.0.0/16"] # VPC 내부의 ECS 태스크가 접근 가능하도록 허용
   }
 
   # Prometheus
@@ -70,8 +70,17 @@ resource "aws_security_group" "ec2" {
     from_port = 9092
     to_port = 9092
     protocol    = "tcp"
-    self = true
+    cidr_blocks = ["10.0.0.0/16"]
     description              = "Allow ECS tasks to access Kafka on 9092"
+  }
+
+  #Redis
+  ingress {
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+    description = "Allow ECS tasks to access Redis on 6379"
   }
 
   egress {
@@ -98,6 +107,16 @@ resource "aws_security_group_rule" "endpoint_from_ecs" {
   description              = "Allow ECS tasks to access VPC Endpoints"
 }
 
+resource "aws_security_group_rule" "endpoint_from_vpc" {
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  security_group_id = aws_security_group.main.id
+  cidr_blocks       = [aws_vpc.main.cidr_block] # VPC 내부 어디서든 엔드포인트 접속 허용
+  description       = "Allow all VPC resources to access VPC Endpoints"
+}
+
 # ALB(main SG)가 ECS 태스크(ec2 SG)의 8080 포트에 접근 허용
 resource "aws_security_group_rule" "alb_to_ecs" {
   type                     = "ingress"
@@ -112,10 +131,10 @@ resource "aws_security_group_rule" "alb_to_ecs" {
 # ALB -> Chat 태스크 허용
 resource "aws_security_group_rule" "alb_to_chat" {
   type                     = "ingress"
-  from_port                = 8081
-  to_port                  = 8081
+  from_port                = 8082
+  to_port                  = 8082
   protocol                 = "tcp"
   security_group_id        = aws_security_group.ec2.id
   source_security_group_id = aws_security_group.main.id
-  description              = "Allow ALB to access Chat tasks on 8081"
+  description              = "Allow ALB to access Chat tasks on 8082"
 }

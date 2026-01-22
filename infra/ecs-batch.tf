@@ -17,7 +17,7 @@ resource "aws_ecs_task_definition" "batch" {
   container_definitions = jsonencode([
     {
       name      = local.batch_container_name
-      image     = var.batch_image_uri
+      image     = "376798132526.dkr.ecr.ap-northeast-2.amazonaws.com/mopl-batch:release-${var.batch_image_uri}"
       essential = true
 
       secrets = [
@@ -85,6 +85,7 @@ resource "aws_cloudwatch_event_target" "batch_target" {
   target_id = "mopl-batch"
   arn       = aws_ecs_cluster.main.arn
   role_arn  = aws_iam_role.eventbridge_ecs_role.arn
+
 
   ecs_target {
     task_definition_arn = aws_ecs_task_definition.batch.arn

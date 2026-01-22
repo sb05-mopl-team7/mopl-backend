@@ -59,10 +59,10 @@ resource "aws_lb_target_group" "api" {
   health_check {
     path                = "/health"
     matcher             = "200"
-    interval            = 30
-    timeout             = 5
+    interval            = 35
+    timeout             = 10
     healthy_threshold   = 2
-    unhealthy_threshold = 2
+    unhealthy_threshold = 5
   }
 
   tags = {
@@ -71,8 +71,8 @@ resource "aws_lb_target_group" "api" {
   }
 }
 
-resource "aws_lb_target_group" "chat" {
-  name        = "${var.project_name}-tg-chat"
+resource "aws_lb_target_group" "batch" {
+  name        = "${var.project_name}-tg-batch"
   port        = 8081
   protocol    = "HTTP"
   target_type = "ip"
@@ -81,20 +81,20 @@ resource "aws_lb_target_group" "chat" {
   health_check {
     path                = "/health"
     matcher             = "200"
-    interval            = 30
-    timeout             = 5
+    interval            = 35
+    timeout             = 10
     healthy_threshold   = 2
-    unhealthy_threshold = 2
+    unhealthy_threshold = 5
   }
 
   tags = {
-    Name = "${var.project_name}-tg-chat"
+    Name = "${var.project_name}-tg-batch"
     Env  = var.environment
   }
 }
 
-resource "aws_lb_target_group" "batch" {
-  name        = "${var.project_name}-tg-batch"
+resource "aws_lb_target_group" "chat" {
+  name        = "${var.project_name}-tg-chat"
   port        = 8082
   protocol    = "HTTP"
   target_type = "ip"
@@ -103,17 +103,19 @@ resource "aws_lb_target_group" "batch" {
   health_check {
     path                = "/health"
     matcher             = "200"
-    interval            = 30
-    timeout             = 5
+    interval            = 35
+    timeout             = 10
     healthy_threshold   = 2
-    unhealthy_threshold = 2
+    unhealthy_threshold = 5
   }
 
   tags = {
-    Name = "${var.project_name}-tg-batch"
+    Name = "${var.project_name}-tg-chat"
     Env  = var.environment
   }
 }
+
+
 
 ########################################
 # Listener Rules (경로 기반 라우팅)
@@ -136,7 +138,7 @@ resource "aws_lb_listener_rule" "api" {
   }
 }
 
-# /chat/* -> 8081
+# /chat/* -> 8082
 resource "aws_lb_listener_rule" "chat" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 20

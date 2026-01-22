@@ -7,7 +7,6 @@ resource "aws_ecs_task_definition" "chat" {
   family                   = local.chat_name
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-
   cpu    = 512
   memory = 1024
 
@@ -17,7 +16,7 @@ resource "aws_ecs_task_definition" "chat" {
   container_definitions = jsonencode([
     {
       name      = local.chat_container_name
-      image     = var.chat_image_uri
+      image     = "376798132526.dkr.ecr.ap-northeast-2.amazonaws.com/mopl-chat:release-${var.chat_image_uri}"
       essential = true
 
       secrets = [
@@ -34,7 +33,7 @@ resource "aws_ecs_task_definition" "chat" {
       environment = [
         {
           name  = "SPRING_PROFILES_ACTIVE"
-          value = var.environment  # 여기서 프로필을 결정
+          value = var.environment
         },
         {
           name  = "DB_URL"
@@ -46,15 +45,11 @@ resource "aws_ecs_task_definition" "chat" {
         },
         {
           name = "REDIS_HOST_PROD"
-          value = "redis"
+          value = "10.0.2.209"
         },
         {
           name = "REDIS_PORT"
           value = "6379"
-        },
-        {
-          name = "GOOGLE_MAIL_USERNAME"
-          value = "isylsy166@gmail.com"
         },
         {
           name = "AWS_REGION"
@@ -65,14 +60,14 @@ resource "aws_ecs_task_definition" "chat" {
           value = data.aws_ssm_parameter.aws_s3_bucket.value
         },
         {
-          name = "KAFKA_BOOTSTRAP_SERVERS_PROD"
-          value = "kafka:9092"
+          name = "KAFKA_BOOTSTRAP_SERVERS_DEV"
+          value = "10.0.2.209:9092"
         }
       ]
 
       portMappings = [
         {
-          containerPort = 8080
+          containerPort = 8082
           protocol      = "tcp"
         }
       ]
@@ -98,7 +93,7 @@ resource "aws_ecs_service" "chat" {
 
   network_configuration {
     subnets         = [aws_subnet.private_a.id, aws_subnet.private_c.id]
-    security_groups = [aws_security_group.main.id]
+    security_groups = [aws_security_group.ec2.id]
     assign_public_ip = false
   }
 
@@ -106,9 +101,9 @@ resource "aws_ecs_service" "chat" {
   load_balancer {
     target_group_arn = aws_lb_target_group.chat.arn
     container_name   = local.chat_container_name
-    container_port   = 8080
+    container_port   = 8082
   }
-
+  health_check_grace_period_seconds = 180
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
 }

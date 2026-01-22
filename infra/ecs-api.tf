@@ -19,6 +19,8 @@ resource "aws_ecs_service" "api" {
     container_port   = 8080
   }
 
+  # 애플리케이션 가동 후 첫 3분 동안은 헬스체크 실패를 무시
+  health_check_grace_period_seconds = 180
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
 }
@@ -43,7 +45,7 @@ resource "aws_ecs_task_definition" "api" {
   container_definitions = jsonencode([
     {
       name      = local.api_container_name
-      image     = var.api_image_uri # CD에서 입력
+      image     = "376798132526.dkr.ecr.ap-northeast-2.amazonaws.com/mopl-api:release-${var.api_image_uri}" # CD에서 입력
       essential = true
 
       # 컨테이너 실행 시 주입될 환경변수
@@ -89,7 +91,7 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name = "REDIS_HOST_PROD"
-          value = "redis"
+          value = "10.0.2.209"
         },
         {
           name = "REDIS_PORT"

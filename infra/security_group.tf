@@ -65,6 +65,15 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = ["10.0.0.0/16"]
   }
 
+  # Kafka
+  ingress {
+    from_port = 9092
+    to_port = 9092
+    protocol    = "tcp"
+    self = true
+    description              = "Allow ECS tasks to access Kafka on 9092"
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

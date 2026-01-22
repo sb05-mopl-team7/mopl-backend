@@ -108,8 +108,8 @@ resource "aws_ecs_task_definition" "api" {
           value = data.aws_ssm_parameter.aws_s3_bucket.value
         },
         {
-          name = "KAFKA_BOOTSTRAP_SERVERS_PROD"
-          value = "kafka:9092"
+          name = "KAFKA_BOOTSTRAP_SERVERS_DEV"
+          value = "10.0.2.209:9092"
         }
       ]
 

@@ -37,11 +37,11 @@ resource "aws_ecs_task_definition" "chat" {
           value = var.environment  # 여기서 프로필을 결정
         },
         {
-          name  = "DB_HOST"
+          name  = "DB_URL"
           value = aws_db_instance.main.address
         },
         {
-          name  = "DB_USER"
+          name  = "DB_USERNAME"
           value = aws_db_instance.main.username
         },
         {

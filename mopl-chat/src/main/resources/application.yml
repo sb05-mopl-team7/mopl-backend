@@ -5,7 +5,7 @@ spring:
   application:
     name: mopl-chat
   profiles:
-    active: dev
+    active: prod
     include: core
     group:
       dev: core-dev

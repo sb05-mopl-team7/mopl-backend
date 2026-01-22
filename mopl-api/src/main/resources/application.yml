@@ -5,11 +5,33 @@ spring:
   application:
     name: mopl-api
   profiles:
+    include: core
     active: dev
+    group:
+      dev: core-dev
+      prod: core-prod
+      local: core-local
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+
+  # Email
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GOOGLE_MAIL_USERNAME}
+    password: ${GOOGLE_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+         auth: true
+         starttls:
+          enable: true
+
+  kafka:
+    consumer:
+      group-id: api-server-group # API 서버용 그룹 id
 
 # swagger
 springdoc:
@@ -21,3 +43,10 @@ springdoc:
     path: /swagger-ui.html
     display-request-duration: true
     persist-authorization: true
+
+#jwt
+jwt:
+  access-secret: ${JWT_ACCESS_SECRET}
+  refresh-secret: ${JWT_REFRESH_SECRET}
+  access-token-validity: 900000      # 15분 (밀리초)
+  refresh-token-validity: 604800000  # 7일 (밀리초)

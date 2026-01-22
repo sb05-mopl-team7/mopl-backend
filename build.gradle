@@ -61,5 +61,7 @@ subprojects {
 
 	tasks.named('test') {
 		useJUnitPlatform()
+        // Spring Boot 4.0.1 / Java 17+ 환경에서 Mockito 에이전트 동적 로딩 경고 제거용
+        jvmArgs("-XX:+EnableDynamicAgentLoading", "-Xshare:off")
 	}
 }

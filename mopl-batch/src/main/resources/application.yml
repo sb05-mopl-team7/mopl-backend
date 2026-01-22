@@ -4,8 +4,19 @@ server:
 spring:
   application:
     name: mopl-batch
+  profiles:
+    include: core
+    active: dev
+    group:
+      dev: core-dev
+      prod: core-prod
+
   batch:
     job:
       enabled: false
     jdbc:
       initialize-schema: always
+
+tmdb:
+  base-url: https://api.themoviedb.org/3
+  token: ${TMDB_API_TOKEN}

@@ -1,0 +1,62 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Redis 설정
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # 이메일 설정 가짜 값
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: "test@gmail.com"
+    password: "testpassword"
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# JWT 설정
+jwt:
+  access-secret: "test_secret_key_for_access_token_must_be_32_bytes_long"
+  refresh-secret: "test_secret_key_for_refresh_token_must_be_32_bytes_long"
+  access-token-validity: 3600000
+  refresh-token-validity: 604800000
+  cookie:
+    secure: false
+    same-site: Lax
+
+logging:
+  level:
+    root: INFO
+
+# S3 설정
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2 # 직접 값 입력
+    credentials:
+      access-key: test-access-key
+      secret-key: test-secret-key
+    s3:
+      bucket: test-mopl-bucket # S3Manager에서 사용하는 설정값

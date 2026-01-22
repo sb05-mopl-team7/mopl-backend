@@ -2,3 +2,12 @@ logging:
   level:
     org.springframework.web: DEBUG # HTTP 요청/응답 헤더 등 상세 정보
     org.springframework.web.servlet: DEBUG # DispatcherServlet 동작 과정
+
+jwt:
+  cookie:
+    secure: false
+    same-site: Lax
+
+file:
+  upload-dir: ./uploads
+  base-url: http://localhost:8080/files

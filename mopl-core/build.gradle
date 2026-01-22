@@ -26,6 +26,8 @@ dependencies {
     api 'org.springframework.boot:spring-boot-starter-data-redis'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
 
+    implementation 'org.springframework.boot:spring-boot-starter-json'
+
     // QueryDSL
     api 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
     annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
@@ -35,4 +37,13 @@ dependencies {
     // MapStruct
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+
+    // AWS S3
+    implementation platform("software.amazon.awssdk:bom:2.26.21")
+    implementation "software.amazon.awssdk:s3"
+    implementation "software.amazon.awssdk:sts"
+
+    // Kafka
+    api 'org.springframework.boot:spring-boot-starter-kafka'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
 }

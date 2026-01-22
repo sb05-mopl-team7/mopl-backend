@@ -13,6 +13,8 @@ on:
       - "gradlew"
       - ".github/workflows/cd-mopl-api.yml"
 
+  workflow_dispatch:
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest

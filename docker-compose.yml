@@ -5,17 +5,20 @@ services:
     ports:
       - "9092:9092"
     environment:
-      # 카프카 서버의 ID 지정
       KAFKA_NODE_ID: 1
-
-      # 역할 지정: broker, controller(클러스터를 관리하는 매니저. 예전 주키퍼 역할)
-      # 실제 운영 환경에서는 Controller 3개, broker 3개 총 6개의 컨테이너를 띄워 사용해야 함
       KAFKA_PROCESS_ROLES: broker, controller
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+
+      # 클라이언트(ECS)가 접속할 IP:포트
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://10.0.2.209:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@10.0.2.209:9093
+
+      # 컨테이너 내부 통신
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+
+      # KRaft 모드 필수 설정 추가 (Cluster ID가 없으면 실행 안 됨)
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
 
       # 복사본 설정
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1

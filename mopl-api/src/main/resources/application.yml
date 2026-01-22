@@ -52,6 +52,8 @@ jwt:
   refresh-token-validity: 604800000  # 7일 (밀리초)
 
 cors:
-  allowed-origins: [d1oe57b4vms6oj.cloudfront.net]
+  allowed-origins: [https://d1oe57b4vms6oj.cloudfront.net,
+                                     https://localhost:8080,
+                                     http://localhost:3000]
   allowed-methods: [GET, POST,  DELETE, PATCH]
   allowed-headers: [Authorization, Content-Type, X-Xsrf-Token]

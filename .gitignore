@@ -222,3 +222,4 @@ custom.sh
 **/crash.log
 **/crash.*.log
 **/*.tfplan
+/infra/.terraform.lock.hcl

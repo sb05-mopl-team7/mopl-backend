@@ -6,7 +6,7 @@ logging:
 jwt:
   cookie:
     secure: true   # HTTPS 강제
-    same-site: Lax # 또는 Strict
+    same-site: None # 또는 Strict
 
 aws:
   accessKeyId: ${AWS_ACCESS_KEY}

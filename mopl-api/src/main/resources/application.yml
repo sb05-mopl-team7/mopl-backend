@@ -52,6 +52,6 @@ jwt:
   refresh-token-validity: 604800000  # 7일 (밀리초)
 
 cors:
-  allowed-origins: [https://d1oe57b4vms6oj.cloudfront.net]
+  allowed-origins: [https://d1oe57b4vms6oj.cloudfront.net, https://mopl.shop, https://www.mopl.shop]
   allowed-methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
   allowed-headers: [Authorization, Content-Type, X-XSRF-TOKEN]

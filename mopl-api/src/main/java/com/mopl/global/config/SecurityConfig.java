@@ -49,7 +49,8 @@ public class SecurityConfig {
                                 "/api/auth/reset-password",
                                 "/api/auth/refresh",
                                 "/api/auth/sign-out",
-                                "/api/users"
+                                "/api/users",
+                                "/health"
                         )
                         .ignoringRequestMatchers(
                                 "/h2-console/**"
@@ -77,7 +78,8 @@ public class SecurityConfig {
                                 "/api/auth/sign-out",
                                 "/api/auth/reset-password",
                                 "/api/auth/refresh",
-                                "/api/auth/csrf-token" // 로그아웃 후 호출
+                                "/api/auth/csrf-token", // 로그아웃 후 호출
+                                "/health"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
                         .anyRequest().authenticated()

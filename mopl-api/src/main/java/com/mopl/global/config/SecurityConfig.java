@@ -59,6 +59,7 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(requestHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers(
                                 "/api-docs/**",

@@ -25,7 +25,7 @@ public class AuthController {
     @Value("${jwt.cookie.secure}")
     private boolean cookieSecure;
 
-    @Value("${jwt.cookie.same-site:Lax}")  // 기본값 Lax
+    @Value("${jwt.cookie.same-site:None}")  // 기본값 Lax
     private String cookieSameSite;
 
     private static final int REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 14; // 2주

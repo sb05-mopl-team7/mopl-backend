@@ -78,6 +78,10 @@ resource "aws_ecs_task_definition" "api" {
 
       environment = [
         {
+          name  = "JAVA_OPTS"
+          value = "-Xms1536M -Xmx1536M"
+        },
+        {
           name  = "SPRING_PROFILES_ACTIVE"
           value = var.environment  # 여기서 프로필을 결정
         },

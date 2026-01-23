@@ -60,3 +60,7 @@ data "aws_ami" "amazon_linux_2023" {
     values = ["al2023-ami-2023*-x86_64"]
   }
 }
+
+data "aws_cloudfront_distribution" "front" {
+  id = "E263BP4SCXEFZR"
+}

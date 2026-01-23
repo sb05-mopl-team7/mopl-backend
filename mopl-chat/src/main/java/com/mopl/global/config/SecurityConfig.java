@@ -22,7 +22,10 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 요청 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers(
+                        "/ws/**",
+                        "/health"
+                        ).permitAll()
                         // 그 외 모든 요청은 인증이 필요합니다. (추후 JWT 필터 적용 시 수정)
                         .anyRequest().authenticated()
                 );

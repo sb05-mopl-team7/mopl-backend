@@ -59,10 +59,10 @@ resource "aws_lb_target_group" "api" {
   health_check {
     path                = "/health"
     matcher             = "200"
-    interval            = 35
-    timeout             = 10
-    healthy_threshold   = 2
-    unhealthy_threshold = 5
+    interval            = 30    # 20 초마다 검사
+    timeout             = 15    # 10초 안에 200 OK 해야함
+    healthy_threshold   = 2     # 2번 연속 성공
+    unhealthy_threshold = 3     # 3번: 안 될 놈은 빨리 실패 처리
   }
 
   tags = {

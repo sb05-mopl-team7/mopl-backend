@@ -60,7 +60,7 @@ resource "aws_ecs_task_definition" "chat" {
           value = data.aws_ssm_parameter.aws_s3_bucket.value
         },
         {
-          name = "KAFKA_BOOTSTRAP_SERVERS_DEV"
+          name = "KAFKA_BOOTSTRAP_SERVERS_PROD"
           value = "10.0.2.209:9092"
         }
       ]

@@ -13,31 +13,11 @@ resource "aws_lb" "this" {
   }
 }
 
-# HTTP Listener (Redirect -> HTTPS)
+# HTTP Listener (Direct -> API)
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
-
-  default_action {
-    type = "redirect"
-
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
-  }
-}
-
-# HTTPS Listener (Default -> API)
-resource "aws_lb_listener" "https" {
-  load_balancer_arn = aws_lb.this.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-2016-08"
-
-  certificate_arn = var.acm_certificate_arn
 
   default_action {
     type             = "forward"
@@ -45,9 +25,12 @@ resource "aws_lb_listener" "https" {
   }
 }
 
+
+
 ########################################
+
+
 # Target Groups (서비스별 포트 분리)
-########################################
 
 resource "aws_lb_target_group" "api" {
   name        = "${var.project_name}-tg-api"
@@ -123,7 +106,7 @@ resource "aws_lb_target_group" "chat" {
 
 # /api/* -> 8080
 resource "aws_lb_listener_rule" "api" {
-  listener_arn = aws_lb_listener.https.arn
+  listener_arn = aws_lb_listener.http.arn
   priority     = 10
 
   condition {
@@ -140,7 +123,7 @@ resource "aws_lb_listener_rule" "api" {
 
 # /chat/* -> 8082
 resource "aws_lb_listener_rule" "chat" {
-  listener_arn = aws_lb_listener.https.arn
+  listener_arn = aws_lb_listener.http.arn
   priority     = 20
 
   condition {

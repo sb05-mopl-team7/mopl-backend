@@ -6,7 +6,7 @@ spring:
     name: mopl-batch
   profiles:
     include: core
-    active: prod
+    active: ${SPRING_PROFILES_ACTIVE:dev}
     group:
       dev: core-dev
       prod: core-prod

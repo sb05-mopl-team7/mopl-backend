@@ -23,7 +23,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             .setAllowedOrigins(
                     "http://localhost:3000",
                     "http://localhost:8080",
-                    "https://d1oe57b4vms6oj.cloudfront.net") // TODO application.yml에 옮기기
+                    "https://d1oe57b4vms6oj.cloudfront.net",
+                    "https://mopl.shop") // TODO application.yml에 옮기기
             .withSockJS(); // SockJS 지원 (웹소켓 미지원 브라우저 대응)
     }
 

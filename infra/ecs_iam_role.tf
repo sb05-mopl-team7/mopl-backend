@@ -140,7 +140,8 @@ resource "aws_iam_role_policy" "eventbridge_ecs_policy" {
           "iam:PassRole"
         ]
         Resource = [
-          aws_iam_role.tools_broker_ssm_role.arn
+          aws_iam_role.ecs_execution_role.arn,
+          aws_iam_role.ecs_task_role.arn
         ]
       }
     ]

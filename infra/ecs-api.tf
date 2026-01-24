@@ -15,7 +15,7 @@ resource "aws_ecs_service" "api" {
 
   network_configuration {
     subnets          = [aws_subnet.private_a.id, aws_subnet.private_c.id]
-    security_groups  = [aws_security_group.ec2.id]
+    security_groups  = [aws_security_group.ecs.id]
     assign_public_ip = false
   }
 
@@ -89,7 +89,7 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name = "REDIS_HOST_PROD"
-          value = "10.0.2.209"
+          value = aws_instance.redis.private_ip
         },
         {
           name = "REDIS_PORT"
@@ -109,7 +109,7 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name = "KAFKA_BOOTSTRAP_SERVERS_PROD"
-          value = "10.0.2.209:9092"
+          value = "${aws_instance.kafka.private_ip}:9092"
         }
       ]
 

@@ -73,7 +73,7 @@ resource "aws_ecs_task_definition" "chat" {
         },
         {
           name = "REDIS_HOST_PROD"
-          value = "10.0.2.209"
+          value = aws_instance.redis.private_ip
         },
         {
           name = "REDIS_PORT"
@@ -89,7 +89,7 @@ resource "aws_ecs_task_definition" "chat" {
         },
         {
           name = "KAFKA_BOOTSTRAP_SERVERS_PROD"
-          value = "10.0.2.209:9092"
+          value = "${aws_instance.kafka.private_ip}:9092"
         }
       ]
 

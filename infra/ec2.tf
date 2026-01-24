@@ -9,7 +9,7 @@ resource "aws_instance" "redis" {
   associate_public_ip_address = false
 
   # SSM 접속용
-  iam_instance_profile = aws_iam_instance_profile.tools_broker_ssm_profile.name
+  iam_instance_profile = aws_iam_instance_profile.ec2_ssm_profile.name
 
   root_block_device {
     volume_size = 30 # 최소 20~30GB 추천

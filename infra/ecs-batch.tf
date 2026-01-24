@@ -88,7 +88,7 @@ resource "aws_cloudwatch_event_target" "batch_target" {
 
     network_configuration {
       subnets         = [aws_subnet.private_a.id, aws_subnet.private_c.id]
-      security_groups = [aws_security_group.main.id]
+      security_groups = [aws_security_group.ecs.id]
       assign_public_ip = false
     }
   }

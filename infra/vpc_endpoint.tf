@@ -73,5 +73,7 @@ resource "aws_vpc_endpoint" "ssm" {
   security_group_ids  = [aws_security_group.ecr_endpoint.id]
   private_dns_enabled = true
 
-  tags = { Name = "${var.project_name}-ssm-endpoint" }
+  tags = {
+    Name = "${var.project_name}-ssm-endpoint"
+  }
 }

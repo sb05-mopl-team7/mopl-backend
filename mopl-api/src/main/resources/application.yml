@@ -6,7 +6,7 @@ spring:
     name: mopl-api
   profiles:
     include: core
-    active: prod
+    active: ${SPRING_PROFILES_ACTIVE:dev}
     group:
       dev: core-dev
       prod: core-prod
@@ -55,3 +55,12 @@ cors:
   allowed-origins: [https://d1oe57b4vms6oj.cloudfront.net, https://mopl.shop, https://www.mopl.shop]
   allowed-methods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
   allowed-headers: [Authorization, Content-Type, X-XSRF-TOKEN]
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always

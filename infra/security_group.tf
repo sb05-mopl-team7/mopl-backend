@@ -158,12 +158,16 @@ resource "aws_security_group" "ecr_endpoint" {
   vpc_id      = aws_vpc.main.id
 
   # ECS → ECR Endpoint (HTTPS)
+  # EC2(Redis/Kafka/Monitoring) 허용
   ingress {
     from_port       = 443
     to_port         = 443
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
-    description     = "Allow ECS tasks to access ECR via VPC Endpoint"
+    security_groups = [
+      aws_security_group.ecs.id,
+      aws_security_group.ec2.id
+    ]
+    description     = "Allow ECS tasks to access ECR via VPC Endpoint. And Allow EC2 instances to access SSM/ECR endpoints"
   }
 
   # Endpoint → AWS 내부 통신

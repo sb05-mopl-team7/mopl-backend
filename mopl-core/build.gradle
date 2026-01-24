@@ -46,4 +46,10 @@ dependencies {
     // Kafka
     api 'org.springframework.boot:spring-boot-starter-kafka'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
+
+    // actuator
+    api 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // prometheus
+    api 'io.micrometer:micrometer-registry-prometheus'
 }

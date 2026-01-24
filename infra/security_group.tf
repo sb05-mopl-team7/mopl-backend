@@ -135,7 +135,10 @@ resource "aws_security_group" "rds" {
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]   # ECS만 접근 허용
+    security_groups = [
+      aws_security_group.ecs.id,
+      aws_security_group.ec2.id
+    ]   # ECS만 접근 허용
   }
 
   egress {

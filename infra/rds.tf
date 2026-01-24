@@ -12,35 +12,6 @@ resource "aws_db_subnet_group" "this" {
   }
 }
 
-
-# RDS Security Group
-# ECS만 접근 허용
-resource "aws_security_group" "rds" {
-  name        = "${var.project_name}-rds-sg"
-  description = "Security group for RDS"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description     = "MySQL from ECS"
-    from_port       = 3306
-    to_port         = 3306
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ec2.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.project_name}-rds-sg"
-    Env  = var.environment
-  }
-}
-
 # RDS MySQL Instance
 resource "aws_db_instance" "main" {
   identifier = "${var.project_name}-mysql"

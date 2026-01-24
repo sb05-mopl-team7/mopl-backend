@@ -1,8 +1,10 @@
-resource "aws_security_group" "main" {
-  name   = "mopl-main-sg"
+# ALB SG
+resource "aws_security_group" "alb" {
+  name   = "mopl-alb-sg"
   vpc_id = aws_vpc.main.id
 
-  # HTTP / HTTPS (ALB, API)
+ # 인바운드 트래픽
+  # HTTP:80
   ingress {
     from_port   = 80
     to_port     = 80
@@ -10,6 +12,7 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # HTTPS:443
   ingress {
     from_port   = 443
     to_port     = 443
@@ -17,23 +20,7 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # API / ECS 내부 포트
-  ingress {
-    from_port = 8080
-    to_port   = 8080
-    protocol  = "tcp"
-    self      = true
-  }
-
-  # 내부 통신 전부 허용
-  ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
-  }
-
-  # 외부로 나가는 트래픽 허용
+  # 아웃바운드 트래픽 (전부 허용)
   egress {
     from_port   = 0
     to_port     = 0
@@ -42,6 +29,51 @@ resource "aws_security_group" "main" {
   }
 }
 
+# ECS Security Group
+resource "aws_security_group" "ecs" {
+  name        = "${var.project_name}-ecs-sg"
+  description = "Security group for ECS (api / batch / chat)"
+  vpc_id      = aws_vpc.main.id
+
+  # 인바운드
+  # ECS ↔ ECS 내부 통신 허용
+  ingress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    self      = true
+  }
+
+  # 외부(ALB) → ECS(api)
+  ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+  # 외부(ALB) → ECS(batch)
+  ingress {
+    from_port       = 8081
+    to_port         = 8081
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+  # 외부(ALB) → ECS(chat)
+  ingress {
+    from_port       = 8082
+    to_port         = 8082
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  # Kafka, Redis, S3, ECR, ...
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
 
 # EC2 Security Group
 resource "aws_security_group" "ec2" {
@@ -49,40 +81,89 @@ resource "aws_security_group" "ec2" {
   description = "Security group for EC2 (monitoring / Redis / Kafka)"
   vpc_id      = aws_vpc.main.id
 
-  # Grafana
+  # Grafana (ECS → Grafana)
   ingress {
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"] # VPC 내부의 ECS 태스크가 접근 가능하도록 허용
+    from_port       = 3000
+    to_port         = 3000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]
   }
 
-  # Prometheus
+  # Prometheus (ECS → Prometheus scrape or UI)
   ingress {
-    from_port   = 9090
-    to_port     = 9090
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    from_port       = 9090
+    to_port         = 9090
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]
   }
 
-  # Kafka
+  # Kafka (ECS → Kafka)
   ingress {
-    from_port = 9092
-    to_port = 9092
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
-    description              = "Allow ECS tasks to access Kafka on 9092"
+    from_port       = 9092
+    to_port         = 9092
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]
+    description     = "Allow ECS tasks to access Kafka"
   }
 
-  #Redis
+  # Redis (ECS → Redis)
   ingress {
-    from_port   = 6379
-    to_port     = 6379
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
-    description = "Allow ECS tasks to access Redis on 6379"
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]
+    description     = "Allow ECS tasks to access Redis"
   }
 
+  # Outbound
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# RDS Security Group
+resource "aws_security_group" "rds" {
+  name        = "${var.project_name}-rds-sg"
+  description = "Security group for RDS"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "MySQL from ECS"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]   # ECS만 접근 허용
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# ----------------------------------------------------------------------------------
+
+# aws_vpc_endpoint의 private_dns_enabled = true일 때 자동으로 사용
+resource "aws_security_group" "ecr_endpoint" {
+  name        = "${var.project_name}-ecr-endpoint-sg"
+  description = "Security group for ECR VPC Interface Endpoints (api, dkr)"
+  vpc_id      = aws_vpc.main.id
+
+  # ECS → ECR Endpoint (HTTPS)
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]
+    description     = "Allow ECS tasks to access ECR via VPC Endpoint"
+  }
+
+  # Endpoint → AWS 내부 통신
   egress {
     from_port   = 0
     to_port     = 0
@@ -91,50 +172,7 @@ resource "aws_security_group" "ec2" {
   }
 
   tags = {
-    Name = "${var.project_name}-ec2-sg"
+    Name = "${var.project_name}-ecr-endpoint-sg"
     Env  = var.environment
   }
-}
-
-# main 보안 그룹에 Fargate 태스크가 접근할 수 있도록 규칙 추가
-resource "aws_security_group_rule" "endpoint_from_ecs" {
-  type                     = "ingress"
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.main.id       # 엔드포인트가 사용하는 SG
-  source_security_group_id = aws_security_group.ec2.id        # Fargate 태스크가 사용하는 SG
-  description              = "Allow ECS tasks to access VPC Endpoints"
-}
-
-resource "aws_security_group_rule" "endpoint_from_vpc" {
-  type              = "ingress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  security_group_id = aws_security_group.main.id
-  cidr_blocks       = [aws_vpc.main.cidr_block] # VPC 내부 어디서든 엔드포인트 접속 허용
-  description       = "Allow all VPC resources to access VPC Endpoints"
-}
-
-# ALB(main SG)가 ECS 태스크(ec2 SG)의 8080 포트에 접근 허용
-resource "aws_security_group_rule" "alb_to_ecs" {
-  type                     = "ingress"
-  from_port                = 8080
-  to_port                  = 8080
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.ec2.id        # 태스크 SG
-  source_security_group_id = aws_security_group.main.id       # ALB SG
-  description              = "Allow ALB to access ECS tasks on 8080"
-}
-
-# ALB -> Chat 태스크 허용
-resource "aws_security_group_rule" "alb_to_chat" {
-  type                     = "ingress"
-  from_port                = 8082
-  to_port                  = 8082
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.ec2.id
-  source_security_group_id = aws_security_group.main.id
-  description              = "Allow ALB to access Chat tasks on 8082"
 }

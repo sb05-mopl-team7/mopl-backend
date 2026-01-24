@@ -3,6 +3,34 @@ locals {
   chat_container_name = "mopl-chat"
 }
 
+# ----------------------------------------------------------------------
+
+resource "aws_ecs_service" "chat" {
+  name            = local.chat_name
+  cluster         = aws_ecs_cluster.main.arn
+  task_definition = aws_ecs_task_definition.chat.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets         = [aws_subnet.private_a.id, aws_subnet.private_c.id]
+    security_groups = [aws_security_group.ecs.id]
+    assign_public_ip = false
+  }
+
+  # Chat도 ALB 뒤에 붙일 거면 사용
+  load_balancer {
+    target_group_arn = aws_lb_target_group.chat.arn
+    container_name   = local.chat_container_name
+    container_port   = 8082
+  }
+  health_check_grace_period_seconds = 180
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent         = 200
+}
+
+# ----------------------------------------------------------------------
+
 resource "aws_ecs_task_definition" "chat" {
   family                   = local.chat_name
   requires_compatibilities = ["FARGATE"]
@@ -10,13 +38,13 @@ resource "aws_ecs_task_definition" "chat" {
   cpu    = 512
   memory = 1024
 
-  execution_role_arn = aws_iam_role.tools_broker_ssm_role.arn
-  task_role_arn      = null
+  execution_role_arn = aws_iam_role.ecs_execution_role.arn
+  task_role_arn      = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
       name      = local.chat_container_name
-      image     = "376798132526.dkr.ecr.ap-northeast-2.amazonaws.com/mopl-chat:release-${var.chat_image_uri}"
+      image     = "${data.aws_ecr_repository.mopl_chat.repository_url}:release-${var.chat_image_uri}"
       essential = true
 
       secrets = [
@@ -82,28 +110,4 @@ resource "aws_ecs_task_definition" "chat" {
       }
     }
   ])
-}
-
-resource "aws_ecs_service" "chat" {
-  name            = local.chat_name
-  cluster         = aws_ecs_cluster.main.arn
-  task_definition = aws_ecs_task_definition.chat.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets         = [aws_subnet.private_a.id, aws_subnet.private_c.id]
-    security_groups = [aws_security_group.ec2.id]
-    assign_public_ip = false
-  }
-
-  # Chat도 ALB 뒤에 붙일 거면 사용
-  load_balancer {
-    target_group_arn = aws_lb_target_group.chat.arn
-    container_name   = local.chat_container_name
-    container_port   = 8082
-  }
-  health_check_grace_period_seconds = 180
-  deployment_minimum_healthy_percent = 50
-  deployment_maximum_percent         = 200
 }

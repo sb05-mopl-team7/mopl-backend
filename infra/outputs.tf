@@ -9,13 +9,6 @@ output "private_subnet_ids" {
   value       = [aws_subnet.private_a.id, aws_subnet.private_c.id]
 }
 
-# Security Group
-output "security_group_id" {
-  description = "Shared security group ID"
-  value       = aws_security_group.main.id
-}
-
-
 # ALB
 output "alb_dns_name" {
   description = "ALB DNS name (public endpoint)"

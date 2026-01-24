@@ -66,7 +66,7 @@ resource "aws_subnet" "private_c" {
   }
 }
 
-# NAT Gateway
+# ---------- NAT Gateway ----------
 resource "aws_eip" "nat" {
   domain = "vpc"
 
@@ -90,7 +90,6 @@ resource "aws_nat_gateway" "main" {
 
 
 # Route Tables
-# Public Route Table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -105,17 +104,6 @@ resource "aws_route_table" "public" {
   }
 }
 
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public_a.id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table_association" "private_c" {
-  subnet_id      = aws_subnet.private_c.id
-  route_table_id = aws_route_table.private.id
-}
-
-# Private Route Table
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -130,7 +118,22 @@ resource "aws_route_table" "private" {
   }
 }
 
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
 resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private_a.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "public_c" {
+  subnet_id      = aws_subnet.public_c.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private_c" {
+  subnet_id      = aws_subnet.private_c.id
   route_table_id = aws_route_table.private.id
 }

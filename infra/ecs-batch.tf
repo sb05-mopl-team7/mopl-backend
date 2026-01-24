@@ -3,6 +3,8 @@ locals {
   batch_container_name = "mopl-batch"
 }
 
+# ----------------------------------------------------------------------
+
 resource "aws_ecs_task_definition" "batch" {
   family                   = local.batch_name
   requires_compatibilities = ["FARGATE"]
@@ -11,27 +13,19 @@ resource "aws_ecs_task_definition" "batch" {
   cpu    = 512
   memory = 1024
 
-  execution_role_arn = aws_iam_role.tools_broker_ssm_role.arn
-  task_role_arn      = null
+  execution_role_arn = aws_iam_role.ecs_execution_role.arn
+  task_role_arn      = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
       name      = local.batch_container_name
-      image     = "376798132526.dkr.ecr.ap-northeast-2.amazonaws.com/mopl-batch:release-${var.batch_image_uri}"
+      image     = "${data.aws_ecr_repository.mopl_batch.repository_url}:release-${var.batch_image_uri}"
       essential = true
 
       secrets = [
         {
           name      = "TMDB_API_TOKEN"
           valueFrom = data.aws_ssm_parameter.tmdb_api_token.arn
-        },
-        {
-          name = "AWS_ACCESS_KEY"
-          valueFrom = data.aws_ssm_parameter.aws_access_key.arn
-        },
-        {
-          name = "AWS_SECRET_KEY"
-          valueFrom = data.aws_ssm_parameter.aws_refresh_key.arn
         }
       ]
 

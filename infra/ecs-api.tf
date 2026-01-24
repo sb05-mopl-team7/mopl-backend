@@ -1,4 +1,10 @@
 # ECS Service (API)
+locals {
+  api_name           = "${var.project_name}-api"
+  api_container_name = "${var.project_name}-api"
+}
+
+# ----------------------------------------------------------------------
 
 resource "aws_ecs_service" "api" {
   name            = local.api_name
@@ -25,11 +31,7 @@ resource "aws_ecs_service" "api" {
   deployment_maximum_percent         = 200
 }
 
-
-locals {
-  api_name           = "${var.project_name}-api"
-  api_container_name = "${var.project_name}-api"
-}
+# ----------------------------------------------------------------------
 
 # ECS Task Definition (API)
 resource "aws_ecs_task_definition" "api" {
@@ -39,13 +41,13 @@ resource "aws_ecs_task_definition" "api" {
   cpu                      = 1024
   memory                   = 2048
 
-  execution_role_arn = aws_iam_role.tools_broker_ssm_role.arn
-  task_role_arn      = null
+  execution_role_arn = aws_iam_role.ecs_execution_role.arn
+  task_role_arn      = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
       name      = local.api_container_name
-      image     = "376798132526.dkr.ecr.ap-northeast-2.amazonaws.com/mopl-api:release-${var.api_image_uri}" # CD에서 입력
+      image     = "${data.aws_ecr_repository.mopl_api.repository_url}:release-${var.api_image_uri}"
       essential = true
 
       # 컨테이너 실행 시 주입될 환경변수
@@ -65,14 +67,6 @@ resource "aws_ecs_task_definition" "api" {
         {
           name = "JWT_REFRESH_SECRET"
           valueFrom = data.aws_ssm_parameter.refresh_secret.arn
-        },
-        {
-          name = "AWS_ACCESS_KEY"
-          valueFrom = data.aws_ssm_parameter.aws_access_key.arn
-        },
-        {
-          name = "AWS_SECRET_KEY"
-          valueFrom = data.aws_ssm_parameter.aws_refresh_key.arn
         }
       ]
 

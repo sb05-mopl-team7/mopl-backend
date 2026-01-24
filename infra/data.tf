@@ -19,16 +19,6 @@ data "aws_ssm_parameter" "refresh_secret" {
   with_decryption = true
 }
 
-data "aws_ssm_parameter" "aws_access_key" {
-  name = "/mopl/prod/aws_access_key"
-  with_decryption = true
-}
-
-data "aws_ssm_parameter" "aws_refresh_key" {
-  name = "/mopl/prod/aws_refresh_key"
-  with_decryption = true
-}
-
 data "aws_ssm_parameter" "aws_region" {
   name = "/mopl/prod/aws_region"
   with_decryption = true
@@ -63,4 +53,16 @@ data "aws_ami" "amazon_linux_2023" {
 
 data "aws_cloudfront_distribution" "front" {
   id = "E263BP4SCXEFZR"
+}
+
+data "aws_ecr_repository" "mopl_api" {
+  name = "mopl-api"
+}
+
+data "aws_ecr_repository" "mopl_batch" {
+  name = "mopl-batch"
+}
+
+data "aws_ecr_repository" "mopl_chat" {
+  name = "mopl-chat"
 }

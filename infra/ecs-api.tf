@@ -25,6 +25,11 @@ resource "aws_ecs_service" "api" {
     container_port   = 8080
   }
 
+  # ECS의 IP 고정
+  service_registries {
+    registry_arn = aws_service_discovery_service.api.arn
+  }
+
   # 애플리케이션 가동 후 첫 3분 동안은 헬스체크 실패를 무시
   health_check_grace_period_seconds = 180
   deployment_minimum_healthy_percent = 50

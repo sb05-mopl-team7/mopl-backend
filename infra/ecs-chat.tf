@@ -24,6 +24,12 @@ resource "aws_ecs_service" "chat" {
     container_name   = local.chat_container_name
     container_port   = 8082
   }
+
+  # ECS의 IP 고정
+  service_registries {
+    registry_arn = aws_service_discovery_service.chat.arn
+  }
+
   health_check_grace_period_seconds = 180
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200

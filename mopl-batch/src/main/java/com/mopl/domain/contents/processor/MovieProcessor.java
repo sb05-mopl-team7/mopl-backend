@@ -4,6 +4,8 @@ import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.entity.Tag;
 import com.mopl.domain.content.enums.ContentType;
 import com.mopl.domain.content.repository.TagRepository;
+import com.mopl.domain.contents.dto.tmdb.KeywordDto;
+import com.mopl.domain.contents.dto.tmdb.TmdbDetailDto;
 import com.mopl.domain.contents.openapi.TmdbClient;
 import com.mopl.global.s3.FileCategory;
 import com.mopl.global.s3.S3Manager;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 import static com.mopl.domain.contents.dto.tmdb.KeywordDto.tagCache;
+
 
 @Slf4j
 @Component
@@ -43,40 +46,53 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
     @Override
     public Content process(Long movieId) throws Exception {
         try {
-            return tmdbClient.getMovieDetails(movieId)
-                    .filter(movie -> movie.description() != null && !movie.description().isBlank())
-                    .map(movie -> {
+            TmdbDetailDto movie = tmdbClient.getMovieDetails(movieId)
+                    .filter(m -> m.description() != null && !m.description().isBlank()).block();
 
-                        // 웹에서 받은 이미지를 byte[]로 변환
-                        byte[] imageBytes = imageDownloadUtil
-                            .downloadImage("https://image.tmdb.org/t/p/w200" + movie.thumbnailUrl());
-                        String imageName = movie.thumbnailUrl();
-                        String thumbnailUrl = s3Manager.uploadByte(imageBytes, imageName, FileCategory.CONTENT_THUMBNAIL);
+            if(movie == null) {
+                log.info("영화 상세 정보가 없어 처리를 건너뜁니다. - ID: {}", movieId);
+                return null;
+            }
 
-                        Content content = new Content(
-                                ContentType.movie,
-                                movie.title(),
-                                movie.description(),
-                                thumbnailUrl
-                        );
+            String thumbnailUrl = getThumbnailUrl(movie.thumbnailUrl());
 
-                        // 태그 추가
-                        movie.genres().stream()
-                            .distinct()
-                            .forEach(genre -> {
-                                Tag tag = tagCache.computeIfAbsent(genre.name(), name -> {
-                                    Tag newTag = new Tag(name);
-                                    return tagRepository.save(newTag);
-                                });
-                                content.addTag(tag);
-                            });
+            Content content = new Content(
+                ContentType.movie,
+                movie.id(),             //  originId 설정
+                movie.title(),
+                movie.description(),
+                thumbnailUrl
+            );
 
-                        return content;
-                })
-                .block();
+            saveTag(movie.genres(), content);
+
+            log.info("새로운 영화 - ID: {}, 제목: {}", movieId, movie.title());
+            return content;
+
         } catch (Exception e) {
             log.error("영화 상세 정보 조회 실패 - ID: {}, 사유: {}", movieId, e.getMessage());
             return null; // null을 리턴하면 해당 아이템은 Writer로 넘어가지 않고 필터링됨
         }
     }
+
+    private String getThumbnailUrl(String imageUrl) {
+        String baseUrl = "https://image.tmdb.org/t/p/w500";
+        // 웹에서 받은 이미지를 byte[]로 변환
+        byte[] imageBytes = imageDownloadUtil.downloadImage(baseUrl + imageUrl);
+        return s3Manager.uploadByte(imageBytes, imageUrl, FileCategory.CONTENT_THUMBNAIL);
+    }
+
+    private void saveTag(List<KeywordDto> genreList, Content content) {
+        genreList.stream()
+            .distinct()
+            .forEach(genre -> {
+                Tag tag = tagCache.get(genre.name());
+                if (tag == null) {
+                    tag = tagRepository.save(new Tag(genre.name()));
+                    tagCache.put(genre.name(), tag);
+                }
+                content.addTag(tag);
+            });
+    }
 }
+

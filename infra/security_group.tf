@@ -76,6 +76,22 @@ resource "aws_security_group" "ecs" {
   }
 }
 
+# EC2(모니터링)가 8080~8082로 ECS에 들어올 수 있도록 허용
+resource "aws_security_group_rule" "allow_prometheus_to_ecs" {
+  type                     = "ingress"
+  from_port                = 8080
+  to_port                  = 8082
+  protocol                 = "tcp"
+
+  # 규칙을 붙일 보안 그룹 (ECS)
+  security_group_id        = aws_security_group.ecs.id
+
+  # 허용할 대상 (EC2 모니터링 서버)
+  source_security_group_id = aws_security_group.ec2.id
+
+  description              = "Allow Prometheus(EC2) to access ECS Actuator"
+}
+
 # EC2 Security Group
 resource "aws_security_group" "ec2" {
   name        = "${var.project_name}-ec2-sg"

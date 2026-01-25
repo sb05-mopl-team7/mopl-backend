@@ -67,13 +67,14 @@ resource "aws_ecs_task_definition" "batch" {
 }
 
 
-# EventBridge Schedule Rule
+# 7:00 ECS Task 자동으로 실행하도록 설정
 resource "aws_cloudwatch_event_rule" "batch_schedule" {
   name                = "mopl-batch-daily-7am"
   description         = "Run batch task every day at 07:00"
   schedule_expression = "cron(0 22 * * ? *)"
 }
 
+# 무엇을 실행할지 결정 - batch task
 resource "aws_cloudwatch_event_target" "batch_target" {
   rule      = aws_cloudwatch_event_rule.batch_schedule.name
   target_id = "mopl-batch"

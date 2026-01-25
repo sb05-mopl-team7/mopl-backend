@@ -132,7 +132,11 @@ resource "aws_iam_role_policy" "eventbridge_ecs_policy" {
         Action = [
           "ecs:RunTask"
         ]
-        Resource = aws_ecs_task_definition.batch.arn
+        Resource = [
+          aws_ecs_task_definition.batch.arn,
+          "${aws_ecs_task_definition.batch.arn}:*"
+        ]
+
       },
       {
         Effect = "Allow"

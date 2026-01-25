@@ -6,11 +6,9 @@ logging:
 jwt:
   cookie:
     secure: true   # HTTPS 강제
-    same-site: Lax # 또는 Strict
+    same-site: None # 또는 Strict
 
 aws:
-  accessKeyId: ${AWS_ACCESS_KEY}
-  secretKey: ${AWS_SECRET_KEY}
   region: ${AWS_REGION}
   s3:
     bucket: ${AWS_S3_BUCKET} #버킷이름

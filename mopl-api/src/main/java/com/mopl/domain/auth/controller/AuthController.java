@@ -3,6 +3,8 @@ package com.mopl.domain.auth.controller;
 import com.mopl.domain.auth.dto.*;
 import com.mopl.domain.auth.service.AuthService;
 import com.mopl.domain.auth.service.EmailService;
+import com.mopl.global.exception.ErrorCode;
+import com.mopl.global.exception.MoplException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +27,7 @@ public class AuthController {
     @Value("${jwt.cookie.secure}")
     private boolean cookieSecure;
 
-    @Value("${jwt.cookie.same-site:Lax}")  // 기본값 Lax
+    @Value("${jwt.cookie.same-site:None}")  // 기본값 Lax
     private String cookieSameSite;
 
     private static final int REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 14; // 2주
@@ -54,8 +56,11 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<JwtDto> refresh(@CookieValue("REFRESH_TOKEN") String refreshToken,
+    public ResponseEntity<JwtDto> refresh(@CookieValue(value = "REFRESH_TOKEN", required = false) String refreshToken,
                                           HttpServletResponse response) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new MoplException(ErrorCode.UNAUTHORIZED);
+        }
         TokenResultDto tokenDto = authService.refresh(refreshToken);
         addTokenCookie(response, "REFRESH_TOKEN", tokenDto.refreshToken(), REFRESH_TOKEN_MAX_AGE);
         return ResponseEntity.ok().body(tokenDto.jwtDto());

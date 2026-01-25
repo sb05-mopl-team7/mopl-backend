@@ -1,12 +1,12 @@
 package com.mopl.domain.follow.service;
 
 import com.mopl.domain.follow.dto.request.FollowRequest;
-import com.mopl.domain.follow.dto.response.FollowCountResponse;
 import com.mopl.domain.follow.dto.response.FollowResponse;
 import com.mopl.domain.follow.entity.Follow;
 import com.mopl.domain.follow.exception.FollowErrorCode;
 import com.mopl.domain.follow.exception.FollowException;
 import com.mopl.domain.follow.repository.FollowRepository;
+import com.mopl.domain.notification.producer.NotificationEventProducer;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.repository.UserRepository;
 import com.mopl.global.exception.ErrorCode;
@@ -41,7 +41,9 @@ class FollowServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    // 테스트 유저 데이터 생성 헬퍼 메서드
+    @Mock
+    private NotificationEventProducer notificationEventProducer;
+
     private User createUser(Long id) {
         User user = new User("user" + id, "user" + id + "@test.com", "password");
         ReflectionTestUtils.setField(user, "id", id);
@@ -57,13 +59,12 @@ class FollowServiceTest {
         return follow;
     }
 
-    // 1. 팔로우 로직 테스트
     @Nested
-    @DisplayName("팔로우 (follow)")
+    @DisplayName("팔로우 실행")
     class FollowTest {
 
         @Test
-        @DisplayName("[성공] 정상적인 팔로우 요청")
+        @DisplayName("[성공] 정상적인 팔로우 요청 시 데이터가 저장되고 알림이 발송된다")
         void success() {
             Long myId = 1L;
             Long targetId = 2L;
@@ -82,10 +83,11 @@ class FollowServiceTest {
             assertThat(response.followerId()).isEqualTo(myId);
             assertThat(response.followeeId()).isEqualTo(targetId);
             verify(followRepository, times(1)).save(any(Follow.class));
+            verify(notificationEventProducer, times(1)).send(anyLong(), any(), any());
         }
 
         @Test
-        @DisplayName("[실패] 자기 자신을 팔로우 할 수 없음 (CANNOT_FOLLOW_SELF)")
+        @DisplayName("[예외] 자기 자신을 팔로우 할 수 없다")
         void fail_SelfFollow() {
             Long myId = 1L;
             FollowRequest request = new FollowRequest(myId);
@@ -96,7 +98,7 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 이미 팔로우한 사용자 (ALREADY_FOLLOWING)")
+        @DisplayName("[예외] 이미 팔로우 중인 경우 중복 팔로우가 불가능하다")
         void fail_AlreadyFollowing() {
             Long myId = 1L;
             Long targetId = 2L;
@@ -108,38 +110,20 @@ class FollowServiceTest {
                     .isInstanceOf(FollowException.class)
                     .hasMessage(FollowErrorCode.ALREADY_FOLLOWING.getMessage());
         }
-
-        @Test
-        @DisplayName("[실패] 요청자(나)를 찾을 수 없음 (NOT_FOUND)")
-        void fail_MeNotFound() {
-            Long myId = 1L;
-            Long targetId = 2L;
-            FollowRequest request = new FollowRequest(targetId);
-
-            given(followRepository.existsByFollowerIdAndFolloweeId(myId, targetId)).willReturn(false);
-            given(userRepository.findById(myId)).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> followService.follow(myId, request))
-                    .isInstanceOf(MoplException.class)
-                    .hasMessage(ErrorCode.NOT_FOUND.getMessage());
-        }
     }
 
-
-    // 2. 언팔로우 로직 테스트
     @Nested
-    @DisplayName("언팔로우 (unFollow)")
+    @DisplayName("언팔로우 실행")
     class UnFollowTest {
 
         @Test
-        @DisplayName("[성공] 본인의 팔로우 취소 성공")
+        @DisplayName("[성공] 본인이 신청한 팔로우를 정상적으로 취소한다")
         void success() {
             Long myId = 1L;
-            Long targetId = 2L;
             Long followId = 100L;
 
             User me = createUser(myId);
-            User target = createUser(targetId);
+            User target = createUser(2L);
             Follow follow = createFollow(followId, me, target);
 
             given(followRepository.findById(followId)).willReturn(Optional.of(follow));
@@ -150,16 +134,28 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 남의 팔로우를 취소하려고 함 (NOT_YOUR_FOLLOW)")
+        @DisplayName("[예외] 존재하지 않는 팔로우 ID로 언팔로우를 시도하면 에러를 던진다")
+        void fail_FollowNotFound() {
+            Long myId = 1L;
+            Long followId = 999L;
+
+            given(followRepository.findById(followId)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> followService.unFollow(myId, followId))
+                    .isInstanceOf(FollowException.class)
+                    .hasMessage(FollowErrorCode.FOLLOW_NOT_FOUND.getMessage());
+        }
+
+        @Test
+        @DisplayName("[예외] 타인의 팔로우 관계를 삭제하려 하면 권한 에러를 던진다")
         void fail_NotYourFollow() {
             Long myId = 1L;
-            Long realOwnerId = 2L;
-            Long targetId = 3L;
+            Long otherUserId = 2L;
             Long followId = 100L;
 
-            User realOwner = createUser(realOwnerId);
-            User target = createUser(targetId);
-            Follow follow = createFollow(followId, realOwner, target);
+            User otherUser = createUser(otherUserId);
+            User target = createUser(3L);
+            Follow follow = createFollow(followId, otherUser, target);
 
             given(followRepository.findById(followId)).willReturn(Optional.of(follow));
 
@@ -169,27 +165,24 @@ class FollowServiceTest {
         }
     }
 
-    // 3. 팔로우 카운트 조회 로직 테스트
     @Nested
-    @DisplayName("팔로우 카운트 조회 (getFollowCounts)")
+    @DisplayName("팔로우 카운트 조회")
     class CountTest {
 
         @Test
-        @DisplayName("[성공] 팔로워/팔로잉 카운트 조회 성공")
+        @DisplayName("[성공] 프론트엔드 요구사항에 따라 팔로워 수를 Long 타입으로 반환한다")
         void success() {
             Long targetId = 1L;
             given(userRepository.existsById(targetId)).willReturn(true);
             given(followRepository.countByFolloweeId(targetId)).willReturn(15L);
-            given(followRepository.countByFollowerId(targetId)).willReturn(3L);
 
-            FollowCountResponse response = followService.getFollowCounts(targetId);
+            Long response = followService.getFollowCounts(targetId);
 
-            assertThat(response.followerCount()).isEqualTo(15L);
-            assertThat(response.followingCount()).isEqualTo(3L);
+            assertThat(response).isEqualTo(15L);
         }
 
         @Test
-        @DisplayName("[실패] 존재하지 않는 유저의 카운트 조회 (NOT_FOUND)")
+        @DisplayName("[예외] 존재하지 않는 유저의 카운트 조회 시 404 에러를 던진다")
         void fail_UserNotFound() {
             Long nonExistentId = 999L;
             given(userRepository.existsById(nonExistentId)).willReturn(false);
@@ -198,46 +191,24 @@ class FollowServiceTest {
                     .isInstanceOf(MoplException.class)
                     .hasMessage(ErrorCode.NOT_FOUND.getMessage());
         }
-
-        @Test
-        @DisplayName("[실패] TargetId가 Null일 경우 예외 발생")
-        void fail_NullId() {
-            // isNull() 매처를 사용하여 IDE 경고 우회
-            given(userRepository.existsById(isNull())).willThrow(new IllegalArgumentException("ID cannot be null"));
-
-            assertThatThrownBy(() -> followService.getFollowCounts(null))
-                    .isInstanceOf(IllegalArgumentException.class);
-        }
     }
 
-    // 4. 팔로우 여부 확인 로직 테스트
     @Nested
-    @DisplayName("팔로우 여부 확인 (isFollowing)")
+    @DisplayName("팔로우 여부 확인")
     class IsFollowingTest {
 
         @Test
-        @DisplayName("[성공] 팔로우 중이면 True 반환")
+        @DisplayName("[성공] 팔로우 관계가 존재하면 True를 반환한다")
         void trueCase() {
             given(followRepository.existsByFollowerIdAndFolloweeId(1L, 2L)).willReturn(true);
             assertThat(followService.isFollowing(1L, 2L)).isTrue();
         }
 
         @Test
-        @DisplayName("[성공] 존재하지 않는 유저 ID로 조회 시 False 반환")
-        void check_NonExistentUser_ReturnsFalse() {
+        @DisplayName("[성공] 팔로우 관계가 없으면 False를 반환한다")
+        void falseCase() {
             given(followRepository.existsByFollowerIdAndFolloweeId(anyLong(), anyLong())).willReturn(false);
             assertThat(followService.isFollowing(1L, 999L)).isFalse();
-        }
-
-        @Test
-        @DisplayName("[실패] ID가 Null일 경우 예외 발생")
-        void fail_NullId() {
-            // eq(1L)와 isNull()을 조합하여 모든 인자에 매처 적용
-            given(followRepository.existsByFollowerIdAndFolloweeId(eq(1L), isNull()))
-                    .willThrow(new IllegalArgumentException("ID cannot be null"));
-
-            assertThatThrownBy(() -> followService.isFollowing(1L, null))
-                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }

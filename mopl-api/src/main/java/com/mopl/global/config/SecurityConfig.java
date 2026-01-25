@@ -3,10 +3,12 @@ package com.mopl.global.config;
 import com.mopl.domain.auth.exception.JwtAuthenticationEntryPoint;
 import com.mopl.domain.auth.jwt.JwtFilter;
 import com.mopl.domain.auth.jwt.JwtTokenProvider;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -40,21 +42,25 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
-                                .ignoringRequestMatchers(
-                                        "/api/auth/sign-in",
-                                        "/api/auth/reset-password",
-                                        "/api/auth/refresh",
-                                        "/api/auth/sign-out",
-                                        "/api/users"
-                                )
-                                .ignoringRequestMatchers(
-                                        "/h2-console/**"
-                                )
-                                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                                .csrfTokenRequestHandler(requestHandler)
+                        .ignoringRequestMatchers(
+                                "/api/auth/sign-in",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh",
+                                "/api/auth/sign-out",
+                                "/api/users",
+                                "/health"
+                        )
+                        .ignoringRequestMatchers(
+                                "/h2-console/**"
+                        )
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(requestHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers(
                                 "/api-docs/**",
                                 "/swagger-ui/**",
@@ -73,7 +79,8 @@ public class SecurityConfig {
                                 "/api/auth/sign-out",
                                 "/api/auth/reset-password",
                                 "/api/auth/refresh",
-                                "/api/auth/csrf-token" // 로그아웃 후 호출
+                                "/api/auth/csrf-token", // 로그아웃 후 호출
+                                "/health"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
                         .anyRequest().authenticated()

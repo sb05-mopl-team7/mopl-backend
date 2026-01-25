@@ -7,7 +7,3 @@ jwt:
   cookie:
     secure: false
     same-site: Lax
-
-file:
-  upload-dir: ./uploads
-  base-url: http://localhost:8080/files

@@ -18,7 +18,11 @@ public enum RedisNameSpace {
     WATCHER_COUNT("watcher:", Duration.ofHours(1), false),
 
     // DM 채팅방 접속자 명단 Set
-    DM_VIEWERS("dm-chat:viewer:", Duration.ofHours(2), true),;
+    DM_VIEWERS("dm-chat:viewer:", Duration.ofHours(2), true),
+
+    // 세션용
+    CONTENT_SESSIONS("content:sessions:", Duration.ofHours(1), true),
+    WATCHING_SESSION("watching_session:", Duration.ofHours(1), true);
 
     private final String prefix;
     private final Duration ttl;

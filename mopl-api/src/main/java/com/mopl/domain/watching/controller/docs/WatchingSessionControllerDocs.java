@@ -20,39 +20,51 @@ public interface WatchingSessionControllerDocs {
 
     @Operation(
             summary = "특정 사용자의 시청 세션 조회",
-            description = "특정 사용자가 현재 실시간으로 시청 중인 콘텐츠 정보를 조회합니다. 시청 중인 정보가 없을 경우 null을 반환합니다."
+            description = "특정 사용자가 현재 실시간으로 시청 중인 콘텐츠 정보를 조회합니다. 시청 중이지 않을 경우 응답 바디가 비어있을 수 있습니다."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공 (시청 중이지 않을 경우 응답 바디가 비어있을 수 있음)"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터 (ID 형식 오류 등)"),
-            @ApiResponse(responseCode = "401", description = "인증 오류 (로그인 필요)"),
-            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
-            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "204", description = "시청 중인 세션 없음"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
+            @ApiResponse(responseCode = "401", description = "인증 오류"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음")
     })
     @GetMapping("/users/{watcherId}/watching-sessions")
     ResponseEntity<WatchingSessionUserResponse> getWatchingSession(
-            @Parameter(description = "조회할 사용자 ID", required = true)
+            @Parameter(description = "조회할 사용자 ID (Long)", required = true, example = "123")
             @PathVariable Long watcherId
     );
 
     @Operation(
             summary = "특정 콘텐츠의 시청 세션 목록 조회",
-            description = "특정 콘텐츠를 현재 시청 중인 사용자들의 목록을 커서 기반 페이지네이션으로 조회합니다."
+            description = "특정 콘텐츠를 현재 시청 중인 사용자 목록을 커서 기반 페이지네이션으로 조회합니다."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터 (ID 형식 오류 등)"),
-            @ApiResponse(responseCode = "401", description = "인증 오류 (로그인 필요)"),
-            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
+            @ApiResponse(responseCode = "401", description = "인증 오류")
     })
     @GetMapping("/contents/{contentId}/watching-sessions")
     ResponseEntity<WatchingSessionContentListResponse> getWatchingSessionsByContent(
-            @Parameter(description = "콘텐츠 ID", required = true) @PathVariable Long contentId,
-            @Parameter(description = "시청자 이름 검색 (부분 일치)") @RequestParam(required = false) String watcherNameLike,
-            @Parameter(description = "페이지네이션 커서 (전페이지 마지막 데이터의 createdAt)") @RequestParam(required = false) String cursor,
-            @Parameter(description = "보조 커서 (전페이지 마지막 데이터의 watcherId)") @RequestParam(required = false) Long idAfter,
-            @Parameter(description = "조회 개수", required = true) @RequestParam(defaultValue = "10") Integer limit,
-            @Parameter(description = "정렬 기준", required = true) @RequestParam(defaultValue = "createdAt") String sortBy,
-            @Parameter(description = "정렬 방향", required = true) @RequestParam(defaultValue = "DESCENDING") SortDirection sortDirection
+            @Parameter(description = "콘텐츠 ID (Long)", required = true, example = "456")
+            @PathVariable Long contentId,
+
+            @Parameter(description = "시청자 이름 검색 (부분 일치)")
+            @RequestParam(required = false) String watcherNameLike,
+
+            @Parameter(description = "페이지네이션 커서 (전페이지 마지막 데이터의 createdAt, ISO-8601 형식)", example = "2026-01-19T06:46:27.803")
+            @RequestParam(required = false) String cursor,
+
+            @Parameter(description = "보조 커서 (전페이지 마지막 데이터의 watcherId)", example = "123")
+            @RequestParam(required = false) Long idAfter,
+
+            @Parameter(description = "조회 개수", required = true, example = "10")
+            @RequestParam(defaultValue = "10") Integer limit,
+
+            @Parameter(description = "정렬 기준 (현재 createdAt만 지원)")
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+
+            @Parameter(description = "정렬 방향", required = true)
+            @RequestParam(defaultValue = "DESCENDING") SortDirection sortDirection
     );
 }

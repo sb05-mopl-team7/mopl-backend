@@ -71,7 +71,7 @@ resource "aws_ecs_task_definition" "batch" {
 resource "aws_cloudwatch_event_rule" "batch_schedule" {
   name                = "mopl-batch-daily-7am"
   description         = "Run batch task every day at 07:00"
-  schedule_expression = "cron(0 7 * * ? *)"
+  schedule_expression = "cron(0 22 * * ? *)"
 }
 
 resource "aws_cloudwatch_event_target" "batch_target" {

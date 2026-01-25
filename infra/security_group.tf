@@ -36,7 +36,7 @@ resource "aws_security_group" "ecs" {
   vpc_id      = aws_vpc.main.id
 
   # 인바운드
-  # ECS ↔ ECS 내부 통신 허용
+  # 이 ecs SG을 가진 리소스들끼리는 모든 포트/모든 프로토콜로 서로 통신을 허용
   ingress {
     from_port = 0
     to_port   = 0
@@ -44,13 +44,14 @@ resource "aws_security_group" "ecs" {
     self      = true
   }
 
-  # 외부(ALB) → ECS(api)
+  # 외부(ALB, EC2) → ECS(api)
   ingress {
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
+
   # 외부(ALB) → ECS(batch)
   ingress {
     from_port       = 8081
@@ -80,6 +81,13 @@ resource "aws_security_group" "ec2" {
   name        = "${var.project_name}-ec2-sg"
   description = "Security group for EC2 (monitoring / Redis / Kafka)"
   vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    self      = true
+  }
 
   # Grafana (ECS → Grafana)
   ingress {

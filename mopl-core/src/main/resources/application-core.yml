@@ -42,3 +42,12 @@ mopl:
     consumer:
       dm-group-id: api-dm-consumer-group # DM용 그룹 id
       noti-group-id: api-noti-consumer-group # 알림용 그룹 id
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always

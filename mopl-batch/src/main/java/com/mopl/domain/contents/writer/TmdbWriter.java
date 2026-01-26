@@ -18,14 +18,14 @@ public class TmdbWriter implements ItemWriter<Content> {
 
     @Override
     public void write(@NonNull Chunk<? extends Content> contents) {
+
         if(contents.isEmpty()) return;
 
-        log.info("콘텐츠 DB에 저장중 {}", contents.size());
-        try {
-            contentRepository.saveAll(contents.getItems());
-        } catch (Exception e) {
-            log.error("DB 저장 중 오류 발생: {}", e.getMessage());
-            throw e;
-        }
+        log.info("콘텐츠 DB 저장 시도: {}건", contents.size());
+
+        contentRepository.saveAll(contents.getItems());
+
+        log.info("콘텐츠 DB 저장 완료: {}건", contents.size());
+
     }
 }

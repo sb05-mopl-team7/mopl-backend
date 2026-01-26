@@ -12,6 +12,7 @@ import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
@@ -39,6 +40,9 @@ public class MovieBatchJob {
                 .reader(tmdbReader)
                 .processor(tmdbProcessor)
                 .writer(tmdbWriter)
+                .faultTolerant()                                // 예외 허용 설정
+                .skip(DataIntegrityViolationException.class)    // 중복 에러나면
+                .skipLimit(100)                                 // 100개까지는 허용
                 .transactionManager(transactionManager)
                 .build();
     }

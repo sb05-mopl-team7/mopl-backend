@@ -3,6 +3,7 @@ package com.mopl.domain.contents.processor;
 import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.entity.Tag;
 import com.mopl.domain.content.enums.ContentType;
+import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.domain.contents.dto.sportDb.SportDbDto;
 import com.mopl.global.s3.FileCategory;
@@ -26,6 +27,7 @@ import static com.mopl.domain.contents.dto.tmdb.KeywordDto.tagCache;
 @RequiredArgsConstructor
 public class SportProcessor implements ItemProcessor<SportDbDto, Content> {
 
+    private final ContentRepository contentRepository;
     private final TagRepository tagRepository;
     private final ImageDownloadUtil imageDownloadUtil;
     private final S3Manager s3Manager;
@@ -35,48 +37,74 @@ public class SportProcessor implements ItemProcessor<SportDbDto, Content> {
         if (tagCache.isEmpty()) {
             List<Tag> allTags = tagRepository.findAll();
             allTags.forEach(tag -> tagCache.put(tag.getTag(), tag));
-            log.info("TV 시리즈 배치를 위해 태그 {}개를 캐시에 로드했습니다.", tagCache.size());
+            log.info("스포츠 배치를 위해 태그 {}개를 캐시에 로드했습니다.", tagCache.size());
         }
     }
 
     @Override
     public Content process(SportDbDto item) {
-        try{
-            // 웹에서 받은 이미지를 byte[]로 변환
-            byte[] imageBytes = imageDownloadUtil.downloadImage(item.thumbnailUrl());
-            String imageName = item.thumbnailUrl()
-                .substring(item.thumbnailUrl().lastIndexOf("/") + 1);
 
-            // S3에 썸네일 저장
-            String thumbnailUrl = s3Manager.uploadByte(imageBytes, imageName, FileCategory.CONTENT_THUMBNAIL);
+        if(contentRepository.existsByOriginIdAndContentType(item.id(), ContentType.sport)){
+            log.info(">>>> Skip: 이미 존재하는 콘텐츠 (ID: {})", item.id());
+            return null;
+        }
+
+        boolean exists = contentRepository
+                .existsByOriginIdAndContentType(item.id(), ContentType.sport);
+
+        if (exists) return null;
+
+        try {
+            String thumbnailUrl = getThumbnailUrl(item.thumbnailUrl());
 
             Content content = new Content(
-                ContentType.sport,
-                item.title(),
-                item.description(),
+                    ContentType.sport,
+                    item.id(),
+                    item.title(),
+                    item.description(),
                     thumbnailUrl
             );
 
-            // 1. SportDbDto에서 명시한 세 개의 필드만 추출
-            List<String> tagNames = Stream.of(item.strVenue(), item.strSport())
-                    .filter(name -> name != null && !name.isBlank())
-                    .distinct()
-                    .toList();
-
-            // 추출한 태그들을 순회하며 등록
-            tagNames.forEach(tagName -> {
-                Tag tag = tagCache.computeIfAbsent(tagName, name ->
-                        tagRepository.findByTag(name)
-                                .orElseGet(() -> tagRepository.save(new Tag(name)))
-                );
-                content.addTag(tag);
-            });
+            List<String> tagNames = getTagNames(item); // item에서 추출한 태그명
+            saveTag(tagNames, content);
 
             return content;
 
         } catch (Exception e) {
-            log.error("TV 시리즈 상세 정보 처리 실패 - ID: {}, 사유: {}", item.id(), e.getMessage());
-            return null; // 에러 발생 시 해당 아이템은 건너뜀
+            log.error("스포츠 정보 조회 실패 - ID: {}, 사유: {}", item.title(), e.getMessage());
+            return null;
         }
+    }
+
+    /**
+    * 웹에서 받은 이미지를 byte[]로 변환한 뒤 S3에 저장
+    * @return S3에 저장된 이미지 URL
+    * */
+    private String getThumbnailUrl(String imageUrl) {
+        byte[] imageBytes = imageDownloadUtil.downloadImage(imageUrl);
+        String imageName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+        return s3Manager.uploadByte(imageBytes, imageName, FileCategory.CONTENT_THUMBNAIL);
+    }
+
+    /** 필요한 태그명만 추출 (null, 빈 문자열 제거) */
+    private List<String> getTagNames(SportDbDto item) {
+        return Stream.of(item.strVenue(), item.strSport())
+                .filter(name -> name != null && !name.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    /** 태그 저장 */
+    private void saveTag(List<String> tagNames, Content content) {
+        tagNames.forEach(tagName -> {
+            Tag tag = tagCache.get(tagName);
+
+            if (tag == null) {
+                tag = tagRepository.save(new Tag(tagName)); // 새 태그 생성 + 즉시 저장
+                tagCache.put(tagName, tag);                 // cache 갱신
+            }
+
+            content.addTag(tag);
+        });
     }
 }

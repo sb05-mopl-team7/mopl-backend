@@ -8,9 +8,10 @@ import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -20,29 +21,41 @@ public class SportReader implements ItemReader<SportDbDto> {
 
     private final SportDbClient sportDbClient;
     private Iterator<SportDbDto> itemIterator;
-
-    private int page = 1;
-    private final int maxPage = 20;
+    private boolean initialized = false;
 
     @Override
-    public SportDbDto read() throws IOException {
-        if (itemIterator == null || !itemIterator.hasNext()) {
+    public SportDbDto read() {
 
-            if (page > maxPage) {
-                log.info("TMDB Reader: 최대 페이지 제한({})에 도달하여 읽기를 종료합니다.", maxPage);
-                return null;
+        if(!initialized) {
+            initialized = true;
+
+            log.info("Sport DB API 호출 시작");
+
+            List<SportDbDto> sportList;
+            try {
+                sportList = sportDbClient.getSportsEventSeason().block();
+            } catch (Exception e) {
+                log.error("Sport DB API 호출 실패", e);
+                throw e;
             }
 
-            log.debug("TMDB API 호출 중... page: {}", page);
-            List<SportDbDto> tvSeriesList = sportDbClient.getSportsEventSeason().block();
+            if (sportList == null || sportList.isEmpty()) {
+                log.warn("Sport DB API 응답 데이터 없음");
+                return null; // 정상 종료
+            }
 
-            // 더 이상 데이터 없으면 배치 종료
-            if (tvSeriesList == null || tvSeriesList.isEmpty()) return null;
+            // API 응답 내 중복 제거
+            Set<Long> seen = new HashSet<>();
+            List<SportDbDto> deduped = sportList.stream()
+                    .filter(dto -> seen.add(dto.id()))
+                    .toList();
 
-            this.itemIterator = tvSeriesList.iterator();
-            this.page++;
-
+            log.info("Sport API {}건 → dedup {}건", sportList.size(), deduped.size());
+            itemIterator = deduped.iterator();
         }
-        return itemIterator.next();
+
+        return (itemIterator != null && itemIterator.hasNext())
+                ? itemIterator.next()
+                : null;
     }
 }

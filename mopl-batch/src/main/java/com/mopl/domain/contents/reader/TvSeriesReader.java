@@ -26,23 +26,26 @@ public class TvSeriesReader implements ItemReader<TvSeriesDto> {
 
     @Override
     public TvSeriesDto read() throws IOException {
-        if (itemIterator == null || !itemIterator.hasNext()) {
 
-            if (page > maxPage) {
-                log.info("TMDB Reader: 최대 페이지 제한({})에 도달하여 읽기를 종료합니다.", maxPage);
+        while (itemIterator == null || !itemIterator.hasNext()) {
+            if(page > maxPage) {
+                log.info("TvSeries Reader 종료 (page={})", page);
                 return null;
             }
 
-            log.debug("TMDB API 호출 중... page: {}", page);
-            List<TvSeriesDto> tvSeriesList = tmdbClient.getPopularTvSeriesIdList(page).block();
+            log.info("TMDB API 호출 page={}", page);
+            List<TvSeriesDto> contentList = tmdbClient.getPopularTvSeriesIdList(page).block();
 
-            // 더 이상 데이터 없으면 배치 종료
-            if (tvSeriesList == null || tvSeriesList.isEmpty()) return null;
+            if (contentList == null || contentList.isEmpty()) {
+                log.warn("TMDB page {} 응답 데이터 없음", page - 1);
+                page++;
+                continue;
+            }
 
-            this.itemIterator = tvSeriesList.iterator();
-            this.page++;
-
+            page++;
+            itemIterator = contentList.iterator();
         }
+
         return itemIterator.next();
     }
 }

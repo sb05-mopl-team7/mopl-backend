@@ -37,4 +37,4 @@ COPY --from=builder /build/mopl-batch/build/libs/*-SNAPSHOT.jar app.jar
 
 EXPOSE 8081
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

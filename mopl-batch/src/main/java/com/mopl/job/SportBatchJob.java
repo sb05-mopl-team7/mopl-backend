@@ -35,7 +35,7 @@ public class SportBatchJob {
 
     @Bean
     public Step sportStep() {
-        return new StepBuilder("tvSeriesStep", jobRepository)
+        return new StepBuilder("sportStep", jobRepository)
                 .<SportDbDto, Content>chunk(10)
                 .reader(sportReader)
                 .processor(sportProcessor)

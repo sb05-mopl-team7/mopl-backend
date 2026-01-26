@@ -45,34 +45,35 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
 
     @Override
     public Content process(Long movieId) throws Exception {
+
+        TmdbDetailDto movie;
         try {
-            TmdbDetailDto movie = tmdbClient.getMovieDetails(movieId)
-                    .filter(m -> m.description() != null && !m.description().isBlank()).block();
+            movie = tmdbClient.getMovieDetails(movieId).block();
+        } catch (Exception e) {
+            log.error("영화 상세 정보 조회 실패 - {}", e.getMessage());
+            throw e;
+        }
 
-            if(movie == null) {
-                log.info("영화 상세 정보가 없어 처리를 건너뜁니다. - ID: {}", movieId);
-                return null;
-            }
+        if(movie == null || movie.description() == null || movie.description().isBlank()) {
+            log.info("영화 상세 정보가 없어 처리를 건너뜁니다. - ID: {}", movieId);
+            return null;
+        }
 
-            String thumbnailUrl = getThumbnailUrl(movie.thumbnailUrl());
+        String thumbnailUrl = getThumbnailUrl(movie.thumbnailUrl());
 
-            Content content = new Content(
+        Content content = new Content(
                 ContentType.movie,
                 movie.id(),             //  originId 설정
                 movie.title(),
                 movie.description(),
                 thumbnailUrl
-            );
+        );
 
-            saveTag(movie.genres(), content);
+        saveTag(movie.genres(), content);
 
-            log.info("새로운 영화 - ID: {}, 제목: {}", movieId, movie.title());
-            return content;
+        log.info("새로운 영화 - ID: {}, 제목: {}", movieId, movie.title());
+        return content;
 
-        } catch (Exception e) {
-            log.error("영화 상세 정보 조회 실패 - ID: {}, 사유: {}", movieId, e.getMessage());
-            return null; // null을 리턴하면 해당 아이템은 Writer로 넘어가지 않고 필터링됨
-        }
     }
 
     private String getThumbnailUrl(String imageUrl) {

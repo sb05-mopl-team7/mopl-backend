@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SseManager {
 
     private final Map<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
-    private static final Long DEFAULT_TIMEOUT = 45_000L; // 프론트의 재연결 주기 기준
+    private static final Long DEFAULT_TIMEOUT = 60 * 60 * 1000L; // 1시간
 
     /**
      * 클라이언트와 서버 간의 SSE 파이프라인을 생성하고 관리합니다.
@@ -62,6 +62,10 @@ public class SseManager {
         }
     }
 
+    public void sendHeartbeat() {
+        emitters.forEach((userId, emitter) -> sendToClient(emitter, "heartbeat", "ping"));
+    }
+
     private void sendToClient(SseEmitter emitter, String id, String name, Object data) {
         try {
             emitter.send(SseEmitter.event()
@@ -79,6 +83,7 @@ public class SseManager {
         try {
             emitter.send(SseEmitter.event().name(name).data(data));
         } catch (IOException e) {
+            log.warn("SSE 전송 실패 (클라이언트 연결 끊김) - Event: {}, Error: {}", name, e.getMessage());
             emitter.complete();
         }
     }

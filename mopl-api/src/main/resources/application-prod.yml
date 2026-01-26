@@ -7,8 +7,3 @@ jwt:
   cookie:
     secure: true   # HTTPS 강제
     same-site: None # 또는 Strict
-
-aws:
-  region: ${AWS_REGION}
-  s3:
-    bucket: ${AWS_S3_BUCKET} #버킷이름

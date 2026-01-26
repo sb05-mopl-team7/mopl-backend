@@ -3,6 +3,7 @@ package com.mopl.domain.contents.processor;
 import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.entity.Tag;
 import com.mopl.domain.content.enums.ContentType;
+import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.domain.contents.dto.tmdb.KeywordDto;
 import com.mopl.domain.contents.dto.tmdb.TvSeriesDto;
@@ -31,6 +32,7 @@ public class TvSeriesProcessor implements ItemProcessor<TvSeriesDto, Content> {
     private final TagRepository tagRepository;
     private final ImageDownloadUtil imageDownloadUtil;
     private final S3Manager s3Manager;
+    private final ContentRepository contentRepository;
 
     @BeforeStep
     public void beforeStep() {
@@ -43,6 +45,11 @@ public class TvSeriesProcessor implements ItemProcessor<TvSeriesDto, Content> {
 
     @Override
     public Content process(TvSeriesDto item) throws Exception {
+
+        if(contentRepository.existsByOriginIdAndContentType(item.id(), ContentType.tvSeries)){
+            log.info(">>>> Skip: 이미 존재하는 콘텐츠 (제목: {})", item.title());
+            return null;
+        }
 
         if(item.description() == null || item.description().isBlank()) {
             log.info("상세 정보가 없어 처리를 건너뜁니다. - ID: {} title: {}", item.id(), item.title());

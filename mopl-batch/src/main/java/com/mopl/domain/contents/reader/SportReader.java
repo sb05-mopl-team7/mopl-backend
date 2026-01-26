@@ -21,34 +21,41 @@ public class SportReader implements ItemReader<SportDbDto> {
 
     private final SportDbClient sportDbClient;
     private Iterator<SportDbDto> itemIterator;
-
+    private boolean initialized = false;
 
     @Override
     public SportDbDto read() {
-        if (itemIterator == null) {
+
+        if(!initialized) {
+            initialized = true;
+
+            log.info("Sport DB API 호출 시작");
+
+            List<SportDbDto> sportList;
             try {
-                log.info("Sport DB API 호출 시작");
-                List<SportDbDto> sportList = sportDbClient.getSportsEventSeason().block();
-
-                if (sportList == null || sportList.isEmpty()) {
-                    log.warn("API로부터 응답받은 데이터가 없습니다.");
-                    return null;
-                }
-
-                Set<Long> seen = new HashSet<>();
-
-                List<SportDbDto> deduped = sportList.stream()
-                        .filter(dto -> seen.add(dto.id()))
-                        .toList();
-
-                log.info("Sport API {}건 → dedup {}건", sportList.size(), deduped.size());
-                itemIterator = deduped.iterator();
-
+                sportList = sportDbClient.getSportsEventSeason().block();
             } catch (Exception e) {
-                log.error("Reader에서 예외 발생 - 원인: {}", e.getMessage(), e);
-                return null;
+                log.error("Sport DB API 호출 실패", e);
+                throw e;
             }
+
+            if (sportList == null || sportList.isEmpty()) {
+                log.warn("Sport DB API 응답 데이터 없음");
+                return null; // 정상 종료
+            }
+
+            // API 응답 내 중복 제거
+            Set<Long> seen = new HashSet<>();
+            List<SportDbDto> deduped = sportList.stream()
+                    .filter(dto -> seen.add(dto.id()))
+                    .toList();
+
+            log.info("Sport API {}건 → dedup {}건", sportList.size(), deduped.size());
+            itemIterator = deduped.iterator();
         }
-        return itemIterator.hasNext() ? itemIterator.next() : null;
+
+        return (itemIterator != null && itemIterator.hasNext())
+                ? itemIterator.next()
+                : null;
     }
 }

@@ -3,6 +3,7 @@ package com.mopl.domain.contents.processor;
 import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.entity.Tag;
 import com.mopl.domain.content.enums.ContentType;
+import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.domain.contents.dto.tmdb.KeywordDto;
 import com.mopl.domain.contents.dto.tmdb.TmdbDetailDto;
@@ -33,6 +34,7 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
     private final TagRepository tagRepository;
     private final ImageDownloadUtil imageDownloadUtil;
     private final S3Manager s3Manager;
+    private final ContentRepository contentRepository;
 
     @BeforeStep
     public void beforeStep(StepExecution stepExecution) {
@@ -45,34 +47,40 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
 
     @Override
     public Content process(Long movieId) throws Exception {
+
+        if(contentRepository.existsByOriginIdAndContentType(movieId, ContentType.movie)){
+            log.info(">>>> Skip: 이미 존재하는 콘텐츠 (ID: {})", movieId);
+            return null;
+        }
+
+        TmdbDetailDto movie;
         try {
-            TmdbDetailDto movie = tmdbClient.getMovieDetails(movieId)
-                    .filter(m -> m.description() != null && !m.description().isBlank()).block();
+            movie = tmdbClient.getMovieDetails(movieId).block();
+        } catch (Exception e) {
+            log.error("영화 상세 정보 조회 실패 - {}", e.getMessage());
+            throw e;
+        }
 
-            if(movie == null) {
-                log.info("영화 상세 정보가 없어 처리를 건너뜁니다. - ID: {}", movieId);
-                return null;
-            }
+        if(movie == null || movie.description() == null || movie.description().isBlank()) {
+            log.info("영화 상세 정보가 없어 처리를 건너뜁니다. - ID: {}", movieId);
+            return null;
+        }
 
-            String thumbnailUrl = getThumbnailUrl(movie.thumbnailUrl());
+        String thumbnailUrl = getThumbnailUrl(movie.thumbnailUrl());
 
-            Content content = new Content(
+        Content content = new Content(
                 ContentType.movie,
                 movie.id(),             //  originId 설정
                 movie.title(),
                 movie.description(),
                 thumbnailUrl
-            );
+        );
 
-            saveTag(movie.genres(), content);
+        saveTag(movie.genres(), content);
 
-            log.info("새로운 영화 - ID: {}, 제목: {}", movieId, movie.title());
-            return content;
+        log.info("새로운 영화 - ID: {}, 제목: {}", movieId, movie.title());
+        return content;
 
-        } catch (Exception e) {
-            log.error("영화 상세 정보 조회 실패 - ID: {}, 사유: {}", movieId, e.getMessage());
-            return null; // null을 리턴하면 해당 아이템은 Writer로 넘어가지 않고 필터링됨
-        }
     }
 
     private String getThumbnailUrl(String imageUrl) {

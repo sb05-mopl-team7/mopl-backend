@@ -22,7 +22,7 @@ public class TvSeriesReader implements ItemReader<TvSeriesDto> {
     private Iterator<TvSeriesDto> itemIterator;
 
     private int page = 1;
-    private final int maxPage = 10;
+    private final int maxPage = 20;
 
     @Override
     public TvSeriesDto read() throws IOException {

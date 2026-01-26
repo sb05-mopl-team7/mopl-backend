@@ -13,6 +13,7 @@ import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
@@ -40,8 +41,10 @@ public class SportBatchJob {
                 .reader(sportReader)
                 .processor(sportProcessor)
                 .writer(tmdbWriter)
+                .faultTolerant()                                // 예외 허용 설정
+                .skip(DataIntegrityViolationException.class)    // 중복 에러나면
+                .skipLimit(100)
                 .transactionManager(transactionManager)
-                .skipLimit(Integer.MAX_VALUE)
                 .build();
     }
 }

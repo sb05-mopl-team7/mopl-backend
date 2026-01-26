@@ -44,6 +44,11 @@ public class SportProcessor implements ItemProcessor<SportDbDto, Content> {
     @Override
     public Content process(SportDbDto item) {
 
+        if(contentRepository.existsByOriginIdAndContentType(item.id(), ContentType.sport)){
+            log.info(">>>> Skip: 이미 존재하는 콘텐츠 (ID: {})", item.id());
+            return null;
+        }
+
         boolean exists = contentRepository
                 .existsByOriginIdAndContentType(item.id(), ContentType.sport);
 

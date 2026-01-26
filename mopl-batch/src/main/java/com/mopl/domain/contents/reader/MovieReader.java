@@ -20,7 +20,7 @@ public class MovieReader implements ItemReader<Long> {
     private Iterator<Long> itemIterator;
 
     private int page = 1;
-    private final int maxPage = 30;
+    private final int maxPage = 50;
 
     @Override
     public Long read() {

@@ -3,6 +3,7 @@ package com.mopl.domain.contents.processor;
 import com.mopl.domain.content.entity.Content;
 import com.mopl.domain.content.entity.Tag;
 import com.mopl.domain.content.enums.ContentType;
+import com.mopl.domain.content.repository.ContentRepository;
 import com.mopl.domain.content.repository.TagRepository;
 import com.mopl.domain.contents.dto.tmdb.KeywordDto;
 import com.mopl.domain.contents.dto.tmdb.TmdbDetailDto;
@@ -33,6 +34,7 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
     private final TagRepository tagRepository;
     private final ImageDownloadUtil imageDownloadUtil;
     private final S3Manager s3Manager;
+    private final ContentRepository contentRepository;
 
     @BeforeStep
     public void beforeStep(StepExecution stepExecution) {
@@ -45,6 +47,11 @@ public class MovieProcessor implements ItemProcessor<Long, Content> {
 
     @Override
     public Content process(Long movieId) throws Exception {
+
+        if(contentRepository.existsByOriginIdAndContentType(movieId, ContentType.movie)){
+            log.info(">>>> Skip: 이미 존재하는 콘텐츠 (ID: {})", movieId);
+            return null;
+        }
 
         TmdbDetailDto movie;
         try {

@@ -66,6 +66,10 @@ resource "aws_ecs_task_definition" "chat" {
 
       environment = [
         {
+          name  = "TZ"
+          value = "Asia/Seoul"
+        },
+        {
           name  = "SPRING_PROFILES_ACTIVE"
           value = var.environment
         },

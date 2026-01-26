@@ -31,6 +31,10 @@ resource "aws_ecs_task_definition" "batch" {
 
       environment = [
         {
+          name  = "TZ"
+          value = "Asia/Seoul"
+        },
+        {
           name  = "SPRING_PROFILES_ACTIVE"
           value = var.environment  # 여기서 프로필을 결정
         },

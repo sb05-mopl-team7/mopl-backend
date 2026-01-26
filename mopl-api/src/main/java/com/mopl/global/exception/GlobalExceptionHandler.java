@@ -11,6 +11,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -74,6 +75,15 @@ public class GlobalExceptionHandler {
     public void handleAsyncRequestTimeoutException(AsyncRequestTimeoutException e) {
         // 로그만 남기고 아무것도 하지 않음 (JSON 변환 시도 방지)
         log.debug("SSE Connection Timeout: {}", e.getMessage());
+    }
+
+    /**
+     * SSE 연결 중 클라이언트가 연결을 끊었을 때 발생하는 예외 (Broken Pipe 이후 발생)
+     * 서버 로직 에러가 아니므로 불필요한 ERROR 로그를 남기지 않음.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleAsyncRequestNotUsableException(AsyncRequestNotUsableException e) {
+        log.debug("클라이언트가 SSE 연결 끊음 (AsyncRequestNotUsableException): {}", e.getMessage());
     }
 
     /** 공통 응답 생성 메서드 */

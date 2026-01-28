@@ -25,14 +25,15 @@ public class RedisManager {
         String key = namespace.createKey(identifier);
         Object value = redisTemplate.opsForValue().get(key);
 
-        if(value == null) return Optional.empty();
+        if (value == null) return Optional.empty();
 
         try {
             return Optional.of(clazz.cast(value));
         } catch (ClassCastException e) {
             log.error("Redis 타입 불일치 발생 - Key: {}, 예상 타입: {}, 실제 데이터 타입: {}",
                     key, clazz.getSimpleName(), value.getClass().getSimpleName());
-            return Optional.empty();}
+            return Optional.empty();
+        }
     }
 
     /** 데이터 삭제 */
@@ -61,5 +62,11 @@ public class RedisManager {
     public boolean isMember(RedisNameSpace nameSpace, String identifier, Object value) {
         String key = nameSpace.createKey(identifier);
         return Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(key, value));
+    }
+
+    public long getSetSize(RedisNameSpace nameSpace, String identifier) {
+        String key = nameSpace.createKey(identifier);
+        Long size = redisTemplate.opsForSet().size(key);
+        return size != null ? size : 0;
     }
 }

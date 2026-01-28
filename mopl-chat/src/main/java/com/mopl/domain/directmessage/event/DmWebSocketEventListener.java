@@ -16,7 +16,7 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class WebSocketEventLister {
+public class DmWebSocketEventListener {
 
     private final String CONVERSATION_PREFIX = "/conversations/";
     private final String CURRENT_ROOM_ID = "currentRoomId";

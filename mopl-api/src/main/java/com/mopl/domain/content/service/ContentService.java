@@ -176,9 +176,7 @@ public class ContentService {
     }
 
     private int getWatchCount(Long contentId) {
-        return redisManager
-                .findByKey(RedisNameSpace.WATCHER_COUNT, contentId.toString(), Integer.class)
-                .orElse(0);
+        return (int) redisManager.getSetSize(RedisNameSpace.CONTENT_SESSIONS, String.valueOf(contentId));
     }
 
     /** Dto 변환 */

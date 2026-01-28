@@ -13,12 +13,15 @@ import com.mopl.domain.watching.exception.WatchingErrorCode;
 import com.mopl.domain.watching.exception.WatchingException;
 import com.mopl.domain.watching.repository.WatchingSessionRepository;
 import com.mopl.global.enums.SortDirection;
+import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,6 +32,7 @@ public class WatchingSessionService {
     private final WatchingSessionRepository watchingSessionRepository;
     private final UserRepository userRepository;
     private final ContentRepository contentRepository;
+    private final S3Manager s3Manager;
 
     /**
      * 특정 사용자의 시청 세션 단건 조회
@@ -150,7 +154,7 @@ public class WatchingSessionService {
         UserSummaryDto watcherDto = new UserSummaryDto(
                 user.getId(),
                 user.getName(),
-                user.getProfileImageUrl()
+                s3Manager.generatePresignedUrl(user.getProfileImageUrl())
         );
 
         // Fetch Join 덕분에 추가 쿼리 없이 태그 리스트 생성 가능

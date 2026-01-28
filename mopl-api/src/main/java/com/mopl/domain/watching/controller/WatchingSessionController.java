@@ -7,16 +7,21 @@ import com.mopl.domain.watching.service.WatchingSessionService;
 import com.mopl.global.enums.SortDirection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class WatchingSessionController implements WatchingSessionControllerDocs {
 
     private final WatchingSessionService watchingSessionService;
 
     @Override
-    public ResponseEntity<WatchingSessionUserResponse> getWatchingSession(Long watcherId) {
+    @GetMapping("/users/{watcherId}/watching-sessions")
+    public ResponseEntity<WatchingSessionUserResponse> getWatchingSession(@PathVariable Long watcherId) {
         WatchingSessionUserResponse response = watchingSessionService.getWatchingSession(watcherId);
 
         // 시청 중인 세션이 없을 경우 204 No Content 반환
@@ -28,8 +33,9 @@ public class WatchingSessionController implements WatchingSessionControllerDocs 
     }
 
     @Override
+    @GetMapping("/contents/{contentId}/watching-sessions")
     public ResponseEntity<WatchingSessionContentListResponse> getWatchingSessionsByContent(
-            Long contentId,
+            @PathVariable Long contentId,
             String watcherNameLike,
             String cursor,
             Long idAfter,

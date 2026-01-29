@@ -40,14 +40,31 @@ public class ContentRepositoryCustomImpl implements ContentRepositoryCustom{
             where.and(content.contentTags.any().tag.tag.in(params.tagsIn()));
         }
 
+        if(params.cursor() != null && !params.cursor().trim().isEmpty()) {
+            switch (params.sortBy()) {
+                case "watcherCount" -> {
+                    long cursor = Long.parseLong(params.cursor()); // or int
+                    where.and(content.reviewCount.loe(cursor));
+                }
+                case "rate" -> {
+                    double cursor = Double.parseDouble(params.cursor());
+                    where.and(content.averageRating.loe(cursor));
+                }
+                default -> {
+                    long cursor = Long.parseLong(params.cursor());
+                    where.and(content.id.lt(cursor));
+                }
+            }
+        }
+
         // 커서 기반 페이징 처리
-        if (params.cursor() != null && !params.cursor().trim().isEmpty()) {
-            Long cursor = Long.parseLong(params.cursor());
+        if (params.idAfter() != null && !params.idAfter().isEmpty()) {
+            Long idAfter = Long.parseLong(params.idAfter());
             boolean isDesc = "DESCENDING".equalsIgnoreCase(params.sortDirection().toString());
             if (isDesc) {
-                where.and(content.id.lt(cursor));
+                where.and(content.id.lt(idAfter));
             } else {
-                where.and(content.id.gt(cursor));
+                where.and(content.id.gt(idAfter));
             }
         }
 

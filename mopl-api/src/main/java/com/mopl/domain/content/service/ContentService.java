@@ -107,8 +107,12 @@ public class ContentService {
         if(hasNext) { // 다음 페이지가 존재하면
             Content lastContent = contentList.get(contentList.size() - 1);
             contentList.remove(lastContent);
-            nextCursor = contentList.get(contentList.size()-1).getId().toString();
-            nextAfter = contentList.get(contentList.size()-1).getCreatedAt().toString();
+            switch (params.sortBy()) {
+                case "watcherCount" -> nextCursor = String.valueOf(contentList.get(contentList.size()-1).getReviewCount());
+                case "rate" -> nextCursor = String.valueOf(contentList.get(contentList.size()-1).getAverageRating());
+                default -> nextCursor = contentList.get(contentList.size()-1).getId().toString();
+            }
+            nextAfter = contentList.get(contentList.size()-1).getId().toString();
         }
 
         List<ContentDto> response = contentList.stream().map(content -> {

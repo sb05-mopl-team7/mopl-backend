@@ -23,9 +23,9 @@ scrape_configs:
   - job_name: 'mopl-api'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['api.mopl.local:8080']
+      - targets: ['host.docker.internal:8080']
 
   - job_name: 'mopl-chat'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['chat.mopl.local:8082']
+      - targets: ['host.docker.internal:8082']

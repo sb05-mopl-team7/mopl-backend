@@ -46,7 +46,7 @@ services:
     mem_limit: 100m
     container_name: mopl-redis-exporter
     environment:
-      - REDIS_ADDR=redis://${REDIS_HOST}:6379 # .env에서 Redis IP 주입
+      - REDIS_ADDR=redis://host.docker.internal:6379 # 컨테이너가 밖으로 빠져나와 맥의 localhost를 통해 다른 컨테이너 찾아갈 수 있음 (맥 환경에서만 유효)
     ports:
       - "9121:9121"
     networks:
@@ -59,7 +59,7 @@ services:
     mem_limit: 100m
     container_name: mopl-kafka-exporter
     command:
-      - --kafka.server=${KAFKA_HOST}:9092 # .env에서 Kafka IP 주입
+      - --kafka.server=host.docker.internal:9092
     ports:
       - "9308:9308"
     networks:

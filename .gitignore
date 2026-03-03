@@ -213,3 +213,5 @@ gradle-app.setting
 *.env
 custom.sh
 /mopl-api/src/main/resources/application-local.yml
+/redis_data
+/kafka_data

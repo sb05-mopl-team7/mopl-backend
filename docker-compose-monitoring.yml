@@ -1,0 +1,75 @@
+services:
+  # 1. 프로메테우스
+  prometheus:
+    container_name: mopl-prometheus
+    image: prom/prometheus:v2.48.1
+    mem_limit: 1000m
+    user: "0:0" # 권한 문제 방지 (Root 실행)
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d' # 디스크 용량 고려 (15일 보관)
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - monitor-network
+    restart: unless-stopped
+
+  # 2. 그라파나
+  grafana:
+    image: grafana/grafana:10.2.3
+    mem_limit: 400m
+    container_name: mopl-grafana
+    user: "0:0"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD} # 초기 비밀번호
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - monitor-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # 3. Redis Exporter (Redis -> Prometheus 변환기)
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    mem_limit: 100m
+    container_name: mopl-redis-exporter
+    environment:
+      - REDIS_ADDR=redis://${REDIS_HOST}:6379 # .env에서 Redis IP 주입
+    ports:
+      - "9121:9121"
+    networks:
+      - monitor-network
+    restart: unless-stopped
+
+  # 4. Kafka Exporter (Kafka -> Prometheus 변환기)
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    mem_limit: 100m
+    container_name: mopl-kafka-exporter
+    command:
+      - --kafka.server=${KAFKA_HOST}:9092 # .env에서 Kafka IP 주입
+    ports:
+      - "9308:9308"
+    networks:
+      - monitor-network
+    restart: unless-stopped
+
+networks:
+  monitor-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

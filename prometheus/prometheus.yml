@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s # 15초마다 수집
+
+scrape_configs:
+  # 1. 프로메테우스 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # 2. Redis 모니터링 (Exporter 경유)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # 3. Kafka 모니터링 (Exporter 경유)
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+
+  # 4. Spring Boot API (Actuator)
+  # 주의: ECS Fargate는 IP가 계속 바뀌므로, 실제로는 AWS Service Discovery가 필요합니다.
+  # 일단 배포 직후 테스트를 위해 "ALB 주소" 혹은 "ECS IP"를 임시로 넣을 수 있습니다.
+  - job_name: 'mopl-api'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api.mopl.local:8080']
+
+  - job_name: 'mopl-chat'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['chat.mopl.local:8082']

@@ -113,7 +113,7 @@ resource "aws_ecs_task_definition" "chat" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.ecs_chat.name
+          awslogs-group         = data.terraform_remote_state.base.outputs.cloudwatch_log_group_chat_name
           awslogs-region        = "ap-northeast-2"
           awslogs-stream-prefix = "ecs"
         }

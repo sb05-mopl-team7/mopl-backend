@@ -1,3 +1,6 @@
+resource "aws_ecs_cluster" "main" {
+  name = "mopl-cluster"
+}
 
 # Private DNS 네임 스페이스 생성
 resource "aws_service_discovery_private_dns_namespace" "main" {

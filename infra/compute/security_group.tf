@@ -92,6 +92,16 @@ resource "aws_security_group_rule" "allow_prometheus_to_ecs" {
   description              = "Allow Prometheus(EC2) to access ECS Actuator"
 }
 
+resource "aws_security_group_rule" "prometheus_egress_to_ecs" {
+  type                     = "egress"
+  from_port                = 8080
+  to_port                  = 8082
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ec2.id
+  source_security_group_id = aws_security_group.ecs.id
+  description              = "Allow Prometheus outbound to ECS tasks"
+}
+
 # EC2 Security Group
 resource "aws_security_group" "ec2" {
   name        = "${var.project_name}-ec2-sg"

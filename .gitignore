@@ -215,3 +215,6 @@ custom.sh
 /mopl-api/src/main/resources/application-local.yml
 /redis_data
 /kafka_data
+**/.terraform
+.terraform.*
+terraform.*

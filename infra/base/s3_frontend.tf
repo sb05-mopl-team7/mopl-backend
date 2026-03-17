@@ -1,6 +1,6 @@
 # 프론트엔드 정적 자산 저장용 S3 버킷
 resource "aws_s3_bucket" "frontend" {
-  bucket = "${var.project_name}-frontend"
+  bucket = "codeit-team7-${var.project_name}-frontend"
 
   tags = {
     Name = "${var.project_name}-frontend"

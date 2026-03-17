@@ -12,7 +12,7 @@ resource "aws_ecr_repository" "mopl-repos" {
     Service = each.key
   }
 
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 }

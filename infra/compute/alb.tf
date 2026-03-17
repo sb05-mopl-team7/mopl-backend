@@ -3,9 +3,9 @@ resource "aws_lb" "this" {
   name               = "${var.project_name}-alb"
   load_balancer_type = "application"
   internal           = false
-  security_groups    = [data.terraform_remote_state.base.outputs.alb_sg_id]
+  security_groups    = [aws_security_group.alb.id]
 
-  subnets            = data.terraform_remote_state.base.outputs.public_subnet_ids
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_c.id]
 
   tags = {
     Name = "${var.project_name}-alb"
@@ -37,7 +37,7 @@ resource "aws_lb_target_group" "api" {
   port        = 8080
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = data.terraform_remote_state.base.outputs.vpc_id
+  vpc_id      = aws_vpc.main.id
 
   health_check {
     path                = "/health"
@@ -59,7 +59,7 @@ resource "aws_lb_target_group" "batch" {
   port        = 8081
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = data.terraform_remote_state.base.outputs.vpc_id
+  vpc_id      = aws_vpc.main.id
 
   health_check {
     path                = "/health"
@@ -81,7 +81,7 @@ resource "aws_lb_target_group" "chat" {
   port        = 8082
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = data.terraform_remote_state.base.outputs.vpc_id
+  vpc_id      = aws_vpc.main.id
 
   health_check {
     path                = "/health"

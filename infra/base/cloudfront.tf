@@ -14,11 +14,6 @@ resource "aws_cloudfront_distribution" "front" {
   comment             = "${var.project_name}-frontend"
   default_root_object = "index.html"
 
-  # 커스텀 도메인 연결
-  aliases = [
-    "mopl.shop",
-    "www.mopl.shop"
-  ]
 
   # S3 오리진(OAC 사용)
   origin {
@@ -86,7 +81,7 @@ resource "aws_cloudfront_distribution" "front" {
     }
   }
 
-  # ACM 인증서로 HTTPS 설정(CloudFront는 us-east-1 필요)
+  # 커스텀 도메인용 ACM 인증서 연결(us-east-1)
   viewer_certificate {
     acm_certificate_arn      = aws_acm_certificate_validation.main.certificate_arn
     ssl_support_method       = "sni-only"

@@ -7,6 +7,14 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
   signing_protocol                  = "sigv4"
 }
 
+data "terraform_remote_state" "compute" {
+  backend = "local"
+
+  config = {
+    path = "${path.module}/../compute/terraform.tfstate"
+  }
+}
+
 # 프론트엔드 정적 사이트용 CloudFront 배포
 resource "aws_cloudfront_distribution" "front" {
   enabled             = true
@@ -14,22 +22,35 @@ resource "aws_cloudfront_distribution" "front" {
   comment             = "${var.project_name}-frontend"
   default_root_object = "index.html"
 
+  #aliases = ["mopl.shop", "www.mopl.shop"]
 
   # S3 오리진(OAC 사용)
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id                = "s3-frontend-origin"
-    origin_access_control_id = "E1VZAEF7USP49X"
+    origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
-  # 기본 캐시 정책: 정적 파일 중심, HTTPS 강제
+  # ALB 오리진 (CloudFront -> ALB)
+  origin {
+    domain_name = "${var.alb_domain_name}"
+    origin_id   = "alb-origin"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
   default_cache_behavior {
     target_origin_id       = "s3-frontend-origin"
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
 
-    allowed_methods = ["GET", "HEAD", "OPTIONS"]
-    cached_methods  = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
 
     forwarded_values {
       query_string = false
@@ -40,22 +61,24 @@ resource "aws_cloudfront_distribution" "front" {
     }
   }
 
-  # 자산 경로 캐시 정책(필요 시 TTL/헤더 정책 분리 가능)
   ordered_cache_behavior {
-    path_pattern           = "/assets/*"
-    target_origin_id       = "s3-frontend-origin"
+    path_pattern           = "/api/*"
+    target_origin_id       = "alb-origin"
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
 
-    allowed_methods = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods  = ["GET", "HEAD", "OPTIONS"]
 
     forwarded_values {
-      query_string = false
+      query_string = true  # API 파라미터 전달 허용
 
       cookies {
-        forward = "none"
+        forward = "all"    # 인증 쿠키(JSESSIONID 등) 전달 허용
       }
+
+      # Header 전달이 필요하다면 (예: Authorization)
+      headers = ["*"]
     }
   }
 

@@ -19,7 +19,7 @@ resource "aws_cloudfront_distribution" "front" {
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id                = "s3-frontend-origin"
-    origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
+    origin_access_control_id = "E1VZAEF7USP49X"
   }
 
   # 기본 캐시 정책: 정적 파일 중심, HTTPS 강제

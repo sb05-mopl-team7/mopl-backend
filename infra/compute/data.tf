@@ -51,10 +51,6 @@ data "aws_ami" "amazon_linux_2023" {
   }
 }
 
-data "aws_cloudfront_distribution" "front" {
-  id = "E263BP4SCXEFZR"
-}
-
 data "aws_ecr_repository" "mopl_api" {
   name = "mopl-api"
 }

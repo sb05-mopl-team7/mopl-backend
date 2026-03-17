@@ -1,6 +1,6 @@
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
-  subnet_id     = data.terraform_remote_state.base.outputs.public_subnet_ids[0]
+  subnet_id     = aws_subnet.public_a.id
 
   tags = {
     Name = "${var.project_name}-nat-gateway"

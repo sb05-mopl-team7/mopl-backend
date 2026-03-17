@@ -82,19 +82,21 @@ resource "aws_cloudfront_distribution" "front" {
     }
   }
 
-  # SPA 라우팅 지원: 403/404 -> index.html
-  custom_error_response {
-    error_code            = 403
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 0
-  }
+  ordered_cache_behavior {
+    path_pattern     = "/assets/*"
+    target_origin_id = "s3-frontend-origin" # S3 오리진 지정
 
-  custom_error_response {
-    error_code            = 404
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 0
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
   }
 
   # 지역 제한 없음

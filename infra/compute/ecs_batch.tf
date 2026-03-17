@@ -26,7 +26,11 @@ resource "aws_ecs_task_definition" "batch" {
         {
           name      = "TMDB_API_TOKEN"
           valueFrom = data.aws_ssm_parameter.tmdb_api_token.arn
-        }
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = data.aws_ssm_parameter.db_password.arn
+        },
       ]
 
       environment = [
@@ -43,8 +47,12 @@ resource "aws_ecs_task_definition" "batch" {
           value = aws_db_instance.main.address
         },
         {
-          name  = "DB_USER"
+          name  = "DB_USERNAME"
           value = aws_db_instance.main.username
+        },
+        {
+          name  = "DB_URL"
+          value = aws_db_instance.main.address
         },
         {
           name = "AWS_REGION"
@@ -54,6 +62,18 @@ resource "aws_ecs_task_definition" "batch" {
           name = "AWS_S3_BUCKET"
           value = data.aws_ssm_parameter.aws_s3_bucket.value
         },
+        {
+          name = "REDIS_HOST_PROD"
+          value = aws_instance.redis.private_ip
+        },
+        {
+          name = "REDIS_PORT"
+          value = "6379"
+        },
+        {
+          name = "KAFKA_BOOTSTRAP_SERVERS_PROD"
+          value = "${aws_instance.kafka.private_ip}:9092"
+        }
       ]
 
       command = ["java", "-jar", "app.jar"] # 배치 전용 엔트리포인트

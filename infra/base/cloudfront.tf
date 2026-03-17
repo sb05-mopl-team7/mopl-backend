@@ -99,6 +99,28 @@ resource "aws_cloudfront_distribution" "front" {
     viewer_protocol_policy = "redirect-to-https"
   }
 
+  # WebSocket 또는 /ws 경로용 설정 (ALB 오리진으로 전달)
+  ordered_cache_behavior {
+    path_pattern           = "/ws/*"
+    target_origin_id       = "alb-origin" # ALB를 바라보도록 설정
+    viewer_protocol_policy = "redirect-to-https"
+
+    allowed_methods = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods  = ["GET", "HEAD"]
+
+    # WebSocket은 실시간 통신이므로 캐싱을 비활성화하는 것이 일반적입니다.
+    forwarded_values {
+      query_string = true
+
+      cookies {
+        forward = "all"
+      }
+
+      # WebSocket 연결을 위한 필수 헤더 전달
+      headers = ["*"]
+    }
+  }
+
   # 지역 제한 없음
   restrictions {
     geo_restriction {

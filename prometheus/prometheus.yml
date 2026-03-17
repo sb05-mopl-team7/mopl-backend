@@ -22,10 +22,16 @@ scrape_configs:
   # 일단 배포 직후 테스트를 위해 "ALB 주소" 혹은 "ECS IP"를 임시로 넣을 수 있습니다.
   - job_name: 'mopl-api'
     metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets: ['host.docker.internal:8080']
+    dns_sd_configs:
+      - names:
+          - 'api.mopl.local'
+        type: 'A'
+        port: 8080
 
   - job_name: 'mopl-chat'
     metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets: ['host.docker.internal:8082']
+    dns_sd_configs:
+      - names:
+          - 'chat.mopl.local'
+        type: 'A'
+        port: 8082

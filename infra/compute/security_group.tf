@@ -64,6 +64,7 @@ resource "aws_security_group" "ecs" {
     from_port       = 8082
     to_port         = 8082
     protocol        = "tcp"
+    self = true
     security_groups = [aws_security_group.alb.id]
   }
 
@@ -147,6 +148,15 @@ resource "aws_security_group" "ec2" {
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs.id]
     description     = "Allow ECS tasks to access Redis"
+  }
+
+  # Kafka UI (EC2 -> Kafka UI)
+  ingress {
+    from_port   = 9000
+    to_port     = 9000
+    protocol    = "tcp"
+    self = true
+    description = "Allow access to Kafka UI from browser"
   }
 
   # Outbound

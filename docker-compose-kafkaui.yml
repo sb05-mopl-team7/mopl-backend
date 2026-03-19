@@ -1,0 +1,27 @@
+services:
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: unless-stopped
+    ports:
+      - "9000:8080" # 호스트 포트 9000번으로 접속 (8080 충돌 방지)
+    environment:
+      # 클러스터 이름 설정
+      KAFKA_CLUSTERS_0_NAME: mopl-cluster
+      # kafka 서비스 명과 내부 포트(9092)를 사용
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      # 메트릭 확인을 위한 설정 (제공된 kafka-exporter 연동 가능)
+      KAFKA_CLUSTERS_0_METRICS_TYPE: PROMETHEUS
+      KAFKA_CLUSTERS_0_METRICS_ADDRESS: mopl-kafka-exporter:9308
+      # 동적 설정 활성화
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    networks:
+      - app-network
+      - monitor-network
+
+networks:
+  networks:
+  app-network:
+    driver: bridge
+  monitor-network:
+    driver: bridge

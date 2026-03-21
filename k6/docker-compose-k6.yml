@@ -1,0 +1,14 @@
+services:
+  k6:
+    # 공식 이미지가 아닌, Kafka 기능이 이미 포함된 검증된 이미지를 사용합니다.
+    image: mostafamoradian/xk6-kafka:latest
+    container_name: mopl-k6
+    volumes:
+      - ./:/scripts:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: [
+      "run",
+      "--summary-trend-stats=avg,min,med,max,p(90),p(95),p(99),p(99.9)",
+      "/scripts/main.js"
+    ]

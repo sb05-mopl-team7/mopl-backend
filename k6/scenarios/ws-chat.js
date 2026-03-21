@@ -3,24 +3,22 @@ import ws from 'k6/ws';
 import { Trend } from 'k6/metrics';
 import { BASE_URL } from '../utils/const.js';
 import { Stomp } from '../utils/stomp.js';
-import { getRandomElement, getRandomDelay } from '../utils/helper.js'; // 경로 수정: ../
+import { getRandomElement, getRandomDelay } from '../utils/helper.js';
 
-// 1. 커스텀 메트릭 정의
+// 커스텀 메트릭: 채팅 지연 시간 측정
 const chatLatency = new Trend('chat_latency_ms');
 
-// 3. 부하 테스트 옵션
 export const options = {
     stages: [
-        { duration: '2m', target: 500 },  // 2분 동안 500명 점진적 접속
-        { duration: '2m', target: 500 },  // Phase 1: 평시 채팅 (50명)
-        { duration: '1m', target: 500 },  // Phase 2: 골 터짐 (100명 폭주)
-        { duration: '1m', target: 500 },  // Phase 3: 진정기 (60명)
-        { duration: '30s', target: 0 },   // 종료
+        { duration: '30s', target: 100 }, // 30초동안 0명에서 300명으로 점진적증가
+        { duration: '30s', target: 200 }, // 1분동안 100명에서 200명으로 점진적 증가
+        { duration: '30s', target: 300 },
+        { duration: '1m', target: 300 },
+        { duration: '30s', target: 0 },
     ],
 };
 
 const contentId = 993;
-// CloudFront URL에서 호스트만 추출 (wss 연결용)
 const CF_HOST = BASE_URL.CLOUDFRONT.replace('https://', '');
 const wsUrl = `wss://${CF_HOST}/ws/websocket`;
 
@@ -28,76 +26,106 @@ const normalReactions = ["재밌네요", "오늘 폼 미쳤다", "치킨 시킴"
 const goalReactions = ["와아아아아아!!!!!", "골!!!!!!!!!!!", "미쳤다!!!", "대박!!!!", "이걸 넣네!!!"];
 
 export default function (tokens) {
-    // setup에서 반환된 토큰 배열에서 각 VU에 맞는 토큰 할당
+    if (!tokens || tokens.length === 0) return;
+
+    // VU마다 고유한 토큰 할당
     const myTokenInfo = tokens[(__VU - 1) % tokens.length];
     const token = myTokenInfo.accessToken;
 
-    const params = {
-        headers: { 'Origin': BASE_URL.CLOUDFRONT }
-    };
+    const params = { headers: { 'Origin': BASE_URL.CLOUDFRONT } };
 
     const res = ws.connect(wsUrl, params, function (socket) {
         let connectionTime = Date.now();
         let lastSendTime = 0;
+        let lastSendLogTime = 0;
+        let lastMessageLogTime = 0;
 
         socket.on('open', function () {
-            // stomp.js를 활용한 연결 (heart-beat 추가)
+            // CONNECT 프레임 송신 (Raw WebSocket STOMP)
             socket.send(Stomp.connect(token));
         });
 
         socket.on('message', function (msg) {
-            // 1. 연결 성공 시 구독 시작
-            if (msg.startsWith('CONNECTED')) {
+            // SockJS 하트비트(h) 및 오프닝(o) 프레임 무시 (Raw면 영향 없음)
+            if (msg === 'h' || msg === 'o') return;
+
+            let stompMsg = msg;
+            // SockJS 메시지 프레임(a["..."]) 처리: 껍데기를 벗겨 순수 STOMP 문자열 추출
+            if (msg.startsWith('a["') && msg.endsWith('"]')) {
+                try {
+                    stompMsg = JSON.parse(msg.substring(1))[0];
+                } catch (e) { return; }
+            }
+
+            // 1. STOMP 연결 성공 시 구독(SUBSCRIBE) 시작
+            if (stompMsg.startsWith('CONNECTED')) {
+                if (__VU === 1) console.log(`[1번 유저의 모든 메시지] ${msg}`); // 1번 유저의 모든 수신 메시지 출력
                 socket.send(Stomp.subscribe(`sub-${__VU}`, `/sub/contents/${contentId}/chat`));
 
                 // 채팅 발송 루프
                 socket.setInterval(function () {
                     const now = Date.now();
                     const elapsedSec = (now - connectionTime) / 1000;
-
-                    let maxSenders = 0;
-                    let isGoalPhase = false;
+                    let maxSenders = 0, isGoalPhase = false;
 
                     // 시나리오 페이즈 제어
-                    if (elapsedSec < 120) maxSenders = 0;
-                    else if (elapsedSec < 240) maxSenders = 50;
-                    else if (elapsedSec < 300) { maxSenders = 100; isGoalPhase = true; }
-                    else if (elapsedSec < 360) maxSenders = 60;
+                    // 0~20s: 조용, 20~40s: 증가, 40~90s: 골(폭증), 90~120s: 안정
+                    if (elapsedSec < 20) maxSenders = 0;
+                    else if (elapsedSec < 40) maxSenders = 50;
+                    else if (elapsedSec < 90) { maxSenders = 100; isGoalPhase = true; }
+                    else if (elapsedSec < 120) maxSenders = 60;
                     else return;
 
-                    // 선정된 인원만 채팅 발송
                     if (__VU <= maxSenders) {
-                        // 페이즈별 랜덤 딜레이 적용
                         const delay = isGoalPhase ? getRandomDelay(300, 1000) : getRandomDelay(3000, 7000);
-
                         if (now - lastSendTime >= delay) {
                             const text = getRandomElement(isGoalPhase ? goalReactions : normalReactions);
-                            const payload = JSON.stringify({
-                                content: `${text} | ts:${now}`
-                            });
+                            // 백엔드 ContentChatSendRequest DTO 구조에 맞춘 페이로드
+                            const payload = JSON.stringify({ content: `${text} | ts:${now}` });
 
-                            socket.send(Stomp.send(`/pub/contents/${contentId}/chat`, token, payload));
+                            // SEND 프레임 송신
+                            socket.send(Stomp.send(`/pub/contents/${contentId}/chat`, payload));
+                            if (now - lastSendLogTime >= 3000) {
+                                console.log(`[SEND][VU ${__VU}] ${payload}`);
+                                lastSendLogTime = now;
+                            }
                             lastSendTime = now;
                         }
                     }
-                }, 200); // 0.2초마다 상태 체크
+                }, 200);
             }
 
-            // 2. 메시지 수신 시 레이턴시 측정
-            if (msg.includes('MESSAGE') && msg.includes('ts:')) {
-                const match = msg.match(/ts:(\d+)/);
-                if (match) {
-                    const sentTime = parseInt(match[1], 10);
-                    chatLatency.add(Date.now() - sentTime);
+            // 2. 메시지 수신 및 레이턴시 측정 (다른 유저의 메시지 포함)
+            // STOMP 프레임은 "\n\n" 이후가 바디(JSON)이며, 마지막에 \0이 붙음
+            if (stompMsg.startsWith('MESSAGE')) {
+                const splitIdx = stompMsg.indexOf('\n\n');
+                if (splitIdx !== -1) {
+                    const body = stompMsg.slice(splitIdx + 2).replace(/\0$/, '');
+                    const now = Date.now();
+                    if (now - lastMessageLogTime >= 3000) {
+                        console.log(`[MESSAGE BODY][VU ${__VU}] ${body}`);
+                        lastMessageLogTime = now;
+                    }
+                    try {
+                        const data = JSON.parse(body);
+                        const text = data?.content ?? '';
+                        const match = text.match(/ts:(\d+)/);
+                        if (match && match[1]) {
+                            const sentTime = parseInt(match[1], 10);
+                            chatLatency.add(Date.now() - sentTime);
+                        }
+                    } catch (e) {
+                        // JSON 파싱 실패 시 무시
+                    }
                 }
             }
 
-            if (msg.includes('ERROR')) {
-                console.error(`[VU ${__VU}] STOMP Error:`, msg);
+            if (stompMsg.includes('ERROR')) {
+                console.error(`[VU ${__VU}] STOMP Error:`, stompMsg);
             }
         });
 
-        // 6분 30초 후 연결 종료
+        // 시나리오 종료 시간에 맞춰 연결 닫기
         socket.setTimeout(() => socket.close(), 390000);
     });
 

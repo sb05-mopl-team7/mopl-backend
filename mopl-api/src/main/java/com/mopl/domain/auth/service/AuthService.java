@@ -5,6 +5,7 @@ import com.mopl.domain.auth.dto.TokenResultDto;
 import com.mopl.domain.auth.exception.AuthErrorCode;
 import com.mopl.domain.auth.exception.AuthException;
 import com.mopl.domain.auth.jwt.JwtTokenProvider;
+import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.exception.UserErrorCode;
 import com.mopl.domain.user.exception.UserException;
@@ -71,7 +72,8 @@ public class AuthService {
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), newAccessToken);
 
         redisManager.save(RedisNameSpace.AUTH_TOKEN, userId.toString(), newRefreshToken);
-        redisManager.save(RedisNameSpace.PROFILE_URL, user.getId().toString(), thumbnailUrl);
+        UserSummaryDto userSummary =  new UserSummaryDto(user.getId(), user.getName(), thumbnailUrl);
+        redisManager.save(RedisNameSpace.USER_SUMMARY, user.getId().toString(), userSummary);
 
         return new TokenResultDto(jwtDto, newRefreshToken);
     }
@@ -105,11 +107,10 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(user);
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), accessToken);
+        UserSummaryDto userSummary =  new UserSummaryDto(user.getId(), user.getName(), thumbnailUrl);
 
-        // Redis에 Refresh & Profile Image 저장
         redisManager.save(RedisNameSpace.AUTH_TOKEN, user.getId().toString(), refreshToken);
-        redisManager.save(RedisNameSpace.USER_NAME, user.getId().toString(), user.getName());
-        redisManager.save(RedisNameSpace.PROFILE_URL, user.getId().toString(), thumbnailUrl);
+        redisManager.save(RedisNameSpace.USER_SUMMARY, user.getId().toString(), userSummary);
 
         return new TokenResultDto(jwtDto, refreshToken);
     }

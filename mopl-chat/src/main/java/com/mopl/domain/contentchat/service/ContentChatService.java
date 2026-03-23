@@ -14,8 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -26,45 +24,24 @@ public class ContentChatService {
     private final RedisManager redisManager;
 
     public ContentChatDto createMessage(Long userId, ContentChatSendRequest text) {
-
-        String userName= getUserName(userId);
-        String presignedUrl = getProfileUrl(userId);
-
-        UserSummaryDto userSummary = new UserSummaryDto(userId, userName, presignedUrl);
+        // Redis에서 조회 1번
+        UserSummaryDto userSummary = redisManager.findByKey(
+            RedisNameSpace.USER_SUMMARY,
+            userId.toString(),
+            UserSummaryDto.class
+        ).orElseGet(() -> {
+            User user = validateUser(userId);
+            String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+            UserSummaryDto summaryDto = new UserSummaryDto(user.getId(), user.getName(), thumbnailUrl);
+            redisManager.save(RedisNameSpace.USER_SUMMARY, user.getId().toString(), summaryDto);
+            return summaryDto;
+        });
 
         return new ContentChatDto(userSummary, text.content());
     }
 
-    private String getUserName(Long userId) {
-        Optional<String> userName = redisManager.findByKey(
-            RedisNameSpace.USER_NAME,
-            userId.toString(),
-            String.class
-        );
-
-        return userName.orElseGet(() -> {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new MoplException(ErrorCode.UNAUTHORIZED));
-            return user.getName();
-        });
-    }
-
-    /** profile Image presignedUrl 조회 */
-    private String getProfileUrl(Long userId) {
-
-        // 1. redis에 있는지 확인
-        Optional<String> profileUrl = redisManager.findByKey(
-            RedisNameSpace.PROFILE_URL,
-            userId.toString(),
-            String.class
-        );
-
-        // 2. 없다면 새로 발급
-        return profileUrl.orElseGet(() -> {
-                User user = userRepository.findById(userId)
-                        .orElseThrow(() -> new MoplException(ErrorCode.UNAUTHORIZED));
-                return s3Manager.generatePresignedUrl(user.getProfileImageUrl());
-            }
-        );
+    private User validateUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new MoplException(ErrorCode.UNAUTHORIZED));
     }
 }

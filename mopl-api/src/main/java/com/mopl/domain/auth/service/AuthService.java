@@ -66,11 +66,12 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user);
-        redisManager.save(RedisNameSpace.AUTH_TOKEN, userId.toString(), newRefreshToken);
-
         String newAccessToken = jwtTokenProvider.createAccessToken(user);
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), newAccessToken);
+
+        redisManager.save(RedisNameSpace.AUTH_TOKEN, userId.toString(), newRefreshToken);
+        redisManager.save(RedisNameSpace.PROFILE_URL, user.getId().toString(), thumbnailUrl);
 
         return new TokenResultDto(jwtDto, newRefreshToken);
     }
@@ -107,6 +108,7 @@ public class AuthService {
 
         // Redis에 Refresh & Profile Image 저장
         redisManager.save(RedisNameSpace.AUTH_TOKEN, user.getId().toString(), refreshToken);
+        redisManager.save(RedisNameSpace.USER_NAME, user.getId().toString(), user.getName());
         redisManager.save(RedisNameSpace.PROFILE_URL, user.getId().toString(), thumbnailUrl);
 
         return new TokenResultDto(jwtDto, refreshToken);

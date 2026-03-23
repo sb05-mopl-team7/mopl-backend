@@ -17,6 +17,8 @@ import com.mopl.global.enums.SortBy;
 import com.mopl.global.enums.SortDirection;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
+import com.mopl.global.redis.RedisManager;
+import com.mopl.global.redis.RedisNameSpace;
 import com.mopl.global.s3.FileCategory;
 import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +46,7 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final S3Manager s3Manager;
+    private final RedisManager redisManager;
     private final NotificationEventProducer notificationEventProducer;
 
     @Transactional(readOnly = true)
@@ -79,12 +83,15 @@ public class UserService {
                 //기존 이미지 삭제
                 if (user.getProfileImageUrl() != null) {
                     s3Manager.delete(oldImageUrl);
+                    redisManager.delete(RedisNameSpace.PROFILE_URL, user.getId().toString());
                 }
             } catch (IOException e) {
                 throw new RuntimeException("프로필 이미지 업로드 실패", e);
             }
         }
+        // 새로운 presignedUrl 발급
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        redisManager.save(RedisNameSpace.PROFILE_URL, user.getId().toString(), thumbnailUrl);
         return userMapper.toDto(user, thumbnailUrl);
     }
 
@@ -308,10 +315,15 @@ public class UserService {
     public UserDto detail(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
-        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        String thumbnailUrl = getProfileUrl(user);
         return userMapper.toDto(user, thumbnailUrl);
     }
 
-
-
+    /** profile Image presignedUrl 조회 */
+    private String getProfileUrl(User user) {
+        // 1. redis에 있는지 확인
+        Optional<String> profileUrl=  redisManager.findByKey(RedisNameSpace.PROFILE_URL, user.getId().toString(), String.class);
+        // 2. 없다면 새로 발급
+        return profileUrl.orElseGet(() -> s3Manager.generatePresignedUrl(user.getProfileImageUrl()));
+    }
 }

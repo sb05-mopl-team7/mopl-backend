@@ -11,6 +11,9 @@ public enum RedisNameSpace {
     // 인증 토큰
     AUTH_TOKEN("token:", Duration.ofDays(7), false),
 
+    // S3 presignedUrl
+    PROFILE_URL("profile-image:", Duration.ofMinutes(10), true),
+
     // 임시 비밀번호
     TEMP_PASSWORD("temp-password:", Duration.ofMinutes(3), true),
 

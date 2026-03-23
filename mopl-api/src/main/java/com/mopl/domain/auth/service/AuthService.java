@@ -36,34 +36,9 @@ public class AuthService {
      * 로그인
      * DB 비밀번호 또는 임시 비밀번호(Redis)로 인증합니다.
      */
-    public TokenResultDto login(String username, String password) {
-        User user = userRepository.findByEmailAndLockedFalse(username)
-                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
-        if (passwordEncoder.matches(password, user.getPassword())) return generateToken(user);
-
-        if (redisManager.hasKey(RedisNameSpace.TEMP_PASSWORD, username)) {
-            Optional<String> tempPassword = redisManager.findByKey(
-                    RedisNameSpace.TEMP_PASSWORD,
-                    username,
-                    String.class);
-            if (tempPassword.isPresent() && tempPassword.get().equals(password)) {
-                redisManager.delete(RedisNameSpace.TEMP_PASSWORD, username);
-                return generateToken(user);
-            }
-        }
-        throw new UserException(UserErrorCode.PASSWORD_NOT_CORRECT);
-    }
-
-    //로그인 성공 후 토큰 생성
-    private TokenResultDto generateToken(User user) {
-        String refreshToken = jwtTokenProvider.createRefreshToken(user);
-        redisManager.save(RedisNameSpace.AUTH_TOKEN, user.getId().toString(), refreshToken);
-
-        String accessToken = jwtTokenProvider.createAccessToken(user);
-        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
-        JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), accessToken);
-
-        return new TokenResultDto(jwtDto, refreshToken);
+    public TokenResultDto login(String email, String password) {
+        User user = validateUser(email);
+        return validatePassword(email, password, user);
     }
 
     public void logout(Long myId) {
@@ -98,5 +73,42 @@ public class AuthService {
         JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), newAccessToken);
 
         return new TokenResultDto(jwtDto, newRefreshToken);
+    }
+
+    /** 이메일 검증 */
+    private User validateUser(String email) {
+        return userRepository.findByEmailAndLockedFalse(email)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+    }
+
+    /** 비밀번호 검증 */
+    private TokenResultDto validatePassword(String email, String password, User user) {
+        // 패스워드 일치할 경우
+        if (passwordEncoder.matches(password, user.getPassword())) {
+            return generateToken(user);
+        }
+
+        // 임시 패스워드로 로그인
+        return redisManager.findByKey(RedisNameSpace.TEMP_PASSWORD, email, String.class)
+                .filter(temp -> temp.equals(password))
+                .map(temp -> {
+                    redisManager.delete(RedisNameSpace.TEMP_PASSWORD, email);
+                    return generateToken(user);
+                })
+                .orElseThrow(() -> new UserException(UserErrorCode.PASSWORD_NOT_CORRECT));
+    }
+
+    /** 로그인 성공 후 토큰 생성 */
+    private TokenResultDto generateToken(User user) {
+        String refreshToken = jwtTokenProvider.createRefreshToken(user);
+        String accessToken = jwtTokenProvider.createAccessToken(user);
+        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        JwtDto jwtDto = new JwtDto(userMapper.toDto(user, thumbnailUrl), accessToken);
+
+        // Redis에 Refresh & Profile Image 저장
+        redisManager.save(RedisNameSpace.AUTH_TOKEN, user.getId().toString(), refreshToken);
+        redisManager.save(RedisNameSpace.PROFILE_URL, user.getId().toString(), thumbnailUrl);
+
+        return new TokenResultDto(jwtDto, refreshToken);
     }
 }

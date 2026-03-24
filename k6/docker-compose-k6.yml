@@ -3,6 +3,8 @@ services:
     # 공식 이미지가 아닌, Kafka 기능이 이미 포함된 검증된 이미지를 사용합니다.
     image: mostafamoradian/xk6-kafka:latest
     container_name: mopl-k6
+    env_file:
+      - .env.k6
     volumes:
       - ./:/scripts:ro
     extra_hosts:

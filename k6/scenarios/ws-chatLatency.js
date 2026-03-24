@@ -10,10 +10,10 @@ const chatLatency = new Trend('chat_latency_ms');
 
 export const options = {
     stages: [
-        { duration: '30s', target: 100 }, // 30초동안 0명에서 300명으로 점진적증가
-        { duration: '30s', target: 200 }, // 1분동안 100명에서 200명으로 점진적 증가
-        { duration: '30s', target: 300 },
-        { duration: '1m', target: 300 },
+        { duration: '30s', target: 40 }, // 30초동안 0명에서 40명으로 점진적증가
+        { duration: '30s', target: 80 }, // 1분동안 100명에서 80명으로 점진적 증가
+        { duration: '30s', target: 120 },
+        { duration: '1m', target: 120 },
         { duration: '30s', target: 0 },
     ],
 };
@@ -126,7 +126,7 @@ export default function (tokens) {
         });
 
         // 시나리오 종료 시간에 맞춰 연결 닫기
-        socket.setTimeout(() => socket.close(), 390000);
+        socket.setTimeout(() => socket.close(), 180000);
     });
 
     check(res, { 'status is 101': (r) => r && r.status === 101 });

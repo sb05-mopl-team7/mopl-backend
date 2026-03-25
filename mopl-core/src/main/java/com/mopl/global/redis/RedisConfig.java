@@ -9,7 +9,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.repository.configuration.EnableRedisRepositories;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableRedisRepositories(basePackages = "com.mopl.domain.watching.repository")
@@ -36,8 +35,11 @@ public class RedisConfig {
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(redisConnectionFactory()); // 커넥션 팩토리 연결
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        GenericJacksonJsonRedisSerializer jsonSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
+        // Spring Data Redis 4.x에서는 builder를 통해 default typing을 활성화해야
+        // Object 타입으로 조회해도 DTO 타입 정보를 복원할 수 있다.
+        GenericJacksonJsonRedisSerializer jsonSerializer = GenericJacksonJsonRedisSerializer.builder()
+                .enableUnsafeDefaultTyping()
+                .build();
 
 
         // key, value 직렬화
@@ -47,6 +49,7 @@ public class RedisConfig {
         // Hash 구조를 사용할때의 key, value 직렬화
         redisTemplate.setHashKeySerializer(new StringRedisSerializer());
         redisTemplate.setHashValueSerializer(jsonSerializer);
+        redisTemplate.afterPropertiesSet();
 
         return redisTemplate;
     }

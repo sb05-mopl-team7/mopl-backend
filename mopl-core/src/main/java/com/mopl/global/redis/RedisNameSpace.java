@@ -11,6 +11,9 @@ public enum RedisNameSpace {
     // 인증 토큰
     AUTH_TOKEN("token:", Duration.ofDays(7), false),
 
+    // 채팅/실시간 응답용 사용자 요약 정보
+    USER_SUMMARY("user-summary:", Duration.ofMinutes(9), true),
+
     // 임시 비밀번호
     TEMP_PASSWORD("temp-password:", Duration.ofMinutes(3), true),
 

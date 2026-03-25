@@ -1,0 +1,33 @@
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: mopl-redis
+    restart: unless-stopped
+    mem_limit: 1500m
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - ./redis_data:/data
+
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 1024mb
+      --maxmemory-policy volatile-lru
+      --protected-mode no 
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

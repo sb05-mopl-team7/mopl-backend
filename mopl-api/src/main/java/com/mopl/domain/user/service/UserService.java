@@ -5,6 +5,7 @@ import com.mopl.domain.notification.producer.NotificationEventProducer;
 import com.mopl.domain.user.dto.UserCreateRequest;
 import com.mopl.domain.user.dto.UserDto;
 import com.mopl.domain.user.dto.UserSearchCondition;
+import com.mopl.domain.user.dto.response.UserSummaryDto;
 import com.mopl.domain.user.entity.User;
 import com.mopl.domain.user.enums.Role;
 import com.mopl.domain.user.exception.UserErrorCode;
@@ -17,6 +18,8 @@ import com.mopl.global.enums.SortBy;
 import com.mopl.global.enums.SortDirection;
 import com.mopl.global.exception.ErrorCode;
 import com.mopl.global.exception.MoplException;
+import com.mopl.global.redis.RedisManager;
+import com.mopl.global.redis.RedisNameSpace;
 import com.mopl.global.s3.FileCategory;
 import com.mopl.global.s3.S3Manager;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,7 @@ import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +47,7 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final S3Manager s3Manager;
+    private final RedisManager redisManager;
     private final NotificationEventProducer notificationEventProducer;
 
     @Transactional(readOnly = true)
@@ -84,7 +89,10 @@ public class UserService {
                 throw new RuntimeException("프로필 이미지 업로드 실패", e);
             }
         }
+        // 새로운 presignedUrl 발급
         String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+        UserSummaryDto userSummary =  new UserSummaryDto(user.getId(), user.getName(), thumbnailUrl);
+        redisManager.save(RedisNameSpace.USER_SUMMARY, user.getId().toString(), userSummary);
         return userMapper.toDto(user, thumbnailUrl);
     }
 
@@ -306,12 +314,24 @@ public class UserService {
     }
     @Transactional(readOnly = true)
     public UserDto detail(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(()-> new UserException(UserErrorCode.USER_NOT_EXIST));
-        String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
-        return userMapper.toDto(user, thumbnailUrl);
+        User user = validateUser(userId);
+        UserSummaryDto userSummary = getUserSummary(user);
+        return userMapper.toDto(user, userSummary.profileImageUrl());
     }
 
+    private User validateUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_EXIST));
+    }
 
-
+    /** profile Image presignedUrl 조회 */
+    private UserSummaryDto getUserSummary(User user) {
+        return redisManager.findByKey(RedisNameSpace.USER_SUMMARY, user.getId().toString(), UserSummaryDto.class)
+                .orElseGet(() -> {
+                    String thumbnailUrl = s3Manager.generatePresignedUrl(user.getProfileImageUrl());
+                    UserSummaryDto summaryDto = new UserSummaryDto(user.getId(), user.getName(), thumbnailUrl);
+                    redisManager.save(RedisNameSpace.USER_SUMMARY, user.getId().toString(), summaryDto);
+                    return summaryDto;
+                });
+    }
 }

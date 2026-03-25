@@ -1,0 +1,5 @@
+export const BASE_URL = Object.freeze({
+    ALB: __ENV.K6_BASE_URL_ALB,
+    CLOUDFRONT: __ENV.K6_BASE_URL_CLOUDFRONT,
+    LOCAL: __ENV.K6_BASE_URL_LOCAL,
+});

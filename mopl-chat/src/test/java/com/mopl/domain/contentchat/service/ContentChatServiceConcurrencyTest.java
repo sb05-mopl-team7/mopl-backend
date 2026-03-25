@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -62,10 +63,14 @@ class ContentChatServiceConcurrencyTest {
     private ContentChatService contentChatService;
 
     private Map<Long, User> usersById;
+    private ConcurrentLinkedQueue<Long> lookedUpUserIds;
+    private ConcurrentLinkedQueue<String> generatedProfileImageKeys;
 
     @BeforeEach
     void setUp() {
         usersById = createUsers(THREAD_COUNT);
+        lookedUpUserIds = new ConcurrentLinkedQueue<>();
+        generatedProfileImageKeys = new ConcurrentLinkedQueue<>();
         configureFastDependencies();
     }
 
@@ -75,6 +80,8 @@ class ContentChatServiceConcurrencyTest {
         warmUpCreateMessage();
         configureBottleneckingDependencies();
         clearInvocations(userRepository, s3Manager, redisManager);
+        lookedUpUserIds.clear();
+        generatedProfileImageKeys.clear();
 
         ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT);
         CountDownLatch readyLatch = new CountDownLatch(THREAD_COUNT);
@@ -130,7 +137,10 @@ class ContentChatServiceConcurrencyTest {
 
         ConcurrencyMetrics metrics = ConcurrencyMetrics.from(
                 wallClockLatenciesNanos,
-                stopWatch.getTotalTimeNanos()
+                stopWatch.getTotalTimeNanos(),
+                requestedUserIds,
+                lookedUpUserIds,
+                generatedProfileImageKeys
         );
         printMetrics(metrics);
 
@@ -139,6 +149,12 @@ class ContentChatServiceConcurrencyTest {
         assertThat(requestedUserIds.stream().distinct())
                 .as("부하는 소수의 사용자에게 집중되어야 한다")
                 .hasSize(HOT_USER_COUNT);
+        assertThat(metrics.userLookupAmplification())
+                .as("동일 사용자에 대한 조회 증폭이 분명히 드러나야 한다")
+                .isGreaterThanOrEqualTo(10.0);
+        assertThat(metrics.presignedUrlAmplification())
+                .as("동일 프로필 이미지에 대한 URL 생성 증폭이 분명히 드러나야 한다")
+                .isGreaterThanOrEqualTo(10.0);
         assertThat(metrics.totalDurationMs())
                 .as("외부 조회 지연이 누적되면 전체 wall-clock 시간은 %dms 이상이어야 한다", TOTAL_DURATION_LOWER_BOUND_MS)
                 .isGreaterThanOrEqualTo(TOTAL_DURATION_LOWER_BOUND_MS);
@@ -152,10 +168,18 @@ class ContentChatServiceConcurrencyTest {
 
     private void configureFastDependencies() {
         org.mockito.BDDMockito.given(userRepository.findById(anyLong()))
-                .willAnswer(invocation -> Optional.ofNullable(usersById.get(invocation.getArgument(0))));
+                .willAnswer(invocation -> {
+                    Long userId = invocation.getArgument(0);
+                    lookedUpUserIds.add(userId);
+                    return Optional.ofNullable(usersById.get(userId));
+                });
 
         org.mockito.BDDMockito.given(s3Manager.generatePresignedUrl(anyString()))
-                .willAnswer(invocation -> "https://cdn.mopl.test/" + invocation.getArgument(0));
+                .willAnswer(invocation -> {
+                    String profileImageKey = invocation.getArgument(0);
+                    generatedProfileImageKeys.add(profileImageKey);
+                    return "https://cdn.mopl.test/" + profileImageKey;
+                });
     }
 
     private void configureBottleneckingDependencies() {
@@ -166,14 +190,22 @@ class ContentChatServiceConcurrencyTest {
                 .willAnswer(invocation -> withArtificialLatency(
                         userLookupSlots,
                         USER_LOOKUP_DELAY_MS,
-                        () -> Optional.ofNullable(usersById.get(invocation.getArgument(0)))
+                        () -> {
+                            Long userId = invocation.getArgument(0);
+                            lookedUpUserIds.add(userId);
+                            return Optional.ofNullable(usersById.get(userId));
+                        }
                 ));
 
         org.mockito.BDDMockito.given(s3Manager.generatePresignedUrl(anyString()))
                 .willAnswer(invocation -> withArtificialLatency(
                         presignedUrlSlots,
                         PRESIGNED_URL_DELAY_MS,
-                        () -> "https://cdn.mopl.test/" + invocation.getArgument(0)
+                        () -> {
+                            String profileImageKey = invocation.getArgument(0);
+                            generatedProfileImageKeys.add(profileImageKey);
+                            return "https://cdn.mopl.test/" + profileImageKey;
+                        }
                 ));
     }
 
@@ -205,6 +237,20 @@ class ContentChatServiceConcurrencyTest {
                 threads=%d
                 hotUsers=%d
                 externalIoParallelism=%d
+
+                requestCount=%d
+                distinctUserCount=%d
+
+                userLookupCount=%d
+                distinctLookedUpUserCount=%d
+                avoidableUserLookupCount=%d
+                userLookupAmplification=%.1fx
+
+                presignedUrlGenerationCount=%d
+                distinctProfileImageCount=%d
+                avoidablePresignedUrlGenerationCount=%d
+                presignedUrlAmplification=%.1fx
+
                 totalWallClockDuration=%.3f ms
                 avgWallClockLatency=%.3f ms
                 p95WallClockLatency=%d ms
@@ -214,6 +260,16 @@ class ContentChatServiceConcurrencyTest {
                 THREAD_COUNT,
                 HOT_USER_COUNT,
                 EXTERNAL_IO_PARALLELISM,
+                metrics.requestCount(),
+                metrics.distinctUserCount(),
+                metrics.userLookupCount(),
+                metrics.distinctLookedUpUserCount(),
+                metrics.avoidableUserLookupCount(),
+                metrics.userLookupAmplification(),
+                metrics.presignedUrlGenerationCount(),
+                metrics.distinctProfileImageCount(),
+                metrics.avoidablePresignedUrlGenerationCount(),
+                metrics.presignedUrlAmplification(),
                 metrics.totalDurationMs(),
                 metrics.avgWallClockLatencyMs(),
                 metrics.p95WallClockLatencyMs(),
@@ -232,6 +288,16 @@ class ContentChatServiceConcurrencyTest {
     }
 
     private record ConcurrencyMetrics(
+            int requestCount,
+            int distinctUserCount,
+            int userLookupCount,
+            int distinctLookedUpUserCount,
+            int avoidableUserLookupCount,
+            double userLookupAmplification,
+            int presignedUrlGenerationCount,
+            int distinctProfileImageCount,
+            int avoidablePresignedUrlGenerationCount,
+            double presignedUrlAmplification,
             double totalDurationMs,
             double avgWallClockLatencyMs,
             long p95WallClockLatencyMs,
@@ -239,12 +305,32 @@ class ContentChatServiceConcurrencyTest {
     ) {
         private static ConcurrencyMetrics from(
                 ConcurrentLinkedQueue<Long> wallClockLatenciesNanos,
-                long totalDurationNanos
+                long totalDurationNanos,
+                ConcurrentLinkedQueue<Long> requestedUserIds,
+                ConcurrentLinkedQueue<Long> lookedUpUserIds,
+                ConcurrentLinkedQueue<String> generatedProfileImageKeys
         ) {
             List<Long> sortedWallClockLatencies = new ArrayList<>(wallClockLatenciesNanos);
             sortedWallClockLatencies.sort(Comparator.naturalOrder());
+            Set<Long> distinctRequestedUsers = Set.copyOf(requestedUserIds);
+            Set<Long> distinctLookedUpUsers = Set.copyOf(lookedUpUserIds);
+            Set<String> distinctProfileImages = Set.copyOf(generatedProfileImageKeys);
+            int requestCount = requestedUserIds.size();
+            int distinctUserCount = distinctRequestedUsers.size();
+            int userLookupCount = lookedUpUserIds.size();
+            int presignedUrlGenerationCount = generatedProfileImageKeys.size();
 
             return new ConcurrencyMetrics(
+                    requestCount,
+                    distinctUserCount,
+                    userLookupCount,
+                    distinctLookedUpUsers.size(),
+                    Math.max(0, userLookupCount - distinctUserCount),
+                    toAmplification(userLookupCount, distinctUserCount),
+                    presignedUrlGenerationCount,
+                    distinctProfileImages.size(),
+                    Math.max(0, presignedUrlGenerationCount - distinctProfileImages.size()),
+                    toAmplification(presignedUrlGenerationCount, distinctProfileImages.size()),
                     totalDurationNanos / 1_000_000.0,
                     toAverageMillis(sortedWallClockLatencies),
                     toPercentileMillis(sortedWallClockLatencies, 0.95),
@@ -274,6 +360,14 @@ class ContentChatServiceConcurrencyTest {
             }
 
             return TimeUnit.NANOSECONDS.toMillis(latenciesNanos.get(latenciesNanos.size() - 1));
+        }
+
+        private static double toAmplification(int totalCount, int distinctCount) {
+            if (distinctCount == 0) {
+                return 0.0;
+            }
+
+            return (double) totalCount / distinctCount;
         }
     }
 
